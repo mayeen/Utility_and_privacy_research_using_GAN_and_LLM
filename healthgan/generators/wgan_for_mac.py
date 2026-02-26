@@ -4,17 +4,16 @@ import sys
 import time
 import pickle as pkl
 import pandas as pd
-# CHANGED: Import compatibility mode
+
+# Force TensorFlow to use tf-keras instead of Keras 3
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
+
 import tensorflow.compat.v1 as tf
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-# CHANGED: Enable TF 1.x behavior in TF 2.x
-tf.disable_v2_behavior()
-
-# CHANGED: Commented out for Mac (let Metal/CPU handle allocation)
-# os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3"
-
+# Disable eager execution to use TF1 style
+tf.compat.v1.disable_eager_execution()
 
 def data_batcher(data, batch_size):
     """create yield function for given data and batch size"""
@@ -43,6 +42,25 @@ def data_batcher(data, batch_size):
 
     return infinite_data_batcher()
 
+def dense(inputs, units, activation=None, name=None):
+    """Custom dense layer using tf.Variable"""
+    with tf.compat.v1.variable_scope(name, reuse=tf.compat.v1.AUTO_REUSE):
+        input_dim = int(inputs.shape[-1])
+        w = tf.compat.v1.get_variable(
+            'kernel',
+            shape=[input_dim, units],
+            initializer=tf.compat.v1.glorot_uniform_initializer()
+        )
+        b = tf.compat.v1.get_variable(
+            'bias',
+            shape=[units],
+            initializer=tf.compat.v1.zeros_initializer()
+        )
+        output = tf.matmul(inputs, w) + b
+        if activation is not None:
+            output = activation(output)
+        return output
+
 
 class WGAN():
     """Wasserstein GAN with gradient penalties"""
@@ -58,49 +76,35 @@ class WGAN():
                  test_filepath,
                  critic_iters=None,
                  base_nodes=None):
-        # set custom options
         if critic_iters:
             self.params['critic_iters'] = critic_iters
 
-        # read in data and split it
         scratch = pd.read_csv(train_filepath)
         self.col_names = scratch.columns
         train_data = scratch.values
         self.test_data = pd.read_csv(test_filepath).values
 
         self.params['n_features'] = train_data.shape[1]
-        # create 1.5 and 2 times for the generator network dimensions
         self.params['1.5_n_features'] = round(1.5 * self.params['n_features'])
         self.params['2_n_features'] = 2 * self.params['n_features']
 
         if base_nodes:
             self.params['base_nodes'] = base_nodes
-        self.params['2_base_nodes'] = 2 * self.params[
-            'base_nodes']  # 2 x base for discriminator
-        self.params['4_base_nodes'] = 4 * self.params[
-            'base_nodes']  # 4 x base for discriminator
+        self.params['2_base_nodes'] = 2 * self.params['base_nodes']
+        self.params['4_base_nodes'] = 4 * self.params['base_nodes']
 
         self.params['n_observations'] = train_data.shape[0]
-        # number of observations divided by the number of critic iterations
-        # rounded down to the nearest multiple of 100
-        # Validated batch size to avoid zero division error
         raw_batch_size = int(train_data.shape[0] / self.params['critic_iters'])
         if raw_batch_size >= 100:
-             self.params['batch_size'] = (raw_batch_size // 100) * 100
+            self.params['batch_size'] = (raw_batch_size // 100) * 100
         else:
-             self.params['batch_size'] = raw_batch_size
+            self.params['batch_size'] = raw_batch_size
 
-        # double check on sizing
         assert self.test_data.shape[0] > self.params['batch_size'], "Test data smaller than batch size"
-        # assert train_data.shape[0] / self.params['batch_size'] > self.params[
-        #     'critic_iters']
 
-        self.train_batcher = data_batcher(train_data,
-                                          self.params['batch_size'])
-
+        self.train_batcher = data_batcher(train_data, self.params['batch_size'])
         self.print_settings()
 
-        # predefine values that will be set later
         self.real_data = None
         self.gen_loss = None
         self.disc_loss = None
@@ -108,7 +112,6 @@ class WGAN():
         self.disc_train_op = None
         self.rand_noise_samples = None
 
-        # define lists to store data
         self.disc_loss_all = []
         self.gen_loss_all = []
         self.disc_loss_test_all = []
@@ -125,28 +128,25 @@ class WGAN():
         # CHANGED: tf.contrib -> tf.compat.v1.layers
         
         # first dense layer
-        output = tf.layers.dense(
+        output = dense(
             inpt,
             self.params['2_n_features'],
             activation=tf.nn.relu,
-            name='Generator.1',
-            reuse=tf.AUTO_REUSE)
+            name='Generator.1')
 
         # second dense layer
-        output = tf.layers.dense(
+        output = dense(
             output,
             self.params['1.5_n_features'],
             activation=tf.nn.relu,
-            name='Generator.2',
-            reuse=tf.AUTO_REUSE)
+            name='Generator.2')
 
         # third dense layer
-        output = tf.layers.dense(
+        output = dense(
             output,
             self.params['n_features'],
             activation=tf.nn.sigmoid,
-            name='Generator.3',
-            reuse=tf.AUTO_REUSE)
+            name='Generator.3')
 
         return output
 
@@ -155,36 +155,32 @@ class WGAN():
         # CHANGED: tf.contrib -> tf.compat.v1.layers
         
         # create first dense layer
-        output = tf.layers.dense(
+        output = dense(
             output,
             self.params['base_nodes'],
             activation=tf.nn.leaky_relu,
-            name='Discriminator.1',
-            reuse=tf.AUTO_REUSE)
+            name='Discriminator.1')
 
         # create second dense layer
-        output = tf.layers.dense(
+        output = dense(
             output,
             self.params['2_base_nodes'],
             activation=tf.nn.leaky_relu,
-            name='Discriminator.2',
-            reuse=tf.AUTO_REUSE)
+            name='Discriminator.2')
 
         # create third dense layer
-        output = tf.layers.dense(
+        output = dense(
             output,
             self.params['4_base_nodes'],
             activation=tf.nn.leaky_relu,
-            name='Discriminator.3',
-            reuse=tf.AUTO_REUSE)
+            name='Discriminator.3')
 
         # create fourth dense layer
-        output = tf.layers.dense(
+        output = dense(
             output,
             1,
             activation=None,
-            name='Discriminator.4',
-            reuse=tf.AUTO_REUSE)
+            name='Discriminator.4')
 
         return output
 
@@ -339,11 +335,12 @@ if __name__ == '__main__':
 
     # start with a fresh graph
     tf.reset_default_graph()
+    base = "/Users/kazimostafashahriar/Main Drive/thesis/Medical data analysis/Code/thesis/data"
     # create object
     wgan = WGAN(
         # CHANGE THESE to the filename you generated with sdv_converter.py
-        train_filepath='diabetic_data_clean.csv.npy', # Example filename
-        test_filepath='diabetic_data_clean.csv.npy',  # Example filename
+        train_filepath=f"{base}/diabetic_data_subset_sdv.csv", # Example filename
+        test_filepath=f"{base}/diabetic_data_subset_sdv.csv",  # Example filename
         critic_iters=int(sys.argv[1]) if len(sys.argv) > 1 else 5,
         base_nodes=int(sys.argv[2]) if len(sys.argv) > 2 else 64)
     # define the computation graph

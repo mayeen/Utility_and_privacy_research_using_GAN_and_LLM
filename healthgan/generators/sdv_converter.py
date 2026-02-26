@@ -101,6 +101,10 @@ def fix_na_values(df):
 
 def categorical(col, limits=None):
     """convert a categorical column to continuous"""
+    # Handle NaN values by replacing them with a placeholder
+    col = col.copy()
+    col = col.fillna('MISSING')
+    
     if limits:
         # reconstruct the distributions
         distributions = {}
@@ -114,7 +118,6 @@ def categorical(col, limits=None):
             a = b
 
         # convert values that don't exist in orig col to most common
-        col = col.copy()  # to lose copy warnings
         common = col.value_counts().index[0]
         for cat in col.unique():
             if cat not in distributions:
@@ -149,6 +152,12 @@ def categorical(col, limits=None):
 
 def ordinal(col, limits=None):
     """convert a ordinal column to continuous"""
+    # Handle NaN values by replacing with most common value
+    col = col.copy()
+    if col.isna().any():
+        most_common = col.mode().iloc[0] if not col.mode().empty else 0
+        col = col.fillna(most_common)
+    
     if limits:
         # reconstruct the distributions
         distributions = {}
@@ -162,7 +171,6 @@ def ordinal(col, limits=None):
             a = b
 
         # convert values that don't exist to nearest value
-        col = col.copy()
         max_val = max(distributions.keys())
         min_val = min(distributions.keys())
         for cat in col.unique():
@@ -223,6 +231,12 @@ def truncated_beta(alpha, beta, low, high):
 
 def binary(col, limits=None):
     """convert a binary column to continuous"""
+    # Handle NaN values by replacing with most common value (0 or 1)
+    col = col.copy()
+    if col.isna().any():
+        most_common = col.mode().iloc[0] if not col.mode().empty else 0
+        col = col.fillna(most_common)
+    
     if limits:
         # reconstruct the distributions
         distributions = {}
@@ -272,6 +286,11 @@ def binary(col, limits=None):
 
 def numeric(col, min_max=None):
     """normalize a numeric column"""
+    # Handle NaN values by replacing with median
+    col = col.copy()
+    if col.isna().any():
+        col = col.fillna(col.median())
+    
     if min_max:
         return ((col - min_max[0]) / (min_max[1] - min_max[0])), None, None
     return ((col - min(col)) / (max(col) - min(col))), min(col), max(col)
@@ -320,7 +339,10 @@ def encode(df, limits=None, min_max=None, beta=False):
         limits = {}
         min_max = {}
         already_exists = False
-    for c in df.columns:
+    
+    total_cols = len(df.columns)    
+    for idx, c in enumerate(df.columns):
+        print(f"[{idx+1}/{total_cols}] Processing: {c} (dtype: {df[c].dtype})")
         # if object
         if df[c].dtype.char == "O":
             if already_exists:

@@ -5,3 +5,6 @@ __pycache__/
 *.npy
 *.pkl
 *.ckpt
+
+logs_new/
+diabetes-ucidata-main/experiments/
