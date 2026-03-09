@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import SimpleImputer
 
 
 def process_multiple_encounters(data, drop_id_fields=True):
@@ -174,6 +175,32 @@ def label_encode(data, target, cat_cols=None):
 
     return df
 
+# impute_data: Returns data with missing values imputed.
+def impute_data(data):
+    '''Returns data with missing values imputed.'''
+
+    # get all categorical columns
+    cat_cols = data.select_dtypes(include=['object']).columns
+
+    # get all numerical columns
+    num_cols = data.select_dtypes(include=['int64', 'float64']).columns
+
+    # get a copy of the data
+    data_copy = data.copy()
+
+    # impute missing values
+    imputer = SimpleImputer(strategy='most_frequent')
+    imputed_cat_data = imputer.fit_transform(data[cat_cols])
+    data_copy.loc[:, cat_cols] = imputed_cat_data
+
+    # impute missing values
+    imputer = SimpleImputer(strategy='median')
+    imputed_num_data = imputer.fit_transform(data[num_cols])
+    data_copy.loc[:, num_cols] = imputed_num_data
+
+    # return data
+    return data_copy
+
 
 def engineer_features(data, target="readmitted", cat_cols=None):
     """Apply requested feature engineering and encoding pipeline."""
@@ -196,11 +223,14 @@ def engineer_features(data, target="readmitted", cat_cols=None):
 
     # 4) encode A1Cresult
     df = encode_a1cresult(df)
-
+    
+    df= impute_data(df)
     # 5) label encode categorical columns (except target by default)
     df = label_encode(df, target=target, cat_cols=cat_cols)
 
     # 6) target encode readmission classes into binary readmission
     df = target_encode(df, target, {"NO": 0, ">30": 1, "<30": 1})
+
+
 
     return df

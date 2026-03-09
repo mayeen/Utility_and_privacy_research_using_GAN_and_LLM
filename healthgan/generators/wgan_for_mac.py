@@ -339,8 +339,8 @@ if __name__ == '__main__':
     # create object
     wgan = WGAN(
         # CHANGE THESE to the filename you generated with sdv_converter.py
-        train_filepath=f"{base}/diabetic_data_subset_sdv.csv", # Example filename
-        test_filepath=f"{base}/diabetic_data_subset_sdv.csv",  # Example filename
+        train_filepath=f"{base}/diabetic_data_preprocessed_train_sdv.csv", # Example filename
+        test_filepath=f"{base}/diabetic_data_preprocessed_test_sdv.csv",  # Example filename
         critic_iters=int(sys.argv[1]) if len(sys.argv) > 1 else 5,
         base_nodes=int(sys.argv[2]) if len(sys.argv) > 2 else 64)
     # define the computation graph

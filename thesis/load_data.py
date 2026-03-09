@@ -31,20 +31,19 @@ def load_data(processed=True):
         Path.cwd() / 'data'           # fallback: current working dir/data
     ]
 
-    if processed is False:
-        # load the raw data
-        rel_path = Path('diabetic_data.csv')
-    else:
-        # load the processed data
-        rel_path = Path('preprocessed') / 'diabetic_data_preprocessed.csv'
+    file_stem = 'diabetic_data_preprocessed' if processed else 'diabetic_data'
+    rel_paths = [Path(f'{file_stem}.csv'), Path(file_stem)]
 
     data_path = None
     checked_paths = []
     for data_dir in candidate_data_dirs:
-        candidate = data_dir / rel_path
-        checked_paths.append(str(candidate))
-        if candidate.exists():
-            data_path = candidate
+        for rel_path in rel_paths:
+            candidate = data_dir / rel_path
+            checked_paths.append(str(candidate))
+            if candidate.exists():
+                data_path = candidate
+                break
+        if data_path is not None:
             break
 
     # read the CSV (raise a clear error if missing)
