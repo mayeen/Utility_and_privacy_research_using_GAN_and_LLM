@@ -3,6 +3,7 @@ import os
 import sys
 import time
 import pickle as pkl
+from pathlib import Path
 import pandas as pd
 
 # Force TensorFlow to use tf-keras instead of Keras 3
@@ -295,17 +296,16 @@ class WGAN():
                         f'Test Epoch: [Test D loss: {self.disc_loss_test_all[-1]:7.4f}]'
                     )
 
-                # if at epoch ending 99999 generate large
-                # CHANGED: Make directory if it doesn't exist
-                if not os.path.exists('data'):
-                    os.makedirs('data')
+                # Keep generated samples in a dedicated subdirectory.
+                sample_dir = Path("data") / "synthetic_data_healthgan"
+                sample_dir.mkdir(parents=True, exist_ok=True)
 
                 if epoch == (self.params['num_epochs'] - 1):
                     for i in range(10):
                         samples = session.run(self.rand_noise_samples)
                         samples = pd.DataFrame(samples, columns=self.col_names)
                         samples.to_csv(
-                            f'data/samples_{epoch}_{self.params["critic_iters"]}_{self.params["base_nodes"]}_synthetic_{i}.csv',
+                            sample_dir / f'samples_{epoch}_{self.params["critic_iters"]}_{self.params["base_nodes"]}_synthetic_{i}.csv',
                             index=False)
 
                 # update log every 100
@@ -335,12 +335,13 @@ if __name__ == '__main__':
 
     # start with a fresh graph
     tf.reset_default_graph()
-    base = "/Users/kazimostafashahriar/Main Drive/thesis/Medical data analysis/Code/thesis/data"
+    # Resolve the data directory relative to the repository instead of a machine-specific path.
+    base = Path(__file__).resolve().parents[2] / "thesis" / "data"
     # create object
     wgan = WGAN(
         # CHANGE THESE to the filename you generated with sdv_converter.py
-        train_filepath=f"{base}/diabetic_data_preprocessed_train_sdv.csv", # Example filename
-        test_filepath=f"{base}/diabetic_data_preprocessed_test_sdv.csv",  # Example filename
+        train_filepath=str(base / "diabetic_data_preprocessed_train_sdv.csv"), # Example filename
+        test_filepath=str(base / "diabetic_data_preprocessed_test_sdv.csv"),  # Example filename
         critic_iters=int(sys.argv[1]) if len(sys.argv) > 1 else 5,
         base_nodes=int(sys.argv[2]) if len(sys.argv) > 2 else 64)
     # define the computation graph
