@@ -9,7 +9,7 @@ from pate_gan import pategan
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DIABETIC_DATA_PATH = REPO_ROOT / "thesis" / "data" / "diabetic_data_preprocessed_train.csv"
-OUTPUT_PATH = REPO_ROOT / "data" / "pategan" / "diabetic_data_pategan_train_synthetic.csv"
+OUTPUT_PATH = REPO_ROOT / "thesis" / "data" / "pategan" / "diabetic_data_pategan_train_synthetic.csv"
 
 
 def parse_args():

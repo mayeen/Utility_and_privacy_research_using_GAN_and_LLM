@@ -297,7 +297,7 @@ class WGAN():
                     )
 
                 # Keep generated samples in a dedicated subdirectory.
-                sample_dir = Path("data") / "synthetic_data_healthgan"
+                sample_dir = Path(__file__).resolve().parents[2] / "thesis" / "data" / "healthgan"
                 sample_dir.mkdir(parents=True, exist_ok=True)
 
                 if epoch == (self.params['num_epochs'] - 1):
