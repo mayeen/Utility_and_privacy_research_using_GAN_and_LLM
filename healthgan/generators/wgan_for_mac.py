@@ -69,7 +69,8 @@ class WGAN():
         'base_nodes': 64,
         'critic_iters': 5,  # number of discriminator iterations
         'lambda': 10,  # paramter for gradient penalty
-        'num_epochs': 100000  # how long to train for
+        'num_epochs': 100000,  # how long to train for
+        'samples_per_file': 57214  # generated rows per synthetic CSV
     }
 
     def __init__(self,
@@ -238,7 +239,7 @@ class WGAN():
                 self.disc_loss, var_list=disc_params)
 
         # for generating samples
-        rand_noise = tf.random_normal([10000, 100], name="RandomNoise")
+        rand_noise = tf.random_normal([self.params['samples_per_file'], 100], name="RandomNoise")
         self.rand_noise_samples = self.generator(rand_noise)
 
         with tf.Session() as session:
