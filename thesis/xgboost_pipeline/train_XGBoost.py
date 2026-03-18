@@ -1,9 +1,11 @@
 # XGBoost pipeline using thesis utility modules
 
+import argparse
 import sys
 import warnings
 import mlflow
 import mlflow.sklearn
+import pandas as pd
 from pathlib import Path
 from mlflow.models import infer_signature
 from xgboost import XGBClassifier
@@ -18,15 +20,62 @@ from sklearn.metrics import (
 SCRIPT_DIR = Path(__file__).resolve().parent          # .../thesis/xgboost_pipeline
 THESIS_DIR = SCRIPT_DIR.parent                        # .../thesis
 
-sys.path.insert(0, str(THESIS_DIR))  # import load_data, feature_engineering, etc.
+sys.path.insert(0, str(THESIS_DIR))  # import selection utility
 
-from load_data import load_data
-from feature_engineering import engineer_features
-from split_data import split_data
 from selection import select_features
 
 
 # -- helpers ----------------------------------------------------------------
+def parse_args():
+    """Parse CLI arguments."""
+    parser = argparse.ArgumentParser(description="Train XGBoost with explicit train/test CSV files.")
+    parser.add_argument(
+        "--data-source",
+        choices=["default", "pategan", "healthgan"],
+        default="default",
+        help="Preset source for train/test CSV paths.",
+    )
+    parser.add_argument(
+        "--train-csv",
+        type=str,
+        default=None,
+        help="Optional override for training CSV path.",
+    )
+    parser.add_argument(
+        "--test-csv",
+        type=str,
+        default=None,
+        help="Optional override for test CSV path.",
+    )
+    parser.add_argument(
+        "--target",
+        type=str,
+        default="readmitted",
+        help="Target column name.",
+    )
+    return parser.parse_args()
+
+
+def resolve_data_paths(data_source):
+    """Resolve default train/test CSV paths for a given source."""
+    data_dir = THESIS_DIR / "data"
+    default_train = data_dir / "diabetic_data_preprocessed_train.csv"
+    default_test = data_dir / "diabetic_data_preprocessed_test.csv"
+
+    if data_source == "default":
+        return default_train, default_test
+
+    if data_source == "pategan":
+        return data_dir / "pategan" / "diabetic_data_pategan_train_synthetic_epsilon_5.0.csv", default_test
+
+    # healthgan: use first synthetic CSV found in thesis/data/healthgan
+    healthgan_dir = data_dir / "healthgan"
+    healthgan_candidates = sorted(healthgan_dir.glob("*synthetic*.csv"))
+    if not healthgan_candidates:
+        raise FileNotFoundError(f"No HealthGAN synthetic CSV found in: {healthgan_dir}")
+    return healthgan_candidates[0], default_test
+
+
 def train_xgb(
     X_train,
     y_train,
@@ -86,26 +135,38 @@ def evaluate(model, X_train, X_test, y_train, y_test, threshold=0.3, predict_pro
 
 
 # -- main pipeline -----------------------------------------------------------
-def main():
+def main(args):
     warnings.filterwarnings("ignore")
 
-    # 1. Load raw data
-    print("Loading data ...")
-    data = load_data(processed=False)
+    # 1. Resolve train/test CSV paths
+    default_train_csv, default_test_csv = resolve_data_paths(args.data_source)
+    train_csv = Path(args.train_csv) if args.train_csv else default_train_csv
+    test_csv = Path(args.test_csv) if args.test_csv else default_test_csv
 
-    # 2. Feature engineering
-    print("Engineering features ...")
-    data = engineer_features(data, target="readmitted")
+    if not train_csv.exists():
+        raise FileNotFoundError(f"Train CSV not found: {train_csv}")
+    if not test_csv.exists():
+        raise FileNotFoundError(f"Test CSV not found: {test_csv}")
 
+    # 2. Load train/test datasets
+    print(f"Loading train data from: {train_csv}")
+    train_data = pd.read_csv(train_csv)
+    print(f"Loading test data from: {test_csv}")
+    test_data = pd.read_csv(test_csv)
 
+    if args.target not in train_data.columns:
+        raise ValueError(f"Target column '{args.target}' not found in train CSV.")
+    if args.target not in test_data.columns:
+        raise ValueError(f"Target column '{args.target}' not found in test CSV.")
 
-    # 3. Train / test split
-    X_train, X_test, y_train, y_test = split_data(
-        data, target="readmitted", test_size=0.2, random_state=42
-    )
+    # 3. Build X/y from separate datasets
+    X_train = train_data.drop(columns=[args.target])
+    y_train = train_data[args.target]
+    X_test = test_data.drop(columns=[args.target])
+    y_test = test_data[args.target]
     print(f"Train shape: {X_train.shape}  |  Test shape: {X_test.shape}")
 
-    # 4. (Optional) feature selection - uncomment to enable
+    # 4. Feature selection
     print('\nFeatures before selection ({}):'.format(X_train.shape[1]))
     print(list(X_train.columns))
     X_train, X_test = select_features(
@@ -126,7 +187,7 @@ def main():
         random_state=42,
     )
 
-    # 6. Evaluate
+    # 6. Evaluate on provided test CSV
     metrics = evaluate(xgb, X_train, X_test, y_train, y_test, threshold=0.3)
 
     # 7. MLflow logging
@@ -146,8 +207,11 @@ def main():
             "colsample_bytree": xgb.get_params()["colsample_bytree"],
             "objective": xgb.get_params()["objective"],
             "n_features": X_train.shape[1],
-            "test_size": 0.2,
             "threshold": 0.3,
+            "data_source": args.data_source,
+            "train_csv": str(train_csv),
+            "test_csv": str(test_csv),
+            "target": args.target,
         })
         # metrics
         mlflow.log_metrics({k: v for k, v in metrics.items() if v is not None})
@@ -165,4 +229,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    cli_args = parse_args()
+    main(cli_args)
