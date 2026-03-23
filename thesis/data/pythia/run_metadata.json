@@ -1,0 +1,126 @@
+{
+  "created_at_utc": "2026-03-22T19:54:47.071972+00:00",
+  "pipeline": "pythia_lora_tabular_generation",
+  "model_name": "EleutherAI/pythia-70m",
+  "parameters": {
+    "splits": [
+      "train",
+      "test"
+    ],
+    "target_col": "readmitted",
+    "epochs": 10,
+    "batch_size": 8,
+    "learning_rate": 2e-05,
+    "max_length": 512,
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_retries_per_row": 8,
+    "generation_batch_size": null,
+    "row_limit": null
+  },
+  "splits": {
+    "train": {
+      "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_train.csv",
+      "input_sha256": "ceba1d0b7391d4119434c0c7837f3fd68589dbf1b26bca4daabeb7ac0b39fbc6",
+      "output_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/pythia/diabetic_data_pythia_train_synthetic.csv",
+      "output_sha256": "d3339b02431c75c9edc96a9ed59d055733fbab00d5436f370f97fe6df2b069e3",
+      "source_rows": 57214,
+      "source_class_counts": {
+        "0": 37750,
+        "1": 19464
+      },
+      "synthetic_rows": 57214,
+      "synthetic_class_counts": {
+        "0": 37750,
+        "1": 19464
+      },
+      "generation_stats": {
+        "split_name": "train",
+        "rows_requested": 57214,
+        "rows_generated": 57214,
+        "class_counts_requested": {
+          "0": 37750,
+          "1": 19464
+        },
+        "class_counts_generated": {
+          "0": 37750,
+          "1": 19464
+        },
+        "class_stats": {
+          "0": {
+            "class_label": 0,
+            "requested_rows": 37750,
+            "accepted_rows_before_resample": 37750,
+            "total_attempts": 37750,
+            "rejected_rows": 0,
+            "parse_failures": 0,
+            "coercion_failures": 0,
+            "resampled_rows": 0
+          },
+          "1": {
+            "class_label": 1,
+            "requested_rows": 19464,
+            "accepted_rows_before_resample": 19464,
+            "total_attempts": 19464,
+            "rejected_rows": 0,
+            "parse_failures": 0,
+            "coercion_failures": 0,
+            "resampled_rows": 0
+          }
+        }
+      }
+    },
+    "test": {
+      "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_test.csv",
+      "input_sha256": "4af3d78db1b6e1d381ebe17bf9e260e60274bc2608e8a931e99c5aa29bf7445c",
+      "output_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/pythia/diabetic_data_pythia_test_synthetic.csv",
+      "output_sha256": "ce3215a141a3e3ff3e1e720ef0ff6a3a97adc1bf5af9b2ba9397c0c482d936ad",
+      "source_rows": 14304,
+      "source_class_counts": {
+        "0": 9438,
+        "1": 4866
+      },
+      "synthetic_rows": 14304,
+      "synthetic_class_counts": {
+        "0": 9438,
+        "1": 4866
+      },
+      "generation_stats": {
+        "split_name": "test",
+        "rows_requested": 14304,
+        "rows_generated": 14304,
+        "class_counts_requested": {
+          "0": 9438,
+          "1": 4866
+        },
+        "class_counts_generated": {
+          "0": 9438,
+          "1": 4866
+        },
+        "class_stats": {
+          "0": {
+            "class_label": 0,
+            "requested_rows": 9438,
+            "accepted_rows_before_resample": 9438,
+            "total_attempts": 9444,
+            "rejected_rows": 6,
+            "parse_failures": 0,
+            "coercion_failures": 6,
+            "resampled_rows": 0
+          },
+          "1": {
+            "class_label": 1,
+            "requested_rows": 4866,
+            "accepted_rows_before_resample": 4866,
+            "total_attempts": 4870,
+            "rejected_rows": 4,
+            "parse_failures": 0,
+            "coercion_failures": 4,
+            "resampled_rows": 0
+          }
+        }
+      }
+    }
+  }
+}
