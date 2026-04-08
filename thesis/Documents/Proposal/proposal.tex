@@ -1,0 +1,69 @@
+\documentclass[master,proposal,extern,palatino]{rgseThesis}
+
+% für "lorem ipsum" Blind text - remove for actual thesis ;-)
+\usepackage{lipsum}
+
+% Information for title page
+
+\author{John Doe}
+% \studiengang{Computervisualistik} % Program of Study, Default is Informatik, ignored for proposals
+
+\title{Frying without Fat}
+
+% \supervisor{w}{Dr. Sabine Mustermann} % Default is Jan Jürjens
+% \supervisorInfo{Muster-Institut} % Default is Institute for Software Technology/Institut für Softwaretechnik
+
+\secondSupervisor{w}{M.Sc. Alice Cooper}
+\secondSupervisorInfo{Other Institute}
+
+\externLogo{6cm}{logos/ist-logo-de} % optional logo of external externen partner
+\externName{Institut für Softwaretechnik} % optional subtitle of the logo
+
+
+% References, bibliography/Literatur-Datenbank
+\addbibresource{literature.bib}
+
+% Depth of table of content/Tiefe des Inhaltsverzeichnisses; 1: section (empfohlen), 2: subsection
+\setcounter{tocdepth}{1} 
+
+\begin{document}
+
+    % Language switch for labels/Umschalten der Sprache für englische Rubrikbezeichnungen (possible/möglich: english, ngerman)
+    \selectlanguage{ngerman}
+
+    % Title Page
+    \maketitle
+
+    % TOC
+    \tableofcontents
+
+    % Here follows the content of the proposal/Hier kommt jetzt der eigentliche Text des Proposals
+
+    \section{Introduction and Motivation}
+
+    In `The Bible' \cite{Juerjens2005SSD}, Jan Jürjens defines an extension to the UML modeling language that enables modeling of security features in UML diagrams.
+
+    \paragraph{Suggestion:}
+    To make version control more easy, try to put each sentence on a single line.
+    Use your text editors wrapping option to wrap long sentences (i.e. lines) at the window borders.
+
+    \section{Research Questions}
+
+    \lipsum[1-2]
+
+    \section{Work Packages and Schedule}
+
+    \lipsum[3-4]
+
+    \section{Scientific Background}
+
+    Here you give information about your scientific background.
+    This includes, e.g.: which lectures and exercises did you attend, that help you now in executing this thesis?
+    This may also include further experiences from inside or outside the university that helped you build up technical or conceptual competencies relevant for this thesis.
+
+    \lipsum[5]
+
+    % References/Literaturverzeichnis
+    \printbibliography[heading=bibintoc]
+
+\end{document}
