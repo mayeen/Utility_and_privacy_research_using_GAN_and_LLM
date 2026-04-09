@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
 
@@ -29,6 +30,7 @@ except ImportError:
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DATA_DIR = REPO_ROOT / "thesis" / "data"
 DEFAULT_OUTPUT_DIR = DATA_DIR / "pythia"
+DEFAULT_HF_TOKEN_FILE = REPO_ROOT / "pythia" / "token.txt"
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,9 +86,22 @@ def summarize_class_counts(df: pd.DataFrame, target_col: str) -> Dict[str, int]:
     }
 
 
+def load_hf_token(token_file: Path = DEFAULT_HF_TOKEN_FILE) -> Optional[str]:
+    """Load Hugging Face token from token file, fallback to environment."""
+    if token_file.exists():
+        token = token_file.read_text(encoding="utf-8").strip()
+        if token:
+            os.environ["HF_TOKEN"] = token
+            return token
+
+    env_token = os.environ.get("HF_TOKEN", "").strip()
+    return env_token or None
+
+
 def main() -> None:
     args = parse_args()
     set_global_seed(args.seed)
+    hf_token = load_hf_token()
 
     split_paths = resolve_split_paths(args)
     output_dir = Path(args.output_dir)
@@ -145,6 +160,7 @@ def main() -> None:
             max_retries_per_row=args.max_retries_per_row,
             seed=args.seed + idx,
             generation_batch_size=args.generation_batch_size,
+            hf_token=hf_token,
         )
 
         out_path = output_path_for_split(output_dir, split_name)

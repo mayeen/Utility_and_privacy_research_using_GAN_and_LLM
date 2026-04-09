@@ -332,6 +332,13 @@ def read_data(filename):
 
 def encode(df, limits=None, min_max=None, beta=False):
     """encode the data into SDV format"""
+
+    # Columns that should always be treated as categorical/ordinal even if
+    # pandas reads them as float (e.g. age is mapped to {1, 1.5, 2}).
+    # After retraining HealthGAN with this change, age will go through
+    # ordinal() instead of numeric(), producing a proper .limits entry.
+    FORCE_ORDINAL = {"age"}
+
     # loop through every column
     if limits and min_max:
         already_exists = True
@@ -343,6 +350,17 @@ def encode(df, limits=None, min_max=None, beta=False):
     total_cols = len(df.columns)    
     for idx, c in enumerate(df.columns):
         print(f"[{idx+1}/{total_cols}] Processing: {c} (dtype: {df[c].dtype})")
+
+        # --- Force certain float columns to be treated as ordinal ---
+        if c in FORCE_ORDINAL and df[c].dtype.char == "d":
+            print(f"  -> Forcing '{c}' to ordinal (was float)")
+            if already_exists:
+                df[c], _ = ordinal(df[c], limits[c])
+            else:
+                df[c], lim = ordinal(df[c])
+                limits[c] = lim
+            continue
+
         # if object
         if df[c].dtype.char == "O":
             if already_exists:
@@ -532,7 +550,6 @@ if __name__ == "__main__":
         else:
             df_converted, lims, mm = encode(df_raw, beta=args.beta)
             save_files(df_converted, args.data_file[:-4], lims, mm, True)
-
     elif args.op == "decode":
         lims, mm, cols, npy_new = read_decoders(args.data_file[:-4], args.npy_file)
         if not cols:
@@ -541,5 +558,71 @@ if __name__ == "__main__":
             cols = df_raw.columns
 
         df_converted = decode(np.clip(npy_new, 0, 1), cols, lims, mm)
+
+        # ----------------------------------------------------------------
+        # Post-processing: snap numeric columns to valid original values.
+        # This handles columns like 'age' that were encoded via numeric()
+        # (min-max) instead of ordinal() in the OLD training run.
+        #
+        # TODO: After retraining HealthGAN with age in FORCE_ORDINAL,
+        #       you can revert to the simpler decode below by uncommenting
+        #       the "ORIGINAL DECODE" block and removing the
+        #       "SNAP-TO-NEAREST DECODE" block.
+        # ----------------------------------------------------------------
+
+        # ============== SNAP-TO-NEAREST DECODE (current) ================
+        # Load the original data to learn valid value sets per column.
+        df_original = read_data(args.data_file)
+
+        for col in df_converted.columns:
+            if col in lims:
+                # Categorical — already decoded correctly by .limits thresholds
+                pass
+            else:
+                # Numeric — decoded via min-max, WGAN outputs continuous values.
+                # Snap to nearest valid value from original data.
+                original_values = np.sort(df_original[col].dropna().unique())
+
+                if len(original_values) <= 50:
+                    # Low-cardinality (age brackets, ordinal codes, counts, etc.)
+                    def snap_to_nearest(val, valid=original_values):
+                        idx = np.searchsorted(valid, val, side='left')
+                        if idx == 0:
+                            return valid[0]
+                        if idx >= len(valid):
+                            return valid[-1]
+                        left = valid[idx - 1]
+                        right = valid[idx]
+                        return left if abs(val - left) <= abs(val - right) else right
+
+                    df_converted[col] = df_converted[col].apply(snap_to_nearest)
+
+                    # Only cast to int if the original values are all integers
+                    # (e.g. age has {1, 1.5, 2} so it should stay float)
+                    if all(v == int(v) for v in original_values):
+                        df_converted[col] = df_converted[col].astype(int)
+                else:
+                    # High-cardinality (encounter_id, patient_nbr, etc.)
+                    df_converted[col] = df_converted[col].clip(lower=0).round().astype(int)
+        # ============ END SNAP-TO-NEAREST DECODE ========================
+
+        # # ============== ORIGINAL DECODE (use after retraining) =========
+        # # After retraining HealthGAN with age in FORCE_ORDINAL, uncomment
+        # # this block and remove the SNAP-TO-NEAREST block above.
+        # for col in df_converted.columns:
+        #     if col not in lims:
+        #         df_converted[col] = df_converted[col].clip(lower=0).round().astype(int)
+        #     else:
+        #         df_converted[col] = df_converted[col].round().astype(int)
+        # # ============ END ORIGINAL DECODE ==============================
+
+        # Extract filename from npy_file and create output path in healthgan folder
+        from pathlib import Path
+        npy_filename = Path(args.npy_file).stem  # Get filename without extension
+        healthgan_dir = Path(__file__).resolve().parents[2] / "thesis" / "data" / "healthgan"
+        healthgan_dir.mkdir(parents=True, exist_ok=True)
+        output_path = healthgan_dir / f"{npy_filename}_decoded.csv"
+        
         # save decoded
-        df_converted.to_csv(args.data_file[:-4] + "_synthetic.csv", index=False)
+        df_converted.to_csv(output_path, index=False)
+        print(f"Decoded file saved to: {output_path}")

@@ -444,6 +444,7 @@ def train_lora_model(
     learning_rate: float,
     max_length: int,
     seed: int,
+    hf_token: Optional[str] = None,
 ):
     """Fine-tune pretrained Pythia model with LoRA."""
     stack = _lazy_import_training_stack()
@@ -462,13 +463,17 @@ def train_lora_model(
 
     set_seed(seed)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
 
-    model = AutoModelForCausalLM.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
     model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
 
     lora_config = LoraConfig(
         r=8,
@@ -623,8 +628,15 @@ def generate_rows_for_class(
                 "pad_token_id": tokenizer.pad_token_id,
                 "eos_token_id": tokenizer.eos_token_id,
             }
-            supported_gen_args = inspect.signature(model.generate).parameters
-            filtered_gen_args = {k: v for k, v in requested_gen_args.items() if k in supported_gen_args}
+            generate_params = inspect.signature(model.generate).parameters
+            supports_var_kwargs = any(
+                p.kind == inspect.Parameter.VAR_KEYWORD for p in generate_params.values()
+            )
+            filtered_gen_args = (
+                requested_gen_args
+                if supports_var_kwargs
+                else {k: v for k, v in requested_gen_args.items() if k in generate_params}
+            )
 
             outputs = model.generate(
                 **inputs,
@@ -707,6 +719,7 @@ def generate_synthetic_for_split(
     max_retries_per_row: int,
     seed: int,
     generation_batch_size: Optional[int] = None,
+    hf_token: Optional[str] = None,
 ) -> Tuple[pd.DataFrame, SplitGenerationStats]:
     """End-to-end generation for one split: train, sample, postprocess, validate."""
     if generation_batch_size is None:
@@ -723,6 +736,7 @@ def generate_synthetic_for_split(
         learning_rate=learning_rate,
         max_length=max_length,
         seed=seed,
+        hf_token=hf_token,
     )
 
     requested_counts = _class_counts(source_df, target_col=target_col)
