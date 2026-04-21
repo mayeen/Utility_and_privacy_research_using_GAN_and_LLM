@@ -13,6 +13,7 @@ import pandas as pd
 
 try:
     from pythia.pythia_tabular import (
+        DPConfig,
         file_sha256,
         generate_synthetic_for_split,
         set_global_seed,
@@ -20,6 +21,7 @@ try:
     )
 except ImportError:
     from pythia_tabular import (  # type: ignore
+        DPConfig,
         file_sha256,
         generate_synthetic_for_split,
         set_global_seed,
@@ -62,7 +64,30 @@ def parse_args() -> argparse.Namespace:
         help="Optional row cap per split for quick smoke runs.",
     )
 
+    parser.add_argument(
+        "--dp",
+        action="store_true",
+        help="Enable differentially-private LoRA fine-tuning (DP-SGD via Opacus).",
+    )
+    parser.add_argument("--target-epsilon", type=float, default=5.0)
+    parser.add_argument("--target-delta", type=float, default=1e-5)
+    parser.add_argument("--max-grad-norm", type=float, default=1.0)
+    parser.add_argument("--dp-per-device-batch-size", type=int, default=32)
+    parser.add_argument("--dp-grad-accum-steps", type=int, default=16)
+
     return parser.parse_args()
+
+
+def build_dp_config(args: argparse.Namespace) -> Optional[DPConfig]:
+    if not args.dp:
+        return None
+    return DPConfig(
+        target_epsilon=args.target_epsilon,
+        target_delta=args.target_delta,
+        max_grad_norm=args.max_grad_norm,
+        per_device_batch_size=args.dp_per_device_batch_size,
+        gradient_accumulation_steps=args.dp_grad_accum_steps,
+    )
 
 
 def resolve_split_paths(args: argparse.Namespace) -> Dict[str, Path]:
@@ -74,8 +99,9 @@ def resolve_split_paths(args: argparse.Namespace) -> Dict[str, Path]:
     }
 
 
-def output_path_for_split(output_dir: Path, split: str) -> Path:
-    return output_dir / f"diabetic_data_pythia_{split}_synthetic.csv"
+def output_path_for_split(output_dir: Path, split: str, dp_enabled: bool = False) -> Path:
+    suffix = "_dp" if dp_enabled else ""
+    return output_dir / f"diabetic_data_pythia_{split}{suffix}_synthetic.csv"
 
 
 def summarize_class_counts(df: pd.DataFrame, target_col: str) -> Dict[str, int]:
@@ -107,6 +133,8 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    dp_config = build_dp_config(args)
+
     metadata = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "pipeline": "pythia_lora_tabular_generation",
@@ -124,6 +152,19 @@ def main() -> None:
             "max_retries_per_row": args.max_retries_per_row,
             "generation_batch_size": args.generation_batch_size,
             "row_limit": args.row_limit,
+            "dp_enabled": bool(dp_config is not None),
+            "dp": (
+                {
+                    "target_epsilon": dp_config.target_epsilon,
+                    "target_delta": dp_config.target_delta,
+                    "max_grad_norm": dp_config.max_grad_norm,
+                    "per_device_batch_size": dp_config.per_device_batch_size,
+                    "gradient_accumulation_steps": dp_config.gradient_accumulation_steps,
+                    "effective_batch_size": dp_config.effective_batch_size,
+                }
+                if dp_config is not None
+                else None
+            ),
         },
         "splits": {},
     }
@@ -161,9 +202,10 @@ def main() -> None:
             seed=args.seed + idx,
             generation_batch_size=args.generation_batch_size,
             hf_token=hf_token,
+            dp_config=dp_config,
         )
 
-        out_path = output_path_for_split(output_dir, split_name)
+        out_path = output_path_for_split(output_dir, split_name, dp_enabled=dp_config is not None)
         synthetic_df.to_csv(out_path, index=False)
 
         print(f"Saved synthetic {split_name} split: {out_path}")
@@ -182,7 +224,8 @@ def main() -> None:
             "generation_stats": stats_to_dict(split_stats),
         }
 
-    metadata_path = output_dir / "run_metadata.json"
+    metadata_filename = "run_metadata_dp.json" if dp_config is not None else "run_metadata.json"
+    metadata_path = output_dir / metadata_filename
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print(f"\nMetadata saved: {metadata_path}")
 

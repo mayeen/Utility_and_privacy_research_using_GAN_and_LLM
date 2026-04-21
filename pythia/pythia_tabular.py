@@ -56,6 +56,21 @@ class SplitGenerationStats:
     class_counts_requested: Dict[str, int]
     class_counts_generated: Dict[str, int]
     class_stats: Dict[str, ClassGenerationStats]
+    dp_stats: Optional[Dict[str, Any]] = None
+
+
+@dataclass
+class DPConfig:
+    """Differential-privacy settings for LoRA fine-tuning (Yu et al., ICLR 2022)."""
+    target_epsilon: float = 5.0
+    target_delta: float = 1e-5
+    max_grad_norm: float = 1.0
+    per_device_batch_size: int = 32
+    gradient_accumulation_steps: int = 16
+
+    @property
+    def effective_batch_size(self) -> int:
+        return self.per_device_batch_size * self.gradient_accumulation_steps
 
 
 # -------------------------
@@ -530,6 +545,157 @@ def train_lora_model(
     return model, tokenizer
 
 
+def _lazy_import_dp_stack():
+    """Import dp-transformers + opacus lazily (only used in DP path)."""
+    from dp_transformers import PrivacyArguments
+    from dp_transformers.dp_utils import OpacusDPTrainer
+
+    return {
+        "PrivacyArguments": PrivacyArguments,
+        "OpacusDPTrainer": OpacusDPTrainer,
+    }
+
+
+def train_lora_model_dp(
+    training_texts: List[str],
+    model_name: str,
+    epochs: int,
+    learning_rate: float,
+    max_length: int,
+    seed: int,
+    dp_config: DPConfig,
+    hf_token: Optional[str] = None,
+) -> Tuple[Any, Any, Dict[str, Any]]:
+    """Fine-tune Pythia with LoRA under (ε, δ)-DP using Opacus DP-SGD.
+
+    Follows Yu et al., "Differentially Private Fine-tuning of Language Models"
+    (ICLR 2022): DPSGD is applied only to the LoRA parameters; base weights are
+    frozen, so post-processing guarantees the generator is (ε, δ)-DP w.r.t. the
+    private training corpus.
+    """
+    stack = _lazy_import_training_stack()
+    dp_stack = _lazy_import_dp_stack()
+
+    torch = stack["torch"]
+    Dataset = stack["Dataset"]
+    LoraConfig = stack["LoraConfig"]
+    TaskType = stack["TaskType"]
+    get_peft_model = stack["get_peft_model"]
+    AutoModelForCausalLM = stack["AutoModelForCausalLM"]
+    AutoTokenizer = stack["AutoTokenizer"]
+    DataCollatorForLanguageModeling = stack["DataCollatorForLanguageModeling"]
+    TrainingArguments = stack["TrainingArguments"]
+    set_seed = stack["set_seed"]
+    PrivacyArguments = dp_stack["PrivacyArguments"]
+    OpacusDPTrainer = dp_stack["OpacusDPTrainer"]
+
+    set_seed(seed)
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
+
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.0,
+        bias="none",
+        task_type=TaskType.CAUSAL_LM,
+    )
+    model = get_peft_model(model, lora_config)
+
+    dataset = Dataset.from_dict({"text": training_texts})
+
+    def tokenize_batch(batch: Dict[str, List[str]]) -> Dict[str, Any]:
+        return tokenizer(
+            batch["text"],
+            truncation=True,
+            max_length=max_length,
+            padding="max_length",
+        )
+
+    tokenized = dataset.map(tokenize_batch, batched=True, remove_columns=["text"])
+
+    privacy_args = PrivacyArguments(
+        target_epsilon=dp_config.target_epsilon,
+        target_delta=dp_config.target_delta,
+        per_sample_max_grad_norm=dp_config.max_grad_norm,
+    )
+
+    with TemporaryDirectory(prefix="pythia_lora_dp_") as tmp_out:
+        requested_args = {
+            "output_dir": tmp_out,
+            "overwrite_output_dir": True,
+            "num_train_epochs": epochs,
+            "per_device_train_batch_size": dp_config.per_device_batch_size,
+            "gradient_accumulation_steps": dp_config.gradient_accumulation_steps,
+            "learning_rate": learning_rate,
+            "logging_steps": 25,
+            "save_strategy": "no",
+            "report_to": [],
+            "remove_unused_columns": False,
+            "dataloader_pin_memory": torch.cuda.is_available(),
+            "fp16": False,
+            "bf16": False,
+            "seed": seed,
+        }
+        supported = inspect.signature(TrainingArguments.__init__).parameters
+        filtered_args = {k: v for k, v in requested_args.items() if k in supported}
+        training_args = TrainingArguments(**filtered_args)
+
+        trainer = OpacusDPTrainer(
+            args=training_args,
+            model=model,
+            train_dataset=tokenized,
+            privacy_args=privacy_args,
+            data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
+            tokenizer=tokenizer,
+        )
+
+        trainer.train()
+
+        achieved_eps_prv: Optional[float] = None
+        achieved_eps_rdp: Optional[float] = None
+        noise_multiplier: Optional[float] = None
+        try:
+            achieved_eps_prv = float(trainer.get_prv_epsilon())
+        except Exception:
+            achieved_eps_prv = None
+        try:
+            achieved_eps_rdp = float(trainer.get_rdp_epsilon())
+        except Exception:
+            achieved_eps_rdp = None
+        try:
+            noise_multiplier = float(trainer.privacy_engine.noise_multiplier)
+        except Exception:
+            noise_multiplier = None
+
+    dp_stats: Dict[str, Any] = {
+        "target_epsilon": dp_config.target_epsilon,
+        "target_delta": dp_config.target_delta,
+        "max_grad_norm": dp_config.max_grad_norm,
+        "per_device_batch_size": dp_config.per_device_batch_size,
+        "gradient_accumulation_steps": dp_config.gradient_accumulation_steps,
+        "effective_batch_size": dp_config.effective_batch_size,
+        "train_samples": int(len(training_texts)),
+        "sample_rate": float(dp_config.effective_batch_size) / max(1, len(training_texts)),
+        "achieved_epsilon_prv": achieved_eps_prv,
+        "achieved_epsilon_rdp": achieved_eps_rdp,
+        "noise_multiplier": noise_multiplier,
+    }
+
+    model.eval()
+    return model, tokenizer, dp_stats
+
+
 def _device_for_model(torch_module) -> Any:
     return torch_module.device("cuda" if torch_module.cuda.is_available() else "cpu")
 
@@ -720,6 +886,7 @@ def generate_synthetic_for_split(
     seed: int,
     generation_batch_size: Optional[int] = None,
     hf_token: Optional[str] = None,
+    dp_config: Optional[DPConfig] = None,
 ) -> Tuple[pd.DataFrame, SplitGenerationStats]:
     """End-to-end generation for one split: train, sample, postprocess, validate."""
     if generation_batch_size is None:
@@ -728,16 +895,29 @@ def generate_synthetic_for_split(
     schema = derive_table_schema(source_df, target_col=target_col)
     training_texts = build_training_texts(source_df, target_col=target_col)
 
-    model, tokenizer = train_lora_model(
-        training_texts=training_texts,
-        model_name=model_name,
-        epochs=epochs,
-        batch_size=batch_size,
-        learning_rate=learning_rate,
-        max_length=max_length,
-        seed=seed,
-        hf_token=hf_token,
-    )
+    dp_stats: Optional[Dict[str, Any]] = None
+    if dp_config is not None:
+        model, tokenizer, dp_stats = train_lora_model_dp(
+            training_texts=training_texts,
+            model_name=model_name,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            max_length=max_length,
+            seed=seed,
+            dp_config=dp_config,
+            hf_token=hf_token,
+        )
+    else:
+        model, tokenizer = train_lora_model(
+            training_texts=training_texts,
+            model_name=model_name,
+            epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate,
+            max_length=max_length,
+            seed=seed,
+            hf_token=hf_token,
+        )
 
     requested_counts = _class_counts(source_df, target_col=target_col)
 
@@ -781,6 +961,7 @@ def generate_synthetic_for_split(
         class_counts_requested={str(k): int(v) for k, v in requested_counts.items()},
         class_counts_generated={str(k): int(v) for k, v in generated_counts.items()},
         class_stats=class_stats,
+        dp_stats=dp_stats,
     )
 
     return synthetic_df, split_stats
@@ -807,6 +988,7 @@ def stats_to_dict(stats: SplitGenerationStats) -> Dict[str, Any]:
             }
             for key, val in stats.class_stats.items()
         },
+        "dp_stats": stats.dp_stats,
     }
 
 
