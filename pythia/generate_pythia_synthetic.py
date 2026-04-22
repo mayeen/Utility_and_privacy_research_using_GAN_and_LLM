@@ -5,11 +5,20 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
 
 import pandas as pd
+
+# Force line-buffered stdout so logs stream live on VMs / remote terminals.
+try:
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+except Exception:
+    pass
 
 try:
     from pythia.pythia_tabular import (
@@ -124,10 +133,31 @@ def load_hf_token(token_file: Path = DEFAULT_HF_TOKEN_FILE) -> Optional[str]:
     return env_token or None
 
 
+def _print_env_info() -> None:
+    """Print runtime / device info so logs make clear what hardware is in use."""
+    try:
+        import torch
+    except Exception as e:
+        print(f"[env] torch import failed: {e}", flush=True)
+        return
+
+    print(f"[env] python={sys.version.split()[0]} torch={torch.__version__}", flush=True)
+    if torch.cuda.is_available():
+        name = torch.cuda.get_device_name(0)
+        total_gb = torch.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        print(f"[env] device=cuda ({name}, {total_gb:.1f} GiB), device_count={torch.cuda.device_count()}", flush=True)
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        print("[env] device=mps (Apple Silicon)", flush=True)
+    else:
+        print("[env] device=cpu (no GPU detected)", flush=True)
+
+
 def main() -> None:
     args = parse_args()
     set_global_seed(args.seed)
     hf_token = load_hf_token()
+
+    _print_env_info()
 
     split_paths = resolve_split_paths(args)
     output_dir = Path(args.output_dir)
@@ -174,15 +204,16 @@ def main() -> None:
         if not input_path.exists():
             raise FileNotFoundError(f"Input CSV for split '{split_name}' not found: {input_path}")
 
-        print(f"\n=== Running split: {split_name} ===")
-        print(f"Source: {input_path}")
+        print(f"\n=== Running split: {split_name} ===", flush=True)
+        print(f"Source: {input_path}", flush=True)
+        split_t0 = time.time()
 
         source_df = pd.read_csv(input_path)
         if args.row_limit is not None:
             if args.row_limit <= 0:
                 raise ValueError("--row-limit must be a positive integer.")
             source_df = source_df.head(args.row_limit).copy()
-            print(f"Row limit applied: {len(source_df)}")
+            print(f"Row limit applied: {len(source_df)}", flush=True)
 
         if args.target_col not in source_df.columns:
             raise ValueError(f"Target column '{args.target_col}' missing from split '{split_name}'.")
@@ -206,11 +237,13 @@ def main() -> None:
         )
 
         out_path = output_path_for_split(output_dir, split_name, dp_enabled=dp_config is not None)
+        print(f"[split:{split_name}] writing CSV -> {out_path}", flush=True)
         synthetic_df.to_csv(out_path, index=False)
 
-        print(f"Saved synthetic {split_name} split: {out_path}")
-        print(f"Rows: {len(synthetic_df)}")
-        print(f"Class counts: {summarize_class_counts(synthetic_df, args.target_col)}")
+        print(f"Saved synthetic {split_name} split: {out_path}", flush=True)
+        print(f"Rows: {len(synthetic_df)}", flush=True)
+        print(f"Class counts: {summarize_class_counts(synthetic_df, args.target_col)}", flush=True)
+        print(f"[split:{split_name}] total elapsed: {time.time() - split_t0:.1f}s", flush=True)
 
         metadata["splits"][split_name] = {
             "input_path": str(input_path),
@@ -227,7 +260,7 @@ def main() -> None:
     metadata_filename = "run_metadata_dp.json" if dp_config is not None else "run_metadata.json"
     metadata_path = output_dir / metadata_filename
     metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
-    print(f"\nMetadata saved: {metadata_path}")
+    print(f"\nMetadata saved: {metadata_path}", flush=True)
 
 
 if __name__ == "__main__":

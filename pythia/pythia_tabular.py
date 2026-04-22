@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 import inspect
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -12,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from tqdm.auto import tqdm
 
 
 CLASS_PREFIX_TEMPLATE = "Class_{label} | "
@@ -478,6 +480,9 @@ def train_lora_model(
 
     set_seed(seed)
 
+    device_str = _describe_device(torch)
+    print(f"[train] device={device_str} | model={model_name} | rows={len(training_texts)}", flush=True)
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -498,20 +503,36 @@ def train_lora_model(
         task_type=TaskType.CAUSAL_LM,
     )
     model = get_peft_model(model, lora_config)
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    print(f"[train] LoRA params trainable={trainable:,} / total={total:,} ({100*trainable/total:.2f}%)", flush=True)
 
     dataset = Dataset.from_dict({"text": training_texts})
 
     def tokenize_batch(batch: Dict[str, List[str]]) -> Dict[str, Any]:
+        # Dynamic padding: tokenize without padding, let the collator pad per-batch.
         return tokenizer(
             batch["text"],
             truncation=True,
             max_length=max_length,
-            padding="max_length",
         )
 
+    print("[train] tokenizing training corpus...", flush=True)
     tokenized = dataset.map(tokenize_batch, batched=True, remove_columns=["text"])
+    lens = [len(x) for x in tokenized["input_ids"]]
+    print(
+        f"[train] token lengths: min={min(lens)} median={int(np.median(lens))} "
+        f"p95={int(np.percentile(lens, 95))} max={max(lens)}",
+        flush=True,
+    )
 
     use_cuda = torch.cuda.is_available()
+    steps_per_epoch = max(1, (len(tokenized) + batch_size - 1) // batch_size)
+    print(
+        f"[train] epochs={epochs} batch_size={batch_size} "
+        f"steps/epoch={steps_per_epoch} total_steps~{steps_per_epoch * epochs}",
+        flush=True,
+    )
 
     with TemporaryDirectory(prefix="pythia_lora_") as tmp_out:
         requested_args = {
@@ -525,7 +546,9 @@ def train_lora_model(
             "report_to": [],
             "remove_unused_columns": False,
             "dataloader_pin_memory": use_cuda,
+            "dataloader_num_workers": 2,
             "fp16": use_cuda,
+            "disable_tqdm": False,
         }
         supported = inspect.signature(TrainingArguments.__init__).parameters
         filtered_args = {k: v for k, v in requested_args.items() if k in supported}
@@ -536,10 +559,14 @@ def train_lora_model(
             model=model,
             args=training_args,
             train_dataset=tokenized,
-            data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
+            data_collator=DataCollatorForLanguageModeling(
+                tokenizer=tokenizer, mlm=False, pad_to_multiple_of=8
+            ),
         )
 
+        t0 = time.time()
         trainer.train()
+        print(f"[train] fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
 
     model.eval()
     return model, tokenizer
@@ -591,6 +618,13 @@ def train_lora_model_dp(
 
     set_seed(seed)
 
+    device_str = _describe_device(torch)
+    print(
+        f"[train-dp] device={device_str} | model={model_name} | rows={len(training_texts)} "
+        f"| eps={dp_config.target_epsilon} delta={dp_config.target_delta}",
+        flush=True,
+    )
+
     tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -611,23 +645,46 @@ def train_lora_model_dp(
         task_type=TaskType.CAUSAL_LM,
     )
     model = get_peft_model(model, lora_config)
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    print(
+        f"[train-dp] LoRA params trainable={trainable:,} / total={total:,} "
+        f"({100*trainable/total:.2f}%)",
+        flush=True,
+    )
 
     dataset = Dataset.from_dict({"text": training_texts})
 
     def tokenize_batch(batch: Dict[str, List[str]]) -> Dict[str, Any]:
+        # Dynamic padding: tokenize without padding, let the collator pad per-batch.
         return tokenizer(
             batch["text"],
             truncation=True,
             max_length=max_length,
-            padding="max_length",
         )
 
+    print("[train-dp] tokenizing training corpus...", flush=True)
     tokenized = dataset.map(tokenize_batch, batched=True, remove_columns=["text"])
+    lens = [len(x) for x in tokenized["input_ids"]]
+    print(
+        f"[train-dp] token lengths: min={min(lens)} median={int(np.median(lens))} "
+        f"p95={int(np.percentile(lens, 95))} max={max(lens)}",
+        flush=True,
+    )
 
     privacy_args = PrivacyArguments(
         target_epsilon=dp_config.target_epsilon,
         target_delta=dp_config.target_delta,
         per_sample_max_grad_norm=dp_config.max_grad_norm,
+    )
+
+    effective_bs = dp_config.per_device_batch_size * dp_config.gradient_accumulation_steps
+    steps_per_epoch = max(1, (len(tokenized) + effective_bs - 1) // effective_bs)
+    print(
+        f"[train-dp] epochs={epochs} per_device_bs={dp_config.per_device_batch_size} "
+        f"grad_accum={dp_config.gradient_accumulation_steps} effective_bs={effective_bs} "
+        f"steps/epoch={steps_per_epoch} total_steps~{steps_per_epoch * epochs}",
+        flush=True,
     )
 
     with TemporaryDirectory(prefix="pythia_lora_dp_") as tmp_out:
@@ -643,9 +700,11 @@ def train_lora_model_dp(
             "report_to": [],
             "remove_unused_columns": False,
             "dataloader_pin_memory": torch.cuda.is_available(),
+            "dataloader_num_workers": 2,
             "fp16": False,
             "bf16": False,
             "seed": seed,
+            "disable_tqdm": False,
         }
         supported = inspect.signature(TrainingArguments.__init__).parameters
         filtered_args = {k: v for k, v in requested_args.items() if k in supported}
@@ -656,11 +715,15 @@ def train_lora_model_dp(
             model=model,
             train_dataset=tokenized,
             privacy_args=privacy_args,
-            data_collator=DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False),
+            data_collator=DataCollatorForLanguageModeling(
+                tokenizer=tokenizer, mlm=False, pad_to_multiple_of=8
+            ),
             tokenizer=tokenizer,
         )
 
+        t0 = time.time()
         trainer.train()
+        print(f"[train-dp] DP fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
 
         achieved_eps_prv: Optional[float] = None
         achieved_eps_rdp: Optional[float] = None
@@ -697,7 +760,21 @@ def train_lora_model_dp(
 
 
 def _device_for_model(torch_module) -> Any:
-    return torch_module.device("cuda" if torch_module.cuda.is_available() else "cpu")
+    if torch_module.cuda.is_available():
+        return torch_module.device("cuda")
+    if hasattr(torch_module.backends, "mps") and torch_module.backends.mps.is_available():
+        return torch_module.device("mps")
+    return torch_module.device("cpu")
+
+
+def _describe_device(torch_module) -> str:
+    if torch_module.cuda.is_available():
+        name = torch_module.cuda.get_device_name(0)
+        total_gb = torch_module.cuda.get_device_properties(0).total_memory / (1024 ** 3)
+        return f"cuda ({name}, {total_gb:.1f} GiB)"
+    if hasattr(torch_module.backends, "mps") and torch_module.backends.mps.is_available():
+        return "mps (Apple Silicon)"
+    return "cpu"
 
 
 def _make_generation_prompt(schema: TableSchema, class_label: int) -> str:
@@ -765,10 +842,9 @@ def generate_rows_for_class(
     stack = _lazy_import_training_stack()
     torch = stack["torch"]
 
-    set_global_seed(seed + int(class_label))
+    set_global_seed(seed + 1000 * int(class_label))
 
-    device = _device_for_model(torch)
-    model = model.to(device)
+    device = next(model.parameters()).device
 
     accepted_rows: List[Dict[str, Any]] = []
     total_attempts = 0
@@ -778,54 +854,92 @@ def generate_rows_for_class(
     max_attempts = max(1, n_rows * max_retries_per_row)
     prompt = _make_generation_prompt(schema=schema, class_label=int(class_label))
 
-    while len(accepted_rows) < n_rows and total_attempts < max_attempts:
-        batch = min(generation_batch_size, n_rows - len(accepted_rows), max_attempts - total_attempts)
-        prompts = [prompt] * batch
+    print(
+        f"[gen] class={class_label} target={n_rows} batch={generation_batch_size} "
+        f"max_new_tokens={max_length} max_attempts={max_attempts}",
+        flush=True,
+    )
+    t0 = time.time()
 
-        inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(device)
+    pbar = tqdm(
+        total=n_rows,
+        desc=f"gen class={class_label}",
+        unit="row",
+        dynamic_ncols=True,
+        mininterval=1.0,
+    )
 
-        with torch.no_grad():
-            requested_gen_args = {
-                "do_sample": True,
-                "temperature": temperature,
-                "top_p": top_p,
-                "max_new_tokens": max_length,
-                "min_new_tokens": min(64, max_length),
-                "pad_token_id": tokenizer.pad_token_id,
-                "eos_token_id": tokenizer.eos_token_id,
-            }
-            generate_params = inspect.signature(model.generate).parameters
-            supports_var_kwargs = any(
-                p.kind == inspect.Parameter.VAR_KEYWORD for p in generate_params.values()
-            )
-            filtered_gen_args = (
-                requested_gen_args
-                if supports_var_kwargs
-                else {k: v for k, v in requested_gen_args.items() if k in generate_params}
-            )
+    try:
+        while len(accepted_rows) < n_rows and total_attempts < max_attempts:
+            batch = min(generation_batch_size, n_rows - len(accepted_rows), max_attempts - total_attempts)
+            prompts = [prompt] * batch
 
-            outputs = model.generate(
-                **inputs,
-                **filtered_gen_args,
-            )
+            inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(device)
 
-        decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            with torch.inference_mode():
+                requested_gen_args = {
+                    "do_sample": True,
+                    "temperature": temperature,
+                    "top_p": top_p,
+                    "max_new_tokens": max_length,
+                    "min_new_tokens": min(64, max_length),
+                    "pad_token_id": tokenizer.pad_token_id,
+                    "eos_token_id": tokenizer.eos_token_id,
+                    "use_cache": True,
+                }
+                generate_params = inspect.signature(model.generate).parameters
+                supports_var_kwargs = any(
+                    p.kind == inspect.Parameter.VAR_KEYWORD for p in generate_params.values()
+                )
+                filtered_gen_args = (
+                    requested_gen_args
+                    if supports_var_kwargs
+                    else {k: v for k, v in requested_gen_args.items() if k in generate_params}
+                )
 
-        for text in decoded:
-            total_attempts += 1
-            parsed = parse_generated_text_to_raw_row(text)
-            if parsed is None:
-                parse_failures += 1
-                continue
+                outputs = model.generate(
+                    **inputs,
+                    **filtered_gen_args,
+                )
 
-            row = coerce_raw_row_to_schema(parsed, schema=schema, forced_class_label=int(class_label))
-            if row is None:
-                coercion_failures += 1
-                continue
+            decoded = tokenizer.batch_decode(outputs, skip_special_tokens=True)
 
-            accepted_rows.append(row)
-            if len(accepted_rows) >= n_rows:
-                break
+            accepted_before_batch = len(accepted_rows)
+            for text in decoded:
+                total_attempts += 1
+                parsed = parse_generated_text_to_raw_row(text)
+                if parsed is None:
+                    parse_failures += 1
+                    continue
+
+                row = coerce_raw_row_to_schema(parsed, schema=schema, forced_class_label=int(class_label))
+                if row is None:
+                    coercion_failures += 1
+                    continue
+
+                accepted_rows.append(row)
+                if len(accepted_rows) >= n_rows:
+                    break
+
+            pbar.update(len(accepted_rows) - accepted_before_batch)
+            accept_rate = len(accepted_rows) / max(1, total_attempts)
+            pbar.set_postfix({
+                "attempts": total_attempts,
+                "accept%": f"{100*accept_rate:.1f}",
+                "parse_fail": parse_failures,
+                "coerce_fail": coercion_failures,
+            })
+    finally:
+        pbar.close()
+
+    elapsed = time.time() - t0
+    rate = (len(accepted_rows) / elapsed) if elapsed > 0 else 0.0
+    print(
+        f"[gen] class={class_label} done in {elapsed:.1f}s "
+        f"(accepted={len(accepted_rows)}/{n_rows} @ {rate:.1f} rows/s, "
+        f"parse_fail={parse_failures}, coerce_fail={coercion_failures})",
+        flush=True,
+    )
 
     accepted_before_resample = len(accepted_rows)
     resampled_rows = 0
@@ -892,6 +1006,8 @@ def generate_synthetic_for_split(
     if generation_batch_size is None:
         generation_batch_size = batch_size
 
+    print(f"[split:{split_name}] rows={len(source_df)} cols={len(source_df.columns)} target='{target_col}'", flush=True)
+
     schema = derive_table_schema(source_df, target_col=target_col)
     training_texts = build_training_texts(source_df, target_col=target_col)
 
@@ -919,7 +1035,15 @@ def generate_synthetic_for_split(
             hf_token=hf_token,
         )
 
+    # Move model to target device once (generation reuses it across classes).
+    stack = _lazy_import_training_stack()
+    torch = stack["torch"]
+    device = _device_for_model(torch)
+    model = model.to(device)
+    print(f"[split:{split_name}] model placed on device={device}", flush=True)
+
     requested_counts = _class_counts(source_df, target_col=target_col)
+    print(f"[split:{split_name}] per-class targets: {requested_counts}", flush=True)
 
     generated_parts: List[pd.DataFrame] = []
     class_stats: Dict[str, ClassGenerationStats] = {}
@@ -946,6 +1070,11 @@ def generate_synthetic_for_split(
         generated_parts.append(class_df)
         class_stats[str(class_label)] = stats
 
+        # Release batch-level KV/activation cache between classes to keep VRAM bounded.
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+    print(f"[split:{split_name}] postprocessing + validation...", flush=True)
     synthetic_df = pd.concat(generated_parts, axis=0, ignore_index=True)
     synthetic_df = synthetic_df.sample(frac=1.0, random_state=seed).reset_index(drop=True)
 
