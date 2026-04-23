@@ -21,7 +21,7 @@ except Exception:
     pass
 
 try:
-    from pythia.pythia_tabular import (
+    from pythia.pythia_tabular_dp import (
         DPConfig,
         file_sha256,
         generate_synthetic_for_split,
@@ -29,7 +29,7 @@ try:
         stats_to_dict,
     )
 except ImportError:
-    from pythia_tabular import (  # type: ignore
+    from pythia_tabular_dp import (  # type: ignore
         DPConfig,
         file_sha256,
         generate_synthetic_for_split,
@@ -154,6 +154,10 @@ def _print_env_info() -> None:
 
 def main() -> None:
     args = parse_args()
+
+    # Pin to GPU 1 before any CUDA calls so all allocations go there.
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+
     set_global_seed(args.seed)
     hf_token = load_hf_token()
 

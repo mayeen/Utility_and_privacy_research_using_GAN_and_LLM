@@ -5,6 +5,8 @@ __pycache__/
 *.npy
 *.pkl
 *.ckpt
+Thesis_report/
+Documents/
 
 logs_new/
 diabetes-ucidata-main/experiments/

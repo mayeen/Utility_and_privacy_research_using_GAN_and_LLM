@@ -5,3 +5,4 @@ peft>=0.10.0
 accelerate>=0.29.0
 bitsandbytes>=0.43.0 ; platform_system != "Darwin"
 pyarrow<21,>=4.0.0
+tqdm>=4.66.0
