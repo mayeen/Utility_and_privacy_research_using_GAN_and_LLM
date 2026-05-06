@@ -154,6 +154,10 @@ def _print_env_info() -> None:
 
 def main() -> None:
     args = parse_args()
+
+    # Pin to GPU 1 before any CUDA calls so all allocations go there.
+    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
+
     set_global_seed(args.seed)
     hf_token = load_hf_token()
 

@@ -595,13 +595,15 @@ def train_lora_model(
 
 
 def _lazy_import_dp_stack():
-    """Import dp-transformers + opacus lazily (only used in DP path)."""
-    from dp_transformers import PrivacyArguments
-    from dp_transformers.dp_utils import OpacusDPTrainer
+    """Import opacus lazily (only used in DP path).
+    Uses opacus directly — dp-transformers is incompatible with torch>=2.x.
+    """
+    from opacus import PrivacyEngine
+    from opacus.validators import ModuleValidator
 
     return {
-        "PrivacyArguments": PrivacyArguments,
-        "OpacusDPTrainer": OpacusDPTrainer,
+        "PrivacyEngine": PrivacyEngine,
+        "ModuleValidator": ModuleValidator,
     }
 
 
@@ -633,10 +635,160 @@ def train_lora_model_dp(
     AutoModelForCausalLM = stack["AutoModelForCausalLM"]
     AutoTokenizer = stack["AutoTokenizer"]
     DataCollatorForLanguageModeling = stack["DataCollatorForLanguageModeling"]
-    TrainingArguments = stack["TrainingArguments"]
     set_seed = stack["set_seed"]
-    PrivacyArguments = dp_stack["PrivacyArguments"]
-    OpacusDPTrainer = dp_stack["OpacusDPTrainer"]
+    PrivacyEngine = dp_stack["PrivacyEngine"]
+    ModuleValidator = dp_stack["ModuleValidator"]
+
+    set_seed(seed)
+
+    device_str = _describe_device(torch)
+    print(
+        f"[train-dp] device={device_str} | model={model_name} | rows={len(training_texts)} "
+        f"| eps={dp_config.target_epsilon} delta={dp_config.target_delta}",
+        flush=True,
+    )
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
+
+    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    if hasattr(model, "generation_config") and model.generation_config is not None:
+        model.generation_config.pad_token_id = tokenizer.pad_token_id
+        model.generation_config.eos_token_id = tokenizer.eos_token_id
+
+    lora_config = LoraConfig(
+        r=8,
+        lora_alpha=16,
+        lora_dropout=0.0,
+        bias="none",
+        task_type=TaskType.CAUSAL_LM,
+    )
+    model = get_peft_model(model, lora_config)
+    model = ModuleValidator.fix(model)
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total = sum(p.numel() for p in model.parameters())
+    print(
+        f"[train-dp] LoRA params trainable={trainable:,} / total={total:,} "
+        f"({100*trainable/total:.2f}%)",
+        flush=True,
+    )
+
+    dataset = Dataset.from_dict({"text": training_texts})
+
+    def tokenize_batch(batch: Dict[str, List[str]]) -> Dict[str, Any]:
+        return tokenizer(batch["text"], truncation=True, max_length=max_length)
+
+    print("[train-dp] tokenizing training corpus...", flush=True)
+    tokenized = dataset.map(tokenize_batch, batched=True, remove_columns=["text"])
+    tokenized.set_format("torch")
+
+    device = _device_for_model(torch)
+    model = model.to(device)
+
+    data_collator = DataCollatorForLanguageModeling(
+        tokenizer=tokenizer, mlm=False, pad_to_multiple_of=8
+    )
+
+    class _TorchDataset(torch.utils.data.Dataset):
+        def __init__(self, hf_dataset):
+            self._ds = hf_dataset
+            self._keys = list(hf_dataset.features.keys())
+
+        def __len__(self):
+            return len(self._ds)
+
+        def __getitem__(self, idx):
+            item = self._ds[idx]
+            return tuple(item[k] for k in self._keys)
+
+    torch_dataset = _TorchDataset(tokenized)
+
+    def _collate_fn(batch):
+        keys = list(tokenized.features.keys())
+        batch_dict = [{k: item[i] for i, k in enumerate(keys)} for item in batch]
+        return data_collator(batch_dict)
+
+    dataloader = torch.utils.data.DataLoader(
+        torch_dataset,
+        batch_size=dp_config.per_device_batch_size,
+        shuffle=True,
+        collate_fn=_collate_fn,
+    )
+
+    optimizer = torch.optim.AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=learning_rate,
+    )
+
+    privacy_engine = PrivacyEngine()
+    model, optimizer, dataloader = privacy_engine.make_private_with_epsilon(
+        module=model,
+        optimizer=optimizer,
+        data_loader=dataloader,
+        target_epsilon=dp_config.target_epsilon,
+        target_delta=dp_config.target_delta,
+        max_grad_norm=dp_config.max_grad_norm,
+        epochs=epochs,
+    )
+
+    steps_per_epoch = len(dataloader)
+    print(
+        f"[train-dp] epochs={epochs} per_device_bs={dp_config.per_device_batch_size} "
+        f"steps/epoch={steps_per_epoch} total_steps~{steps_per_epoch * epochs}",
+        flush=True,
+    )
+
+    t0 = time.time()
+    model.train()
+    for epoch in range(epochs):
+        total_loss = 0.0
+        for step, batch in enumerate(dataloader):
+            batch = {k: v.to(device) for k, v in batch.items()}
+            outputs = model(**batch)
+            loss = outputs.loss
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+        avg_loss = total_loss / max(1, step + 1)
+        print(f"  [DP] Epoch {epoch + 1}/{epochs} — loss: {avg_loss:.4f}", flush=True)
+
+    print(f"[train-dp] DP fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
+
+    achieved_eps_prv: Optional[float] = None
+    achieved_eps_rdp: Optional[float] = None
+    noise_multiplier: Optional[float] = None
+    try:
+        achieved_eps_prv = float(privacy_engine.get_epsilon(delta=dp_config.target_delta))
+    except Exception:
+        achieved_eps_prv = None
+    try:
+        noise_multiplier = float(optimizer.noise_multiplier)
+    except Exception:
+        noise_multiplier = None
+
+    dp_stats: Dict[str, Any] = {
+        "target_epsilon": dp_config.target_epsilon,
+        "target_delta": dp_config.target_delta,
+        "max_grad_norm": dp_config.max_grad_norm,
+        "per_device_batch_size": dp_config.per_device_batch_size,
+        "gradient_accumulation_steps": dp_config.gradient_accumulation_steps,
+        "effective_batch_size": dp_config.effective_batch_size,
+        "train_samples": int(len(training_texts)),
+        "sample_rate": float(dp_config.effective_batch_size) / max(1, len(training_texts)),
+        "achieved_epsilon_prv": achieved_eps_prv,
+        "achieved_epsilon_rdp": achieved_eps_rdp,
+        "noise_multiplier": noise_multiplier,
+    }
+
+    # Unwrap GradSampleModule so .generate() works during inference.
+    unwrapped = getattr(model, "_module", model)
+    unwrapped.eval()
+    return unwrapped, tokenizer, dp_stats
 
     set_seed(seed)
 
