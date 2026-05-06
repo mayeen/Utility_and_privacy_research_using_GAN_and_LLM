@@ -6,6 +6,7 @@ import random
 import inspect
 import re
 import time
+from contextlib import nullcontext
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -578,9 +579,11 @@ def _lazy_import_dp_stack():
     Uses opacus directly — dp-transformers is incompatible with torch>=2.x.
     """
     from opacus import PrivacyEngine
+    from opacus.utils.batch_memory_manager import BatchMemoryManager
     from opacus.validators import ModuleValidator
 
     return {
+        "BatchMemoryManager": BatchMemoryManager,
         "PrivacyEngine": PrivacyEngine,
         "ModuleValidator": ModuleValidator,
     }
@@ -615,6 +618,7 @@ def train_lora_model_dp(
     AutoTokenizer = stack["AutoTokenizer"]
     DataCollatorForLanguageModeling = stack["DataCollatorForLanguageModeling"]
     set_seed = stack["set_seed"]
+    BatchMemoryManager = dp_stack["BatchMemoryManager"]
     PrivacyEngine = dp_stack["PrivacyEngine"]
     ModuleValidator = dp_stack["ModuleValidator"]
 
@@ -691,9 +695,17 @@ def train_lora_model_dp(
         batch_dict = [{k: item[i] for i, k in enumerate(keys)} for item in batch]
         return data_collator(batch_dict)
 
+    if dp_config.per_device_batch_size <= 0:
+        raise ValueError("DP per-device batch size must be positive.")
+    if dp_config.gradient_accumulation_steps <= 0:
+        raise ValueError("DP gradient accumulation steps must be positive.")
+
+    logical_batch_size = dp_config.effective_batch_size
+    physical_batch_size = dp_config.per_device_batch_size
+
     dataloader = torch.utils.data.DataLoader(
         torch_dataset,
-        batch_size=dp_config.per_device_batch_size,
+        batch_size=logical_batch_size,
         shuffle=True,
         collate_fn=_collate_fn,
     )
@@ -717,7 +729,9 @@ def train_lora_model_dp(
     steps_per_epoch = len(dataloader)
     print(
         f"[train-dp] epochs={epochs} per_device_bs={dp_config.per_device_batch_size} "
-        f"steps/epoch={steps_per_epoch} total_steps~{steps_per_epoch * epochs}",
+        f"grad_accum={dp_config.gradient_accumulation_steps} "
+        f"effective_bs={logical_batch_size} logical_steps/epoch={steps_per_epoch} "
+        f"total_logical_steps~{steps_per_epoch * epochs}",
         flush=True,
     )
 
@@ -726,15 +740,28 @@ def train_lora_model_dp(
     model.train()
     for epoch in range(epochs):
         total_loss = 0.0
-        for step, batch in enumerate(dataloader):
-            batch = {k: v.to(device) for k, v in batch.items()}
-            outputs = model(**batch)
-            loss = outputs.loss
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item()
-        avg_loss = total_loss / max(1, step + 1)
+        total_items = 0
+        if physical_batch_size < logical_batch_size:
+            loader_context = BatchMemoryManager(
+                data_loader=dataloader,
+                max_physical_batch_size=physical_batch_size,
+                optimizer=optimizer,
+            )
+        else:
+            loader_context = nullcontext(dataloader)
+
+        with loader_context as memory_safe_loader:
+            for step, batch in enumerate(memory_safe_loader):
+                batch = {k: v.to(device) for k, v in batch.items()}
+                batch_items = next(iter(batch.values())).shape[0]
+                outputs = model(**batch)
+                loss = outputs.loss
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() * batch_items
+                total_items += batch_items
+        avg_loss = total_loss / max(1, total_items)
         epoch_losses.append(round(avg_loss, 4))
         print(f"  [DP] Epoch {epoch + 1}/{epochs} — loss: {avg_loss:.4f}", flush=True)
 
