@@ -569,6 +569,54 @@ Then repeat with:
 Choose the 410M LR and epoch count independently from 70M. Do not force 410M to
 use the 70M LR if its loss curve says otherwise.
 
+### Final 410M 512-batch train-only test
+
+Use this pair when you want to test the final 410M configuration with matched
+effective batch size 512 before spending time on full row generation.
+
+DP command:
+
+```bash
+python -m pythia.generate_pythia_synthetic_dp \
+  --model-name EleutherAI/pythia-410m \
+  --output-dir thesis/data/pythia_410m \
+  --dp \
+  --train-only \
+  --epochs 5 \
+  --lr 4e-4 \
+  --max-length 512 \
+  --dp-per-device-batch-size 16 \
+  --dp-grad-accum-steps 32 \
+  --target-epsilon 5.0 \
+  --target-delta 1e-5 \
+  --max-grad-norm 1.0 \
+  --splits train
+```
+
+Expected DP log:
+
+```text
+per_device_bs=16 grad_accum=32 effective_bs=512 logical_steps/epoch=112
+```
+
+Equivalent non-DP command:
+
+```bash
+python -m pythia.generate_pythia_synthetic \
+  --model-name EleutherAI/pythia-410m \
+  --output-dir thesis/data/pythia_410m \
+  --train-only \
+  --epochs 5 \
+  --batch-size 512 \
+  --lr 4e-4 \
+  --max-length 512 \
+  --splits train
+```
+
+Use these results to decide whether `lr=4e-4` and `epochs=5` are stable. If DP
+loss rises after an earlier epoch, use the best-loss epoch count instead of
+blindly keeping all 5 epochs.
+
 ### 410M non-DP matched run
 
 The ideal matched non-DP 410M run uses effective batch 512:
