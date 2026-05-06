@@ -231,13 +231,20 @@ Pick the configuration from the DP sweep using this rule:
 | Lowest loss is epoch 1 and later epochs rise | Use `epochs=1`, lower LR if needed |
 | Loss rises every epoch | LR is too high; choose a lower LR |
 | Loss barely changes from epoch 1 | LR may be too low; try the next higher LR |
-| Loss is noisy but final loss is best or near best | Use the best-loss epoch, not automatically epoch 5 |
+| Loss is noisy but final loss is best or near best | Run more epochs freely — best epoch is auto-restored |
+
+> **Note — auto best-epoch restore:** The code automatically snapshots the
+> lowest-loss epoch's LoRA weights during training and restores them before
+> generation. You do not need to manually set `--epochs` to the best epoch
+> number. Run a longer sweep and the best checkpoint is used automatically.
+> Use `--disable-best-epoch-restore` only if you explicitly want the final
+> epoch instead.
 
 Recommended default if the sweep is ambiguous:
 
 ```text
-epochs = 3
-lr = 5e-5 or 1e-4, whichever has the lower epoch-3 loss without later divergence
+epochs = 5
+lr = 5e-5 or 1e-4, whichever has the lower best-epoch loss
 effective_batch_size = 512
 epsilon = 5.0
 delta = 1e-5
@@ -709,9 +716,73 @@ Then run the test split separately after confirming the train output is valid.
 
 ---
 
+## Phase 8 - Final Paper Run (Fixed Parameters)
+
+These are the fixed parameters from the paper. Run these after the sweep phases
+are complete and you are ready to produce the final thesis outputs.
+
+Parameters:
+
+```text
+lr = 4e-4
+DP physical batch size = 32
+DP gradient accumulation steps = 16
+effective batch size = 512
+epochs = 5  (best epoch auto-restored)
+epsilon = 5.0
+delta = 1e-5
+max_grad_norm = 1.0
+```
+
+### Final non-DP generation
+
+```bash
+python -m pythia.generate_pythia_synthetic \
+  --epochs 5 \
+  --batch-size 512 \
+  --lr 4e-4 \
+  --max-length 512 \
+  --temperature 0.8 \
+  --top-p 0.95 \
+  --max-retries-per-row 8 \
+  --splits train test
+```
+
+### Final DP generation
+
+```bash
+python -m pythia.generate_pythia_synthetic_dp \
+  --dp \
+  --epochs 5 \
+  --lr 4e-4 \
+  --max-length 512 \
+  --dp-per-device-batch-size 32 \
+  --dp-grad-accum-steps 16 \
+  --target-epsilon 5.0 \
+  --target-delta 1e-5 \
+  --max-grad-norm 1.0 \
+  --temperature 0.8 \
+  --top-p 0.95 \
+  --max-retries-per-row 8 \
+  --splits train test
+```
+
+Expected outputs:
+
+```text
+thesis/data/pythia/diabetic_data_pythia_train_synthetic.csv
+thesis/data/pythia/diabetic_data_pythia_test_synthetic.csv
+thesis/data/pythia/diabetic_data_pythia_train_dp_synthetic.csv
+thesis/data/pythia/diabetic_data_pythia_test_dp_synthetic.csv
+thesis/data/pythia/run_metadata.json
+thesis/data/pythia/run_metadata_dp.json
+```
+
+---
+
 ## Final Configuration Template
 
-Use this template in the thesis methods section after the sweep:
+Use this template in the thesis methods section:
 
 ```text
 Model: EleutherAI/pythia-70m
@@ -722,8 +793,8 @@ Effective batch size: 512
 Non-DP batch size: 512
 DP physical batch size: 32
 DP gradient accumulation steps: 16
-Learning rate: <LR selected from sweep>
-Epochs: <N selected from sweep>
+Learning rate: 4e-4
+Epochs: 5 (best-loss epoch weights auto-restored before generation)
 Optimizer: AdamW
 LoRA rank: 8
 LoRA alpha: 16
