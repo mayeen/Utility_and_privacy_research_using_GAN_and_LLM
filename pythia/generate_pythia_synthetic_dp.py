@@ -2,9 +2,12 @@
 #comment
 from __future__ import annotations
 
+# Pin to GPU 1 BEFORE any imports that may trigger CUDA initialisation.
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 import argparse
 import json
-import os
 import sys
 import time
 from datetime import datetime, timezone
@@ -154,9 +157,6 @@ def _print_env_info() -> None:
 
 def main() -> None:
     args = parse_args()
-
-    # Pin to GPU 1 before any CUDA calls so all allocations go there.
-    os.environ.setdefault("CUDA_VISIBLE_DEVICES", "1")
 
     set_global_seed(args.seed)
     hf_token = load_hf_token()

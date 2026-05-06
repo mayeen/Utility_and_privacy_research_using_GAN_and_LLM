@@ -53,9 +53,9 @@ def denormalize(synthetic, cols, mins, maxs):
     for col in cols:
         if maxs[col] == mins[col]:  # constant column — leave as-is
             continue
-        if col == "age":
-            # valid values: 1.0, 1.5, 2.0
-            df[col] = (df[col] * 2).round() / 2
+        # if col == "age":
+        #     # valid values: 1.0, 1.5, 2.0
+        #     df[col] = (df[col] * 2).round() / 2
         elif float(mins[col]).is_integer() and float(maxs[col]).is_integer():
             # discrete integer column
             df[col] = df[col].round().astype(int).clip(int(mins[col]), int(maxs[col]))
