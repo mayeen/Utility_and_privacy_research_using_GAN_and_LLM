@@ -92,6 +92,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-grad-norm", type=float, default=1.0)
     parser.add_argument("--dp-per-device-batch-size", type=int, default=32)
     parser.add_argument("--dp-grad-accum-steps", type=int, default=16)
+    parser.add_argument(
+        "--disable-best-epoch-restore",
+        action="store_true",
+        help="Do not restore the lowest-loss epoch before generation.",
+    )
 
     return parser.parse_args()
 
@@ -195,6 +200,7 @@ def main() -> None:
             "max_retries_per_row": args.max_retries_per_row,
             "generation_batch_size": args.generation_batch_size,
             "row_limit": args.row_limit,
+            "restore_best_epoch": not args.disable_best_epoch_restore,
             "dp_enabled": bool(dp_config is not None),
             "dp": (
                 {
@@ -242,12 +248,18 @@ def main() -> None:
                 seed=args.seed + idx,
                 dp_config=dp_config,
                 hf_token=hf_token,
+                restore_best_model=not args.disable_best_epoch_restore,
             )
             metadata["splits"][split_name] = {
                 "input_path": str(input_path),
                 "source_rows": int(len(source_df)),
                 "dp_stats": dp_stats,
-                "training_stats": {"epoch_losses": dp_stats.get("epoch_losses", [])},
+                "training_stats": {
+                    "epoch_losses": dp_stats.get("epoch_losses", []),
+                    "best_epoch": dp_stats.get("best_epoch"),
+                    "best_loss": dp_stats.get("best_loss"),
+                    "epochs_ran": dp_stats.get("epochs_ran"),
+                },
             }
             print(f"[split:{split_name}] train-only done. epoch_losses={dp_stats.get('epoch_losses')}", flush=True)
             continue
@@ -268,6 +280,7 @@ def main() -> None:
             generation_batch_size=args.generation_batch_size,
             hf_token=hf_token,
             dp_config=dp_config,
+            restore_best_model=not args.disable_best_epoch_restore,
         )
 
         out_path = output_path_for_split(output_dir, split_name, dp_enabled=dp_config is not None)

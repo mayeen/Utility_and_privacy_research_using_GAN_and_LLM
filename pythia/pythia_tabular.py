@@ -77,6 +77,23 @@ class DPConfig:
         return self.per_device_batch_size * self.gradient_accumulation_steps
 
 
+def _snapshot_trainable_state(model: Any) -> Dict[str, Any]:
+    return {
+        name: param.detach().cpu().clone()
+        for name, param in model.named_parameters()
+        if param.requires_grad
+    }
+
+
+def _restore_trainable_state(model: Any, state: Dict[str, Any]) -> None:
+    if not state:
+        return
+    named_params = dict(model.named_parameters())
+    for name, value in state.items():
+        if name in named_params:
+            named_params[name].data.copy_(value.to(named_params[name].device))
+
+
 # -------------------------
 # General helpers
 # -------------------------
@@ -466,6 +483,7 @@ def train_lora_model(
     max_length: int,
     seed: int,
     hf_token: Optional[str] = None,
+    restore_best_model: bool = True,
 ):
     """Fine-tune pretrained Pythia model with LoRA."""
     stack = _lazy_import_training_stack()
@@ -487,6 +505,9 @@ def train_lora_model(
         def __init__(self):
             self.epoch_losses: List[float] = []
             self._batch_losses: List[float] = []
+            self.best_epoch: Optional[int] = None
+            self.best_loss: Optional[float] = None
+            self.best_state: Optional[Dict[str, Any]] = None
 
         def on_log(self, args, state, control, logs=None, **kwargs):
             if logs and "loss" in logs:
@@ -497,7 +518,15 @@ def train_lora_model(
                 avg = round(sum(self._batch_losses) / len(self._batch_losses), 4)
                 self.epoch_losses.append(avg)
                 self._batch_losses = []
-                print(f"  [train] Epoch {len(self.epoch_losses)}/{epochs} — loss: {avg:.4f}", flush=True)
+                epoch_idx = len(self.epoch_losses)
+                print(f"  [train] Epoch {epoch_idx}/{epochs} — loss: {avg:.4f}", flush=True)
+                improved = self.best_loss is None or avg < self.best_loss
+                if improved:
+                    self.best_loss = avg
+                    self.best_epoch = epoch_idx
+                    model = kwargs.get("model")
+                    if model is not None:
+                        self.best_state = _snapshot_trainable_state(model)
 
     loss_cb = _EpochLossCallback()
     set_seed(seed)
@@ -591,8 +620,21 @@ def train_lora_model(
         trainer.train()
         print(f"[train] fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
 
+    if restore_best_model and loss_cb.best_state is not None:
+        _restore_trainable_state(model, loss_cb.best_state)
+        print(
+            f"[train] restored best epoch {loss_cb.best_epoch} "
+            f"(loss={loss_cb.best_loss:.4f}) for generation",
+            flush=True,
+        )
+
     model.eval()
-    return model, tokenizer, {"epoch_losses": loss_cb.epoch_losses}
+    return model, tokenizer, {
+        "epoch_losses": loss_cb.epoch_losses,
+        "best_epoch": loss_cb.best_epoch,
+        "best_loss": loss_cb.best_loss,
+        "epochs_ran": len(loss_cb.epoch_losses),
+    }
 
 
 def _lazy_import_dp_stack():
@@ -619,6 +661,7 @@ def train_lora_model_dp(
     seed: int,
     dp_config: DPConfig,
     hf_token: Optional[str] = None,
+    restore_best_model: bool = True,
 ) -> Tuple[Any, Any, Dict[str, Any]]:
     """Fine-tune Pythia with LoRA under (ε, δ)-DP using Opacus DP-SGD.
 
@@ -758,6 +801,9 @@ def train_lora_model_dp(
 
     t0 = time.time()
     epoch_losses: List[float] = []
+    best_epoch: Optional[int] = None
+    best_loss: Optional[float] = None
+    best_state: Optional[Dict[str, Any]] = None
     model.train()
     for epoch in range(epochs):
         total_loss = 0.0
@@ -784,9 +830,23 @@ def train_lora_model_dp(
                 total_items += batch_items
         avg_loss = total_loss / max(1, total_items)
         epoch_losses.append(round(avg_loss, 4))
-        print(f"  [DP] Epoch {epoch + 1}/{epochs} — loss: {avg_loss:.4f}", flush=True)
+        epoch_idx = epoch + 1
+        print(f"  [DP] Epoch {epoch_idx}/{epochs} — loss: {avg_loss:.4f}", flush=True)
+        improved = best_loss is None or avg_loss < best_loss
+        if improved:
+            best_loss = avg_loss
+            best_epoch = epoch_idx
+            best_state = _snapshot_trainable_state(model)
 
     print(f"[train-dp] DP fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
+
+    if restore_best_model and best_state is not None:
+        _restore_trainable_state(model, best_state)
+        print(
+            f"[train-dp] restored best epoch {best_epoch} "
+            f"(loss={best_loss:.4f}) for generation",
+            flush=True,
+        )
 
     achieved_eps_prv: Optional[float] = None
     achieved_eps_rdp: Optional[float] = None
@@ -813,154 +873,15 @@ def train_lora_model_dp(
         "achieved_epsilon_rdp": achieved_eps_rdp,
         "noise_multiplier": noise_multiplier,
         "epoch_losses": epoch_losses,
+        "best_epoch": best_epoch,
+        "best_loss": (round(best_loss, 4) if best_loss is not None else None),
+        "epochs_ran": len(epoch_losses),
     }
 
     # Unwrap GradSampleModule so .generate() works during inference.
     unwrapped = getattr(model, "_module", model)
     unwrapped.eval()
     return unwrapped, tokenizer, dp_stats
-
-    set_seed(seed)
-
-    device_str = _describe_device(torch)
-    print(
-        f"[train-dp] device={device_str} | model={model_name} | rows={len(training_texts)} "
-        f"| eps={dp_config.target_epsilon} delta={dp_config.target_delta}",
-        flush=True,
-    )
-
-    tokenizer = AutoTokenizer.from_pretrained(model_name, token=hf_token)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "left"
-
-    model = AutoModelForCausalLM.from_pretrained(model_name, token=hf_token)
-    model.config.pad_token_id = tokenizer.pad_token_id
-    model.config.eos_token_id = tokenizer.eos_token_id
-    if hasattr(model, "generation_config") and model.generation_config is not None:
-        model.generation_config.pad_token_id = tokenizer.pad_token_id
-        model.generation_config.eos_token_id = tokenizer.eos_token_id
-
-    lora_config = LoraConfig(
-        r=8,
-        lora_alpha=16,
-        lora_dropout=0.0,
-        bias="none",
-        task_type=TaskType.CAUSAL_LM,
-    )
-    model = get_peft_model(model, lora_config)
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    total = sum(p.numel() for p in model.parameters())
-    print(
-        f"[train-dp] LoRA params trainable={trainable:,} / total={total:,} "
-        f"({100*trainable/total:.2f}%)",
-        flush=True,
-    )
-
-    dataset = Dataset.from_dict({"text": training_texts})
-
-    def tokenize_batch(batch: Dict[str, List[str]]) -> Dict[str, Any]:
-        # Dynamic padding: tokenize without padding, let the collator pad per-batch.
-        return tokenizer(
-            batch["text"],
-            truncation=True,
-            max_length=max_length,
-        )
-
-    print("[train-dp] tokenizing training corpus...", flush=True)
-    tokenized = dataset.map(tokenize_batch, batched=True, remove_columns=["text"])
-    lens = [len(x) for x in tokenized["input_ids"]]
-    print(
-        f"[train-dp] token lengths: min={min(lens)} median={int(np.median(lens))} "
-        f"p95={int(np.percentile(lens, 95))} max={max(lens)}",
-        flush=True,
-    )
-
-    privacy_args = PrivacyArguments(
-        target_epsilon=dp_config.target_epsilon,
-        target_delta=dp_config.target_delta,
-        per_sample_max_grad_norm=dp_config.max_grad_norm,
-    )
-
-    effective_bs = dp_config.per_device_batch_size * dp_config.gradient_accumulation_steps
-    steps_per_epoch = max(1, (len(tokenized) + effective_bs - 1) // effective_bs)
-    print(
-        f"[train-dp] epochs={epochs} per_device_bs={dp_config.per_device_batch_size} "
-        f"grad_accum={dp_config.gradient_accumulation_steps} effective_bs={effective_bs} "
-        f"steps/epoch={steps_per_epoch} total_steps~{steps_per_epoch * epochs}",
-        flush=True,
-    )
-
-    with TemporaryDirectory(prefix="pythia_lora_dp_") as tmp_out:
-        requested_args = {
-            "output_dir": tmp_out,
-            "overwrite_output_dir": True,
-            "num_train_epochs": epochs,
-            "per_device_train_batch_size": dp_config.per_device_batch_size,
-            "gradient_accumulation_steps": dp_config.gradient_accumulation_steps,
-            "learning_rate": learning_rate,
-            "logging_steps": 25,
-            "save_strategy": "no",
-            "report_to": [],
-            "remove_unused_columns": False,
-            "dataloader_pin_memory": torch.cuda.is_available(),
-            "dataloader_num_workers": 2,
-            "fp16": False,
-            "bf16": False,
-            "seed": seed,
-            "disable_tqdm": False,
-        }
-        supported = inspect.signature(TrainingArguments.__init__).parameters
-        filtered_args = {k: v for k, v in requested_args.items() if k in supported}
-        training_args = TrainingArguments(**filtered_args)
-
-        trainer = OpacusDPTrainer(
-            args=training_args,
-            model=model,
-            train_dataset=tokenized,
-            privacy_args=privacy_args,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=tokenizer, mlm=False, pad_to_multiple_of=8
-            ),
-            tokenizer=tokenizer,
-        )
-
-        t0 = time.time()
-        trainer.train()
-        print(f"[train-dp] DP fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
-
-        achieved_eps_prv: Optional[float] = None
-        achieved_eps_rdp: Optional[float] = None
-        noise_multiplier: Optional[float] = None
-        try:
-            achieved_eps_prv = float(trainer.get_prv_epsilon())
-        except Exception:
-            achieved_eps_prv = None
-        try:
-            achieved_eps_rdp = float(trainer.get_rdp_epsilon())
-        except Exception:
-            achieved_eps_rdp = None
-        try:
-            noise_multiplier = float(trainer.privacy_engine.noise_multiplier)
-        except Exception:
-            noise_multiplier = None
-
-    dp_stats: Dict[str, Any] = {
-        "target_epsilon": dp_config.target_epsilon,
-        "target_delta": dp_config.target_delta,
-        "max_grad_norm": dp_config.max_grad_norm,
-        "per_device_batch_size": dp_config.per_device_batch_size,
-        "gradient_accumulation_steps": dp_config.gradient_accumulation_steps,
-        "effective_batch_size": dp_config.effective_batch_size,
-        "train_samples": int(len(training_texts)),
-        "sample_rate": float(dp_config.effective_batch_size) / max(1, len(training_texts)),
-        "achieved_epsilon_prv": achieved_eps_prv,
-        "achieved_epsilon_rdp": achieved_eps_rdp,
-        "noise_multiplier": noise_multiplier,
-    }
-
-    model.eval()
-    return model, tokenizer, dp_stats
 
 
 def _device_for_model(torch_module) -> Any:
@@ -1205,6 +1126,7 @@ def generate_synthetic_for_split(
     generation_batch_size: Optional[int] = None,
     hf_token: Optional[str] = None,
     dp_config: Optional[DPConfig] = None,
+    restore_best_model: bool = True,
 ) -> Tuple[pd.DataFrame, SplitGenerationStats]:
     """End-to-end generation for one split: train, sample, postprocess, validate."""
     if generation_batch_size is None:
@@ -1227,7 +1149,14 @@ def generate_synthetic_for_split(
             seed=seed,
             dp_config=dp_config,
             hf_token=hf_token,
+            restore_best_model=restore_best_model,
         )
+        training_stats = {
+            "epoch_losses": dp_stats.get("epoch_losses", []),
+            "best_epoch": dp_stats.get("best_epoch"),
+            "best_loss": dp_stats.get("best_loss"),
+            "epochs_ran": dp_stats.get("epochs_ran"),
+        }
     else:
         model, tokenizer, training_stats = train_lora_model(
             training_texts=training_texts,
@@ -1238,6 +1167,7 @@ def generate_synthetic_for_split(
             max_length=max_length,
             seed=seed,
             hf_token=hf_token,
+            restore_best_model=restore_best_model,
         )
 
     # Move model to target device once (generation reuses it across classes).
