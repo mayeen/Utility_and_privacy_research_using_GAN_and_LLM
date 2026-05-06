@@ -23,18 +23,22 @@ except Exception:
 try:
     from pythia.pythia_tabular import (
         DPConfig,
+        build_training_texts,
         file_sha256,
         generate_synthetic_for_split,
         set_global_seed,
         stats_to_dict,
+        train_lora_model,
     )
 except ImportError:
     from pythia_tabular import (  # type: ignore
         DPConfig,
+        build_training_texts,
         file_sha256,
         generate_synthetic_for_split,
         set_global_seed,
         stats_to_dict,
+        train_lora_model,
     )
 
 
@@ -71,6 +75,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help="Optional row cap per split for quick smoke runs.",
+    )
+    parser.add_argument(
+        "--train-only",
+        action="store_true",
+        help="Train the model and save loss curve to metadata, then exit without generating rows.",
     )
 
     parser.add_argument(
@@ -221,6 +230,26 @@ def main() -> None:
 
         if args.target_col not in source_df.columns:
             raise ValueError(f"Target column '{args.target_col}' missing from split '{split_name}'.")
+
+        if args.train_only:
+            training_texts = build_training_texts(source_df, target_col=args.target_col)
+            _, _, training_stats = train_lora_model(
+                training_texts=training_texts,
+                model_name=args.model_name,
+                epochs=args.epochs,
+                batch_size=args.batch_size,
+                learning_rate=args.lr,
+                max_length=args.max_length,
+                seed=args.seed + idx,
+                hf_token=hf_token,
+            )
+            metadata["splits"][split_name] = {
+                "input_path": str(input_path),
+                "source_rows": int(len(source_df)),
+                "training_stats": training_stats,
+            }
+            print(f"[split:{split_name}] train-only done. epoch_losses={training_stats.get('epoch_losses')}", flush=True)
+            continue
 
         synthetic_df, split_stats = generate_synthetic_for_split(
             split_name=split_name,
