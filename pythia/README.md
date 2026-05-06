@@ -34,6 +34,13 @@ python pythia/generate_pythia_synthetic.py \
   --max-retries-per-row 8
 ```
 
+## With dp first iteration 
+- `--dp --target-epsilon 5.0 --target-delta 1e-5 --epochs 10 --max-length 128 --generation-batch-size 128 --max-retries-per-row 3 --splits train test 2>&1 | tee /tmp/pythia_dp_run.log`
+
+## With dp second iteration 
+- `--dp --target-epsilon 5.0 --target-delta 1e-5 --epochs 20 --max-length 128 --generation-batch-size 128 --max-retries-per-row 3 --splits train test 2>&1 | tee /tmp/pythia_dp_run.log`
+
+
 ## Outputs
 - `thesis/data/pythia/diabetic_data_pythia_train_synthetic.csv`
 - `thesis/data/pythia/diabetic_data_pythia_test_synthetic.csv`

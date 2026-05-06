@@ -67,3 +67,8 @@ The nearest neighbor adversarial accuracy is calculated using the `metrics/nn_ad
 ### Utility
 
 The nearest neighbor utility is calculated using the `metrics/nn_utility.py` file.
+## decode 
+python healthgan/generators/sdv_converter.py \
+  thesis/data/with_3_age_category/diabetic_data_preprocessed_train.csv \
+  decode \
+  thesis/data/with_3_age_category/healthgan/samples_99999_5_64_synthetic_3.csv

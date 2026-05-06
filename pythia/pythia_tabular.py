@@ -59,6 +59,7 @@ class SplitGenerationStats:
     class_counts_generated: Dict[str, int]
     class_stats: Dict[str, ClassGenerationStats]
     dp_stats: Optional[Dict[str, Any]] = None
+    training_stats: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -434,6 +435,7 @@ def _lazy_import_training_stack():
         AutoTokenizer,
         DataCollatorForLanguageModeling,
         Trainer,
+        TrainerCallback,
         TrainingArguments,
         set_seed,
     )
@@ -448,6 +450,7 @@ def _lazy_import_training_stack():
         "AutoTokenizer": AutoTokenizer,
         "DataCollatorForLanguageModeling": DataCollatorForLanguageModeling,
         "Trainer": Trainer,
+        "TrainerCallback": TrainerCallback,
         "TrainingArguments": TrainingArguments,
         "set_seed": set_seed,
     }
@@ -475,9 +478,27 @@ def train_lora_model(
     AutoTokenizer = stack["AutoTokenizer"]
     DataCollatorForLanguageModeling = stack["DataCollatorForLanguageModeling"]
     Trainer = stack["Trainer"]
+    TrainerCallback = stack["TrainerCallback"]
     TrainingArguments = stack["TrainingArguments"]
     set_seed = stack["set_seed"]
 
+    class _EpochLossCallback(TrainerCallback):
+        def __init__(self):
+            self.epoch_losses: List[float] = []
+            self._batch_losses: List[float] = []
+
+        def on_log(self, args, state, control, logs=None, **kwargs):
+            if logs and "loss" in logs:
+                self._batch_losses.append(logs["loss"])
+
+        def on_epoch_end(self, args, state, control, **kwargs):
+            if self._batch_losses:
+                avg = round(sum(self._batch_losses) / len(self._batch_losses), 4)
+                self.epoch_losses.append(avg)
+                self._batch_losses = []
+                print(f"  [train] Epoch {len(self.epoch_losses)}/{epochs} — loss: {avg:.4f}", flush=True)
+
+    loss_cb = _EpochLossCallback()
     set_seed(seed)
 
     device_str = _describe_device(torch)
@@ -562,6 +583,7 @@ def train_lora_model(
             data_collator=DataCollatorForLanguageModeling(
                 tokenizer=tokenizer, mlm=False, pad_to_multiple_of=8
             ),
+            callbacks=[loss_cb],
         )
 
         t0 = time.time()
@@ -569,7 +591,7 @@ def train_lora_model(
         print(f"[train] fine-tuning complete in {time.time() - t0:.1f}s", flush=True)
 
     model.eval()
-    return model, tokenizer
+    return model, tokenizer, {"epoch_losses": loss_cb.epoch_losses}
 
 
 def _lazy_import_dp_stack():
@@ -1012,6 +1034,7 @@ def generate_synthetic_for_split(
     training_texts = build_training_texts(source_df, target_col=target_col)
 
     dp_stats: Optional[Dict[str, Any]] = None
+    training_stats: Optional[Dict[str, Any]] = None
     if dp_config is not None:
         model, tokenizer, dp_stats = train_lora_model_dp(
             training_texts=training_texts,
@@ -1024,7 +1047,7 @@ def generate_synthetic_for_split(
             hf_token=hf_token,
         )
     else:
-        model, tokenizer = train_lora_model(
+        model, tokenizer, training_stats = train_lora_model(
             training_texts=training_texts,
             model_name=model_name,
             epochs=epochs,
@@ -1091,6 +1114,7 @@ def generate_synthetic_for_split(
         class_counts_generated={str(k): int(v) for k, v in generated_counts.items()},
         class_stats=class_stats,
         dp_stats=dp_stats,
+        training_stats=training_stats,
     )
 
     return synthetic_df, split_stats
@@ -1118,6 +1142,7 @@ def stats_to_dict(stats: SplitGenerationStats) -> Dict[str, Any]:
             for key, val in stats.class_stats.items()
         },
         "dp_stats": stats.dp_stats,
+        "training_stats": stats.training_stats,
     }
 
 
