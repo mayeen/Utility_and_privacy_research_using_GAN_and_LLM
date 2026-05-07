@@ -1,0 +1,119 @@
+{
+  "created_at_utc": "2026-05-06T17:27:51.083713+00:00",
+  "pipeline": "pythia_lora_tabular_generation",
+  "model_name": "EleutherAI/pythia-1b",
+  "parameters": {
+    "splits": [
+      "train"
+    ],
+    "target_col": "readmitted",
+    "epochs": 5,
+    "batch_size": 8,
+    "learning_rate": 0.0001,
+    "max_length": 512,
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_retries_per_row": 8,
+    "generation_batch_size": null,
+    "row_limit": null,
+    "restore_best_epoch": true,
+    "dp_enabled": true,
+    "dp": {
+      "target_epsilon": 5.0,
+      "target_delta": 1e-05,
+      "max_grad_norm": 1.0,
+      "per_device_batch_size": 16,
+      "gradient_accumulation_steps": 32,
+      "effective_batch_size": 512
+    }
+  },
+  "splits": {
+    "train": {
+      "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_train.csv",
+      "input_sha256": "775b60815b8869b9aa2e427c6a67520ab9adbc11b047fed5614f20a953e5368b",
+      "output_path": "thesis/data/pythia_1b/diabetic_data_pythia_train_dp_synthetic.csv",
+      "output_sha256": "fa47c20602f16455da7464026e4fa8e749f9f69a1fec385d4c4118c19acf49ed",
+      "source_rows": 57214,
+      "source_class_counts": {
+        "0": 37750,
+        "1": 19464
+      },
+      "synthetic_rows": 57214,
+      "synthetic_class_counts": {
+        "0": 37750,
+        "1": 19464
+      },
+      "generation_stats": {
+        "split_name": "train",
+        "rows_requested": 57214,
+        "rows_generated": 57214,
+        "class_counts_requested": {
+          "0": 37750,
+          "1": 19464
+        },
+        "class_counts_generated": {
+          "0": 37750,
+          "1": 19464
+        },
+        "class_stats": {
+          "0": {
+            "class_label": 0,
+            "requested_rows": 37750,
+            "accepted_rows_before_resample": 37750,
+            "total_attempts": 37752,
+            "rejected_rows": 2,
+            "parse_failures": 0,
+            "coercion_failures": 2,
+            "resampled_rows": 0
+          },
+          "1": {
+            "class_label": 1,
+            "requested_rows": 19464,
+            "accepted_rows_before_resample": 19464,
+            "total_attempts": 19464,
+            "rejected_rows": 0,
+            "parse_failures": 0,
+            "coercion_failures": 0,
+            "resampled_rows": 0
+          }
+        },
+        "dp_stats": {
+          "target_epsilon": 5.0,
+          "target_delta": 1e-05,
+          "max_grad_norm": 1.0,
+          "per_device_batch_size": 16,
+          "gradient_accumulation_steps": 32,
+          "effective_batch_size": 512,
+          "train_samples": 57214,
+          "sample_rate": 0.008948858670954662,
+          "achieved_epsilon_prv": 4.997195238870862,
+          "achieved_epsilon_rdp": null,
+          "noise_multiplier": 0.6195068359375,
+          "epoch_losses": [
+            0.8858,
+            0.2257,
+            0.2164,
+            0.2137,
+            0.2132
+          ],
+          "best_epoch": 5,
+          "best_loss": 0.2132,
+          "epochs_ran": 5
+        },
+        "training_stats": {
+          "epoch_losses": [
+            0.8858,
+            0.2257,
+            0.2164,
+            0.2137,
+            0.2132
+          ],
+          "best_epoch": 5,
+          "best_loss": 0.2132,
+          "epochs_ran": 5
+        }
+      }
+    }
+  }
+}

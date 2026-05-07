@@ -1,0 +1,57 @@
+{
+  "created_at_utc": "2026-05-06T13:33:18.533158+00:00",
+  "pipeline": "pythia_lora_tabular_generation",
+  "model_name": "EleutherAI/pythia-410m",
+  "parameters": {
+    "splits": [
+      "train"
+    ],
+    "target_col": "readmitted",
+    "epochs": 1,
+    "batch_size": 8,
+    "learning_rate": 5e-05,
+    "max_length": 512,
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_retries_per_row": 8,
+    "generation_batch_size": null,
+    "row_limit": null,
+    "dp_enabled": true,
+    "dp": {
+      "target_epsilon": 5.0,
+      "target_delta": 1e-05,
+      "max_grad_norm": 1.0,
+      "per_device_batch_size": 32,
+      "gradient_accumulation_steps": 16,
+      "effective_batch_size": 512
+    }
+  },
+  "splits": {
+    "train": {
+      "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_train.csv",
+      "source_rows": 57214,
+      "dp_stats": {
+        "target_epsilon": 5.0,
+        "target_delta": 1e-05,
+        "max_grad_norm": 1.0,
+        "per_device_batch_size": 32,
+        "gradient_accumulation_steps": 16,
+        "effective_batch_size": 512,
+        "train_samples": 57214,
+        "sample_rate": 0.008948858670954662,
+        "achieved_epsilon_prv": 4.993731262296877,
+        "achieved_epsilon_rdp": null,
+        "noise_multiplier": 0.540771484375,
+        "epoch_losses": [
+          2.1024
+        ]
+      },
+      "training_stats": {
+        "epoch_losses": [
+          2.1024
+        ]
+      }
+    }
+  }
+}
