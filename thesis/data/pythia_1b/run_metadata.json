@@ -1,0 +1,90 @@
+{
+  "created_at_utc": "2026-05-06T23:09:43.606369+00:00",
+  "pipeline": "pythia_lora_tabular_generation",
+  "model_name": "EleutherAI/pythia-1b",
+  "parameters": {
+    "splits": [
+      "train"
+    ],
+    "target_col": "readmitted",
+    "epochs": 5,
+    "batch_size": 32,
+    "learning_rate": 0.0001,
+    "max_length": 512,
+    "temperature": 0.8,
+    "top_p": 0.95,
+    "seed": 42,
+    "max_retries_per_row": 8,
+    "generation_batch_size": null,
+    "row_limit": null,
+    "restore_best_epoch": true,
+    "dp_enabled": false,
+    "dp": null
+  },
+  "splits": {
+    "train": {
+      "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_train.csv",
+      "input_sha256": "775b60815b8869b9aa2e427c6a67520ab9adbc11b047fed5614f20a953e5368b",
+      "output_path": "thesis/data/pythia_1b/diabetic_data_pythia_train_synthetic.csv",
+      "output_sha256": "cfb433b1ad2babfab2c932c17b27be2fff10bcd0c9faf3ef2854db143993bb9f",
+      "source_rows": 57214,
+      "source_class_counts": {
+        "0": 37750,
+        "1": 19464
+      },
+      "synthetic_rows": 57214,
+      "synthetic_class_counts": {
+        "0": 37750,
+        "1": 19464
+      },
+      "generation_stats": {
+        "split_name": "train",
+        "rows_requested": 57214,
+        "rows_generated": 57214,
+        "class_counts_requested": {
+          "0": 37750,
+          "1": 19464
+        },
+        "class_counts_generated": {
+          "0": 37750,
+          "1": 19464
+        },
+        "class_stats": {
+          "0": {
+            "class_label": 0,
+            "requested_rows": 37750,
+            "accepted_rows_before_resample": 37750,
+            "total_attempts": 37750,
+            "rejected_rows": 0,
+            "parse_failures": 0,
+            "coercion_failures": 0,
+            "resampled_rows": 0
+          },
+          "1": {
+            "class_label": 1,
+            "requested_rows": 19464,
+            "accepted_rows_before_resample": 19464,
+            "total_attempts": 19464,
+            "rejected_rows": 0,
+            "parse_failures": 0,
+            "coercion_failures": 0,
+            "resampled_rows": 0
+          }
+        },
+        "dp_stats": null,
+        "training_stats": {
+          "epoch_losses": [
+            0.2243,
+            0.1978,
+            0.1964,
+            0.1955,
+            0.1948
+          ],
+          "best_epoch": 5,
+          "best_loss": 0.1948,
+          "epochs_ran": 5
+        }
+      }
+    }
+  }
+}
