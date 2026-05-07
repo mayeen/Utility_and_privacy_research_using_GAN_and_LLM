@@ -1,5 +1,5 @@
 {
-  "created_at_utc": "2026-04-11T23:56:19.209292+00:00",
+  "created_at_utc": "2026-05-06T15:00:57.209213+00:00",
   "pipeline": "pythia_lora_tabular_generation",
   "model_name": "EleutherAI/pythia-70m",
   "parameters": {
@@ -8,23 +8,26 @@
       "test"
     ],
     "target_col": "readmitted",
-    "epochs": 10,
-    "batch_size": 8,
-    "learning_rate": 2e-05,
+    "epochs": 5,
+    "batch_size": 64,
+    "learning_rate": 0.0004,
     "max_length": 512,
     "temperature": 0.8,
     "top_p": 0.95,
     "seed": 42,
     "max_retries_per_row": 8,
     "generation_batch_size": null,
-    "row_limit": null
+    "row_limit": null,
+    "restore_best_epoch": true,
+    "dp_enabled": false,
+    "dp": null
   },
   "splits": {
     "train": {
       "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_train.csv",
       "input_sha256": "775b60815b8869b9aa2e427c6a67520ab9adbc11b047fed5614f20a953e5368b",
       "output_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/pythia/diabetic_data_pythia_train_synthetic.csv",
-      "output_sha256": "aadfcdfecc4100fd72f307ef7c6bd73de56d3b39010c58c0d9b380212b2b514f",
+      "output_sha256": "2bfd45cdeca6070b5b7fbe9ea78e30c1e89446ac67e98db9a1dfb67d17bb9e9f",
       "source_rows": 57214,
       "source_class_counts": {
         "0": 37750,
@@ -68,6 +71,19 @@
             "coercion_failures": 0,
             "resampled_rows": 0
           }
+        },
+        "dp_stats": null,
+        "training_stats": {
+          "epoch_losses": [
+            0.2789,
+            0.1988,
+            0.1964,
+            0.1949,
+            0.194
+          ],
+          "best_epoch": 5,
+          "best_loss": 0.194,
+          "epochs_ran": 5
         }
       }
     },
@@ -75,7 +91,7 @@
       "input_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/diabetic_data_preprocessed_test.csv",
       "input_sha256": "f18dac9de8b4f26e6a3294cc66ab41d2879bc62c0d76b6c8f048cea6d408e180",
       "output_path": "/home/kaz89292/projects/thesis/Utility_and_privacy_research_using_GAN_and_LLM/thesis/data/pythia/diabetic_data_pythia_test_synthetic.csv",
-      "output_sha256": "581b647340bf517686386384a487439907ed12e637029c4d3a81431e2a25836c",
+      "output_sha256": "8525ad4cb163c8216f8123fcf2915cc456d78c35e27732162e7f378a51ecc42e",
       "source_rows": 14304,
       "source_class_counts": {
         "0": 9438,
@@ -103,22 +119,35 @@
             "class_label": 0,
             "requested_rows": 9438,
             "accepted_rows_before_resample": 9438,
-            "total_attempts": 9440,
-            "rejected_rows": 2,
+            "total_attempts": 9438,
+            "rejected_rows": 0,
             "parse_failures": 0,
-            "coercion_failures": 2,
+            "coercion_failures": 0,
             "resampled_rows": 0
           },
           "1": {
             "class_label": 1,
             "requested_rows": 4866,
             "accepted_rows_before_resample": 4866,
-            "total_attempts": 4867,
-            "rejected_rows": 1,
+            "total_attempts": 4866,
+            "rejected_rows": 0,
             "parse_failures": 0,
-            "coercion_failures": 1,
+            "coercion_failures": 0,
             "resampled_rows": 0
           }
+        },
+        "dp_stats": null,
+        "training_stats": {
+          "epoch_losses": [
+            0.548,
+            0.2099,
+            0.2052,
+            0.2024,
+            0.2004
+          ],
+          "best_epoch": 5,
+          "best_loss": 0.2004,
+          "epochs_ran": 5
         }
       }
     }
