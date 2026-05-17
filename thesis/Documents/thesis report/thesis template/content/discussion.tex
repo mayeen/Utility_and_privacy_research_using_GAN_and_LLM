@@ -1,0 +1,146 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Discussion}
+\label{ch:discussion}
+
+% Expansion of proposal §5.6 (Discussion). Where Chapter 6 reports numbers,
+% this chapter interprets them, situates the findings against prior work,
+% and acknowledges limits.
+
+\section{Interpretation of Results per Research Question}
+\label{sec:discussion:interpretation}
+
+% TODO: One paragraph per RQ. Pull the answer paragraph from §6 and expand
+% with mechanistic interpretation:
+%  - WHY did each result come out the way it did?
+%  - What does the literature predict, and is the observation consistent?
+
+\section{GAN vs.\ LLM: Strengths, Weaknesses, and Use Cases}
+\label{sec:discussion:gan-vs-llm}
+
+% TODO: Cross-paradigm discussion. Phrase utility consistently as the
+% two-branch concept used throughout the thesis (statistical similarity +
+% predictive performance).
+%  - GAN strengths: tight distributional similarity on numeric/binary
+%    features, fast inference once trained, well-understood DP integration
+%    via PATE.
+%  - GAN weaknesses: mode collapse, sensitivity to data preprocessing,
+%    typically no schema-aware constraint enforcement.
+%  - LLM strengths: handles mixed-type tabular natively via row-as-text,
+%    schema-aware via parsing/coercion, scales with model size
+%    \cite{Miletic2024}.
+%  - LLM weaknesses: parsing-failure overhead, risk of literal memorisation
+%    \cite{Carlini2021Extracting}, longer training and inference times.
+
+\paragraph{Sensitivity to Categorical Granularity.}
+A practical asymmetry surfaced by the age-binning ablation
+(Section~\ref{sec:results:rq2:utility:age-binning}) is that token-based LLM
+synthesisers are more sensitive to upstream categorical-cardinality choices
+than GAN baselines. Collapsing the ten-decade \texttt{age} encoding into
+three coarse groups depressed Pythia's Gradient-Boosting TSTR AUC by
+$\approx 0.065$ and macro-F1 by $\approx 0.106$, while leaving HealthGAN
+and PATE-GAN approximately unchanged. The implication for healthcare data
+stewards: when an LLM-based generator is in scope, preprocessing decisions
+that flatten ordinal categorical variables for ``simplicity'' can silently
+forfeit a substantial fraction of recoverable downstream utility, and
+should therefore be validated against the dataset's native encoding before
+being committed to.
+
+\section{Practical Recommendations for Healthcare Data Stewards}
+\label{sec:discussion:recommendations}
+
+% TODO: Decision tree / matrix:
+%  - Need formal DP guarantee?  → PATE-GAN (default) or Pythia-DP if LLM
+%    quality justifies cost.
+%  - Need maximum utility on a tight budget? → HealthGAN (fastest, smallest
+%    footprint, well-understood).
+%  - Need natural schema handling and explanation? → Pythia / Pythia-DP.
+%  - Need outlier protection specifically? → flag results from §6.2 outlier
+%    linkability.
+
+\section{Toward Standardisation of Synthetic-Data Evaluation}
+\label{sec:discussion:standardisation}
+
+% TODO: Connect to the call-out by \cite{hernandez2022synthetic} that "no
+% single method or metric is universally best". The 17-metric pipeline
+% contributed here is an attempt at a reusable two-pillar evaluation
+% standard (utility — split into statistical similarity and predictive
+% performance — and privacy). Discuss what would need to change for it to
+% generalise to other datasets / generative paradigms.
+
+\section{Limitations}
+\label{sec:discussion:limitations}
+
+\subsection{Single-Dataset Scope}
+\label{sec:discussion:limit:dataset}
+
+% Diabetes 130-US Hospitals only. The proposal originally listed MIMIC-III
+% as a secondary benchmark; this was scope-reduced (§3.5). Discuss why
+% Diabetes 130-US is a representative-but-not-universal medical tabular
+% testbed: large size, mixed types, clear binary outcome.
+
+\subsection{Pythia-70m Size Constraint}
+\label{sec:discussion:limit:pythia-size}
+
+% pythia-70m chosen for training-cost reasons; \cite{Miletic2024} report
+% larger Pythia variants improve TSTR. Findings here are likely a
+% lower bound on LLM achievable utility.
+
+\subsection{Single Privacy Budget ($\varepsilon = 5.0$)}
+\label{sec:discussion:limit:epsilon}
+
+% Both PATE-GAN and Pythia-DP run at ε = 5.0, δ = 1e-5. A privacy-budget
+% ablation (ε ∈ {1, 3, 5, 10}) would expose the slope of the
+% utility–privacy trade-off; this is left as future work.
+
+\subsection{Computational Cost}
+\label{sec:discussion:limit:compute}
+
+% Total wall-clock cost. Especially Pythia-DP, where Opacus per-example
+% gradients impose a memory blow-up versus standard SGD.
+
+\subsection{Scope Reductions Versus the Proposal}
+\label{sec:discussion:limit:scope}
+
+% Honest enumeration of items in the Deviations table from the plan file.
+% Within the utility pillar these split across both branches (similarity
+% and predictive); list them grouped accordingly.
+%
+% Utility / statistical similarity branch:
+%  - KL divergence replaced by KS test (justify: non-parametric, no PMF
+%    binning).
+%  - Pairwise Correlation Difference originally proposed as scalar
+%    (Frobenius norm); implemented as a visual heatmap, with the scalar
+%    optionally added back for ranking.
+%
+% Utility / predictive performance branch:
+%  - TRTR/TSTR/TRTS/TSTS narrowed to TRTR + TSTR.
+%  - Augmentation-based predictive evaluation not run.
+%  - Dimension-Wise Prediction (DWP) not run.
+%
+% Privacy pillar:
+%  - Outlier similarity defined via centroid-distance rather than DBSCAN
+%    \cite{wang2019generating}.
+%
+% For each item, state: (i) what was promised, (ii) what was implemented,
+% (iii) why the substitution is acceptable.
+
+\section{Threats to Validity}
+\label{sec:discussion:validity}
+
+% TODO: Standard Wohlin-style classification:
+%  - Internal:  random seed sensitivity, train/test split choice, sampling
+%               variance in TSTR (single split rather than CV).
+%  - External:  single dataset, single ε, English-language LLM.
+%  - Construct: does TSTR really measure utility? Does NN distance really
+%               measure privacy? Discuss.
+%  - Conclusion: small sample sizes for some attribute-inference cells.
+
+\section{Ethical Considerations}
+\label{sec:discussion:ethics}
+
+% TODO: Patient consent, data-use agreements, the principal-agent issue
+% (model exported, training data not), risks of false confidence in
+% privacy guarantees, dual-use concerns when sharing DP synthetic data.
+
+\cleardoublepage

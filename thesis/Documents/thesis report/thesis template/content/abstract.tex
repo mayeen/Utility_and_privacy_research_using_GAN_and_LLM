@@ -1,0 +1,46 @@
+% !TEX root = ../thesis.tex
+
+% Abstract --- English only
+
+\begin{otherlanguage}{english}
+    \section*{Abstract}
+
+    % TODO: Write the English abstract (200--300 words):
+    %  - Problem: utility-privacy trade-off in medical synthetic data
+    %  - Methodology: head-to-head comparison of HealthGAN, PATE-GAN,
+    %    Pythia, and Pythia-DP on the Diabetes 130-US Hospitals dataset
+    %  - Evaluation across utility (statistical similarity + predictive
+    %    performance) and privacy
+    %  - Key findings (one or two sentences)
+    %  - Contributions
+
+    The release of medical data for research is constrained by privacy
+    regulations such as HIPAA and GDPR, while classical anonymization
+    techniques have repeatedly failed under linkage attacks. Synthetic data
+    generation offers a promising alternative, but the trade-off between
+    data utility and privacy preservation remains poorly characterised
+    --- particularly when comparing fundamentally different generative
+    paradigms. This thesis presents a unified empirical comparison of four
+    approaches on the \emph{UCI Diabetes 130-US Hospitals} dataset:
+    HealthGAN (WGAN-GP, no formal differential privacy), PATE-GAN (GAN with
+    $(\varepsilon,\delta)$-DP), Pythia-LoRA (a large language model
+    fine-tuned on serialised tabular records, no formal DP), and Pythia-DP
+    (the same pipeline trained with DP-SGD via Opacus). Each generator is
+    evaluated under two pillars. The first is \emph{utility}, defined to
+    encompass both \emph{statistical similarity} to the real data
+    (per-column distributions, correlation difference,
+    Kolmogorov--Smirnov, PCA manifold overlap) and \emph{predictive
+    performance} of downstream models trained on the synthetic data
+    (TSTR classifier performance, feature-importance preservation, Cox
+    proportional-hazards concordance). The second is \emph{privacy}
+    (nearest-neighbour distance, NN adversarial accuracy, membership
+    inference, attribute inference, outlier linkability). The thesis
+    contributes (i) a reproducible evaluation pipeline, (ii) a head-to-head
+    benchmark spanning the GAN--LLM and DP--non-DP axes, and (iii) empirical
+    evidence on the marginal cost of formal differential privacy within each
+    generative family.
+
+    % TODO: Insert headline findings (one or two sentences) once Chapter~6 is
+    % populated.
+\end{otherlanguage}
+\cleardoublepage

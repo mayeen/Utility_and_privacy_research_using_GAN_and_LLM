@@ -1,0 +1,187 @@
+% pass biblatex options to the instance loaded by the class
+\PassOptionsToPackage{backend=biber,style=authoryear,
+                      sorting=none,      % ← bibliography in citation order
+                      sortcites=false,
+                      defernumbers=true}   % ← keep order inside \cite{...}
+{biblatex}
+\documentclass[master,proposal,extern,palatino]{rgseThesis}
+\usepackage{pgfgantt}
+\usepackage{booktabs}
+\usepackage{setspace}
+\usepackage[english,ngerman]{babel}
+\usepackage{csquotes}             % recommended with biblatex
+\usepackage{graphicx}
+\usepackage{pgfgantt}
+\geometry{a4paper, margin=1in, includefoot}
+
+
+\author{Kazi Mostafa Shahriar\\[1ex] \normalsize Mat. Nr. 222100444 \\[1ex] \normalsize shahriar@uni-koblenz.de}
+
+% \studiengang{Computervisualistik} % Program of Study, Default is Informatik, ignored for proposals
+
+\title{Balancing Data Utility and Privacy in Medical Synthetic Data Generation: A Comparative Study of GAN-based and Large Language Model Approaches}
+
+\supervisor{w}{Prof. Dr. Andreas Mauthe} % Default is Jan Jürjens
+\supervisorInfo{Institut für Wirtschafts- und Verwaltungsinformatik, FG IT Security and Data Security} % Default is Institute for Software Technology/Institut für Softwaretechnik
+
+\secondSupervisor{w}{Christopher Latz}
+\secondSupervisorInfo{Institut für Wirtschafts- und Verwaltungsinformatik, FG IT Security and Data Security}
+    
+
+
+% References, bibliography/Literatur-Datenbank
+\addbibresource{literature.bib}
+
+% Depth of table of content/Tiefe des Inhaltsverzeichnisses; 1: section (empfohlen), 2: subsection
+\setcounter{tocdepth}{1} 
+
+\begin{document}
+
+    % Language switch for labels/Umschalten der Sprache für englische Rubrikbezeichnungen (possible/möglich: english, ngerman)
+    \selectlanguage{english}
+
+    % Title Page
+    \maketitle
+
+    % TOC
+    \tableofcontents
+    \newpage
+
+    % Here follows the content of the proposal/Hier kommt jetzt der eigentliche Text des Proposals
+
+    \section{Introduction}
+The exponential growth of digital health records, together with rapid advances in artificial intelligence (AI), offers significant potential to transform healthcare delivery. At the same time, robust regulatory frameworks such as the General Data Protection Regulation (GDPR) and the Health Insurance Portability and Accountability Act (HIPAA) play a crucial role in safeguarding patient confidentiality and ensuring responsible data use. These protections are essential for maintaining public trust in digital health systems, but they also require researchers to explore innovative methods that enable data-driven innovation while upholding proper privacy standards. Conventional anonymisation methods have repeatedly proven insufficient to guarantee privacy in high-dimensional health data, as re-identification and linkage attacks remain viable \cite{Murtaza2023}.  
+Synthetic data generation (SDG) has emerged as a promising alternative, enabling the creation of artificial datasets that retain the statistical properties of the original while mitigating privacy risks. Among the most prominent approaches are \textit{Generative Adversarial Networks} (GANs) and \textit{Large Language Models} (LLMs). GANs have demonstrated success in structured medical datasets and imaging data, while LLMs are particularly transformer-based models which offer advantages in modelling heterogeneous and unstructured records \cite{Miletic2024}. \newline
+Generative Adversarial Networks work by training two neural networks, a generator that creates synthetic samples and a discriminator that tries to distinguish them from real data until the generator learns to produce highly realistic outputs. Large Language Models operate using transformer architectures that leverage self attention to learn long range patterns in sequences, allowing them to generate coherent text or structured records. While GANs focus on matching data distributions through adversarial learning, LLMs generate data by predicting the next most probable token based on context. \newline
+This thesis proposes a systematic, experimental comparison of GAN and LLM based SDG for healthcare, evaluating the trade-off between data utility and privacy preservation using evaluation metrics.
+
+\section{Motivation}
+The need for privacy-preserving data generation in healthcare is not only a technical challenge but a very important factor of medical research. Due to HIPAA and GDPR privacy requirements on medical data sharing, data anonymization is an important enabler for research. The scarcity of openly accessible, high-quality clinical data constrains innovation in diagnosis, treatment planning, and epidemiological modelling. Regulatory restrictions and ethical imperatives make direct sharing of identifiable records infeasible. 
+Synthetic data presents a pathway to alleviate this bottleneck by allowing the distribution of data without direct disclosure of personal identifiers, thus accelerating AI model development and validation. However, its adoption hinges on balancing two competing objectives:
+\begin{enumerate}
+    \item \textbf{Utility}: The synthetic dataset must preserve the statistical and structural characteristics necessary for downstream analytical tasks.
+    \item \textbf{Privacy}: The dataset must provide strong resistance to adversarial attacks, such as membership inference and attribute disclosure.
+\end{enumerate}
+While GANs and LLMs each offer unique strengths, there is limited comparative work evaluating their effectiveness under a unified privacy–utility framework, particularly for heterogeneous healthcare datasets.
+
+\section{Research Questions}
+\begin{enumerate}
+    \item Which methods are used to evaluate whether synthetic medical data effectively preserves privacy and utility?
+    \item What are the trade-offs in utility and privacy in GAN and LLM based synthesized data generation Models?
+    \item Which synthetic data generation approach, based on GANs or Large Language Models, achieves a more effective balance between data utility and privacy preservation when applied to medical datasets?
+    
+\end{enumerate}
+
+\section{Literature Review}
+
+Due to the growing data generation, different data anonymization techniques has been developed for privacy reason. Techniques like generalization, suppression, distortion, swapping masking has been introduced \cite{anonymization}. But most of the techniques has one big drawback, utility preservation. Stadler et al. said while synthetic data often outperforms naive anonymization methods, achieving a stable trade-off between preserving meaningful information and safeguarding individual privacy remains difficult \cite{stadler2022synthetic}. Zhang et al. \cite{privsyn2021}, in their work on PrivSyn, embedded DP into the synthesis of high dimensional tabular data, ensuring that nuanced attribute correlations are maintained without disclosing sensitive records. SafeSynthDP demonstrates that LLM driven synthesis can be paired with differential privacy (e.g., Laplace/Gaussian mechanisms) to trace explicit $\varepsilon$–utility frontiers while maintaining competitive downstream accuracy and resisting membership inference \cite{Nahid2024}. They have adjusted hyperparameter for privacy and accuracy for utlitiy metrics. 
+\newline
+Miletic et al. \cite{Miletic2024} used a Framework called Tabula that treats each row as text and shows that Pythia, a family LLMs can match or surpass a strong tabular GAN (e.g., CTGAN) on TSTR utility, with gains increasing by model size \cite{Miletic2024}. The study focuses on \emph{utility} rather than privacy.
+\newline
+ADS-GAN proposes a utility first, \emph{non-DP} GAN that adds an \emph{identifiability} regularizer which is a weighted distance that discourages generators from producing near duplicates of real patients, with rare features receiving higher penalties \cite{ADSGAN2020}. The paper reports strong realism (marginals/ joint divergences) and competitive TSTR performance relative to baselines, while providing an interpretable privacy knob distinct from formal DP. It shows excellent results in both utility and privacy metrics.
+\newline
+HealthGAN was introduced as a response to the limitations of medGAN, which could only generate binary diagnosis codes and often produced unrealistic distributions, making it unsuitable for mixed-type EHR data \cite{healthgan} \cite{yale2020synthesizing} \cite{bhanot2022investigating}. To address these shortcomings, the model combines medGAN’s design with the WGAN-GP framework, leveraging the Wasserstein distance and a tailored data transformation pipeline to support continuous and categorical variables commonly found in datasets such as MIMIC-III \cite{healthgan}. Its architecture employs large batch sizes to ensure that outliers and rare clinical values are reliably captured and incorporates a bottleneck to reduce memorisation and maintain a compact model footprint, facilitating secure model export outside the training environment. A key contribution of HealthGAN is the introduction of Nearest-Neighbor Adversarial Accuracy (AA), a metric suite that enables joint assessment of resemblance and privacy and has been recognised in systematic reviews as an important development in synthetic health data evaluation \cite{Murtaza2023}. Empirical results show that HealthGAN was the only model in a six-method benchmark that maintained privacy while supporting model export, achieving competitive utility and resemblance relative to established baselines \cite{healthgan}. The model has since been adopted in subsequent studies for tasks such as membership-inference assessment, synthetic time-series experimentation, and educational mortality-prediction challenges, demonstrating its practical relevance and continued impact on synthetic health data research.
+\newline
+\textsc{PATE{-}GAN} adapts the Private Aggregation of Teacher Ensembles (PATE) framework to generative modelling by training multiple teacher discriminators on disjoint data partitions and aggregating their predictions through a differentially private noisy mechanism, thereby providing formal $(\varepsilon,\delta)$-DP guarantees while avoiding direct exposure of private gradients \cite{pategan}. This provides a tunable privacy budget with an explicit accountant, which aligns with survey guidance to report both formal guarantees and empirical privacy audits \cite{hernandez2022synthetic,Murtaza2023}. In domains where non-DP synthetic data has been shown to leave outliers vulnerable \cite{stadler2022synthetic}, and where DP graphical approaches (e.g., PrivSyn) trade utility for stronger privacy \cite{privsyn2021}, \textsc{PATE{-}GAN} offers a principled middle ground: a GAN-based model with controllable $\varepsilon$ that typically delivers stronger task utility than DP-SGD at comparable privacy while supporting mixed-type tabular generation which making it a suitable DP baseline against which can be compared with Health-GAN (non-DP) and LLM-based synthesis.
+Hernandez et al. \cite{hernandez2022synthetic} in his systematic review of tabular health data for synthetic data generation stated that no single method or metric is universally best and listed out resemblance, privacy and utility metrics used by other authors.
+\newline
+Across the synthetic data literature, different studies employ diverse privacy metrics to quantify disclosure risks. The evaluation framework by Kaabachi et al. \cite{syninhospital} measures membership inference and attribute inference for each patient record, together with privacy gain, which captures the reduction of re-identification probability when disclosing synthetic rather than real data. HealthGAN-based work evaluates privacy through Nearest-Neighbor Adversarial Accuracy (AA) and privacy loss, and also simulates membership inference attacks to test whether training records can be distinguished from non-training ones based on nearest-neighbor distances \cite{yale2020synthesizing}. Hernandez et al. \cite{hernandez2022synthetic} summarize additional metrics used in prior studies, including identity/attribute disclosure, Distance to Closest Record (DCR), membership attack success rate, max real-to-synthetic similarity, formulation of differential privacy, privacy loss, and Maximum Mean Discrepancy (MMD) for distribution-level leakage assessment. The broader survey by Murtaza et al. \cite{Murtaza2023} systematically categorizes privacy metrics into integrated DP mechanisms (e.g., DP, Rényi DP, Moments Accountant), embedded objectives such as $\varepsilon$-identifiability, l-diversity, and probabilistic k-anonymity, and post-hoc metrics including nearest-neighbor similarity, NN attribute estimation, reproduction rate, outlier similarity, and distribution-based measures such as perplexity distribution similarity and mean discrepancy. Several papers also simulate membership inference by matching real and synthetic records through distance thresholds like Hamming distance \cite{goncalves2020generation} to determine the proportion of true training-membership disclosures, and evaluate attribute disclosure risk by testing whether unknown attributes can be inferred from nearest synthetic neighbors. Together, these studies illustrate the wide spectrum of privacy metrics used across the literature, spanning instance-level, distribution-level, and differential-privacy-based assessments.
+\newline
+Across the broader synthetic data literature, authors employ a wide spectrum of evaluation metrics covering resemblance, statistical fidelity, and downstream predictive utility. Murtaza et al. \cite{Murtaza2023} propose a taxonomy that distinguishes univariate metrics such as Kolmogorov-Smirnov (KS), Kullback–Leibler (KL) divergence, and moment-based comparisons from multivariate metrics including correlation-matrix similarity, Maximum Mean Discrepancy, Jensen-Shannon divergence, and Wasserstein distance, all used to quantify how closely synthetic distributions match real data. Gonçalves et al. \cite{goncalves2020generation} complement these distributional measures by combining KL divergence with pairwise correlation differences to assess both marginal and joint-distribution fidelity in synthetic patient data, while Yale et al. \cite{healthgan} introduce Nearest-Neighbor Adversarial Accuracy (AA) to jointly evaluate resemblance and privacy through nearest-neighbor structure. Kaabachi et al. \cite{syninhospital} focus on task-oriented utility by comparing predictive performance of models trained on real versus synthetic data and reporting measures such as AUC and accuracy alongside privacy-related quantities like privacy gain. Hernandez et al. \cite{hernandez2022synthetic} survey tabular synthetic data generators and emphasize model-based utility evaluations, including Train-on-Synthetic Test-on-Real (TSTR) and related train–test regimes, as central tools for assessing whether synthetic data supports realistic downstream inference. In parallel, Miletic et al. \cite{Miletic2024} evaluate utility of LLM-based synthesis using TSTR accuracy for random forest classifiers and distributional alignment of marginals and joint patterns, demonstrating that Pythia models can match or surpass strong tabular GAN baselines. Together, these works show that evaluation in synthetic data research combines distributional resemblance metrics (KS, KL, correlation, MMD, Wasserstein) with model-based predictive performance metrics (accuracy, F1, AUC, TSTR/TRTR), yielding a multi-dimensional view of realism and utility.
+
+\section{Methodology}
+To address the research questions, the datasets will first undergo systematic preprocessing before training the selected generative models. Subsequently, both utility and privacy metrics will be applied to the generated synthetic datasets to evaluate their performance. Through this process, the study aims to assess whether a standardized evaluation framework for synthetic medical data can be established.
+
+\subsection{Proposed Dataset}
+\begin{enumerate}\itemsep0.25em
+  \item \textbf{UCI Diabetes 130-US Hospitals:} This dataset contains 101,766 inpatient encounters from diabetic patients treated across 130 U.S. hospitals between 1999 and 2008. Each record describes a hospital admission of 1-14 days and includes 47 mixed-type features covering demographics (age, gender, race), admission characteristics, laboratory test results, diagnoses, medication use, and prior inpatient, outpatient, and emergency visits. The data consists primarily of categorical and integer variables and represents detailed clinical, administrative, and treatment-related information collected during the patient’s hospital stay. Missing values are present, and no predefined data splits are provided, enabling flexible train–validation–test partitioning \parencite{diabetes_db}.
+  % \item \textbf{MIMIC-III}: MIMIC-III is a widely used, de identified critical-care resource with rich mixed-type variables and outcomes suitable for realistic tabular synthesis and TSTR evaluations \parencite{mimic}. I use it as a primary benchmark to test scalability, mixed-type handling, and privacy auditing under clinical relevance \parencite{mimic}.
+\end{enumerate}
+
+\subsection{Proposed Models}
+\begin{enumerate}\itemsep0.25em
+  \item \textbf{Health-GAN (non-DP):} HealthGAN is selected as non-DP GAN baseline model because it was designed specifically for mixed-type EHR tables, comes with a complete secure training to model export workflow, and introduces nearest-neighbor Adversarial Accuracy (AA) to co-measure resemblance and privacy (TrainAA/TestAA and privacy-loss), yielding competitive TSTR utility while keeping a small, attributes that align with the studie's governance and benchmarking needs. Murtaza et al.\cite{Murtaza2023} demonstrated that it has been widely used for synthetic data generation \cite{healthgan}\cite{yale2020synthesizing}\cite{dash2020medical} which reinforces its status as a widely recognized baseline that can compare against DP GANs and LLMs in the study.
+  \item \textbf{PATE-GAN (DP):} \textsc{PATE{-}GAN} model is selected as the differentially private generator option because it enforces formal $(\varepsilon,\delta)$-DP by decoupling privacy from adversarial training: multiple teacher discriminators are trained on disjoint data partitions, their votes are \emph{noisily aggregated} to ensure DP, and a \emph{student} discriminator learns from these noisy labels so the generator can be optimized end-to-end while inheriting DP by post-processing \cite{pategan}. This design avoids exposing private gradients directly (unlike DPGAN) and provides a tunable privacy budget with an explicit accountant, which aligns with survey guidance to report \emph{both} formal guarantees and empirical privacy audits \cite{hernandez2022synthetic,Murtaza2023}.
+  \item \textbf{Pythia LLM:} The benchmark study by Miletic et al. \cite{Miletic2024} evaluates the Pythia family of decoder-only LLMs for generating synthetic tabular health data and shows that these models can match or exceed the performance of established tabular GANs. The authors introduce Tabula, a framework that treats each tabular row as a text sequence, enabling Pythia models of varying sizes to learn tabular structure directly from tokenized records. The study also reports that Pythia models produce stable marginals and joint feature dependencies across multiple clinical datasets, demonstrating competitive realism without requiring specialized tabular architectures. Notably, the evaluation focuses on utility and generative quality rather than privacy, and the authors highlight that LLM-based synthesis remains largely unexplored from a privacy-risk perspective, particularly regarding memorization and leakage in small health datasets. So in this research, the model will be assessed by the privacy metrics to identify the extent to which the generated synthetic data mitigates disclosure risks.
+\end{enumerate}
+
+\subsection{Evaluation Metrics}
+\subsubsection{Utility Metrics}
+\begin{enumerate}
+    \item \textbf{Augmentation-Based Predictive Performance Evaluation:} This approach evaluates utility by integrating synthetic samples into the real training dataset and assessing the extent to which model performance changes relative to real-only training. As reported by Wang et al. \cite{wang2019continuous}, and Yang et al. \cite{yang2019grouped}, the deviation in predictive performance is categorized as excellent, good, or poor depending on whether the observed reduction is minimal, moderate, or substantial, respectively\cite{hernandez2022synthetic} . Minimal degradation indicates that the synthetic data preserves the predictive structure of the original distribution, whereas larger deviations suggest limited downstream utility.
+    \item \textbf{Train–Test Regime Evaluation (TRTR, TSTR, TRTS, TSTS):} Utility is assessed through structured train–test configurations involving real and synthetic data. The survey notes that studies including Park et al.\cite{park2018data}, Wang et al.\cite{wang2019continuous}, Beaulieu-Jones et al.\cite{beaulieu2019privacy} employ regimes such as Train-on-Synthetic Test-on-Real (TSTR), Train-on-Real Test-on-Synthetic (TRTS), Train-on-Synthetic Test-on-Synthetic (TSTS), and Train-on-Real Test-on-Real (TRTR), quantifying performance using metrics such as accuracy, F1-score, and AUC \cite{hernandez2022synthetic}. Utility in this framework is determined by the degree to which model performance under synthetic-based training aligns with real-data baselines, reflecting the capacity of the synthetic dataset to support downstream predictive tasks.
+    \item \textbf{Kullback-Leibler (KL) divergence:} The Kullback-Leibler (KL) divergence is computed over a pair of real and synthetic marginal probability mass functions (PMF) for a given variable, and it measures the similarity of the two PMFs \cite{goncalves2020generation}. When both distributions are identical, the KL divergence is zero, while larger values of the KL divergence indicate a larger discrepancy between the two PMFs.
+    \item \textbf{Pairwise Correlation Difference:} The pairwise correlation difference (PCD) is intended to measure how much correlation among the variables the different methods were able to capture\cite{goncalves2020generation}. PCD measures the difference in terms of Frobennius norm of the Pearson correlation matrices computed from real and synthetic datasets. The smaller the PCD, the closer the synthetic data is to the real data in terms of linear correlations across the variables. PCD is defined at the dataset level.
+    \item \textbf{Dimension-Wise Prediction:} Dimension-Wise Prediction (DWP) is a multivariate utility metric used to evaluate whether a synthetic dataset preserves the inter-dimensional dependencies present in the real data. DWP operates by iteratively selecting each feature (dimension) in the dataset as a prediction target and using all remaining features as predictors, thereby assessing how well the synthetic data captures the relationships required to reconstruct or predict each attribute \cite{emam2021optimizing}. The performance of these predictive models is typically evaluated using accuracy, F1-score, or similar metrics which is then compared between models trained on real data and those trained on synthetic data to determine how much structural information has been retained.
+\end{enumerate}
+\subsubsection{Privacy Metrics}
+\begin{enumerate}
+    \item \textbf{Nearest-neighbor distances:} Nearest-neighbor distance works by measuring how close synthetic records are to real records in the feature space \cite{healthgan}. For each real data point, the method identifies the closest synthetic point and computes the numerical distance between them. If these distances are large, the synthetic data is considered privacy-preserving because no generated record lies too close to an actual individual. This simple proximity-based approach provides a direct way to detect whether the generator has produced near-duplicate or overly similar patient records.
+    \item \textbf{Membership Inference Attack (MIA):} Membership inference evaluates whether an adversary can determine if a specific individual was included in the training dataset. In a clinical evaluation setting, the University Hospital study explicitly measures the risk of membership inference for each patient record, demonstrating that synthetic datasets may still leak training membership when real samples are distinguishable from non-members based on synthetic outputs \cite{syninhospital}. Stadler et al. \cite{stadler2022synthetic}further show that attackers can infer the presence of a target record in the original data, highlighting this as a central privacy threat for synthetic health data.
+    \item \textbf{Attribute inference:} Attribute inference examines whether sensitive patient attributes can be deduced from synthetic data when an adversary has partial prior knowledge. The University Hospital study evaluates this risk jointly with membership inference, assessing whether synthetic data enables prediction of missing or protected attributes for specific individuals, thereby exposing indirect disclosure pathways even when identifiers are removed \cite{syninhospital}.
+    \item \textbf{Clustering proximity:} Clustering-based proximity assesses whether synthetic samples form local clusters around particular real individuals, thereby exposing linkage risks. Stadler et al. \cite{stadler2022synthetic} demonstrate that synthetic datasets may allow adversaries to link real outlier records to synthetic points based on proximity structure and distributional patterns, showing that clustering-based linkability is a relevant privacy concern in synthetic medical data generation. 
+    % \item \textbf{$\varepsilon$-Identifiability:} $\varepsilon$-Identifiability quantifies the proportion of real patient records that remain insufficiently separated from synthetic samples based on a weighted distance measure. ADS-GAN defines the minimum distance between each real observation and its nearest real neighbour as the threshold for determining whether a synthetic record is different enough to avoid re-identification, noting that rare clinical attributes carry higher identifiability risk and therefore require weighted Euclidean distances\cite{ADSGAN2020}. For each real record, the closest synthetic neighbour is identified, and the dataset is $\varepsilon$-identifiable when fewer than $\varepsilon$ of these synthetic distances fall below the corresponding real–real minimum distance, meaning that only a small fraction of real patients are potentially identifiable.
+    \item \textbf{Outlier Similarity:} Outlier similarity evaluates privacy risk by examining whether synthetic data reproduce rare or extreme patient profiles found in the real dataset. Wang, Myles, and Tucker \cite{wang2019generating} emphasize that privacy concerns arise when a synthetically generated patient shares the same characteristics as a real patient purely by chance, particularly when rare cases cluster in similar regions of feature space. Their evaluation framework explicitly incorporates outlier detection using DBSCAN to identify extreme instances in both the real and synthetic datasets; privacy is preserved only when no synthetic outlier coincides with a real outlier. This approach frames outliers as high-risk individuals whose unique combinations of sensitive attributes increase re-identification likelihood, making outlier similarity a critical post-hoc privacy metric for assessing whether the generative model has inadvertently memorized or replicated rare patient records.
+\end{enumerate}
+
+
+\subsection{Training and Generation}
+\begin{enumerate}
+    \item Data acquisition and understanding to gain domain-specific knowledge
+    \item Preprocess datasets according to model-specific requirements (e.g., mode-specific normalization for GANs, tokenization for LLMs).
+    \item Train mentioned models to generate synthetic data for further comparison and analysis.
+    \item Generate fully synthetic datasets from each model for evaluation.
+    \item Evaluation of synthesized data with mentioned evaluation metrics.
+\end{enumerate}
+
+\subsection{Result Comparison}
+\begin{enumerate}
+    \item Result comparison on utility and privacy metrics for the mentioned models.
+
+\end{enumerate}
+
+\subsection{Discussion}
+\begin{enumerate}
+    \item Findings from the experiments on mentioned models. 
+    \item Result of different evaluation frameworks and scope of standardization.
+\end{enumerate}
+
+\section{Timeline}
+
+\begin{ganttchart}[
+    x unit=1.8cm,            % month width (adjust automatically via adjustbox)
+    y unit chart=0.7cm,
+    vgrid, hgrid,
+    bar height=0.6,
+    bar top shift=0.2,
+    bar label font=\small,
+]{1}{6}
+  \gantttitle{2026}{6} \\
+  \gantttitle{Jan}{1}
+  \gantttitle{Feb}{1}
+  \gantttitle{Mar}{1}
+  \gantttitle{Apr}{1}
+  \gantttitle{May}{1}
+  \gantttitle{Jun}{1} \\
+
+  \ganttbar{Literature review}{1}{2} \\
+  \ganttbar{Preprocessing}{2}{3} \\
+  \ganttbar{Model implemenation}{2}{5}\\
+  \ganttbar{Evaluating experiments}{3}{5}\\
+  \ganttbar{Report writing}{2}{6}\\
+\end{ganttchart}
+
+\section{Conclusion}
+% The thesis will conduct a controlled comparison of GAN and LLM-based methods for privacy-preserving synthetic medical data under a single, transparent evaluation protocol. Using mixed-type clinical benchmarks (Diabetes 130-US Hospitals) and representative models (Health-GAN as a non-DP baseline, PATE-GAN with formal $(\varepsilon,\delta)$-DP, and a Pythia-family LLM), the study will quantify both utility and privacy trade-offs with aligned training budgets and standardized audits. By pairing task-based utility (e.g. TSTR performance, feature and joint-distribution similarity) with privacy risk assessments, the work aims to identify where each paradigm is preferable and why.
+
+% Beyond reporting comparative results, the thesis contributes a reusable evaluation workflow and practical guidance for healthcare data stewards: when a non-DP GAN suffices, when formal DP via PATE-GAN is warranted, and where LLM-based synthesis is competitive given privacy budgets and governance constraints. While the scope is limited to tabular EHR-like data and a focused model set, the protocol lays groundwork for extending to longitudinal settings and stronger DP mechanisms for LLMs. Ultimately, the findings are intended to inform method selection and support emerging standards for safe, high-utility data sharing in healthcare.
+
+The proposed thesis will deliver a systematic and rigorously controlled comparison of GAN-based and LLM-based methods for privacy-preserving synthetic medical data generation. By evaluating HealthGAN, PATE-GAN, and a Pythia-family LLM under a unified experimental framework and using the Diabetes 130-US Hospitals dataset, the study establishes a transparent basis for analysing privacy–utility trade-offs across fundamentally different generative paradigms. The integration of aligned training conditions, consistent preprocessing, and standardized evaluation metrics ensures that differences in performance reflect model characteristics rather than experimental variability.
+
+Through a combined assessment of distributional fidelity, predictive utility, and instance-level privacy risks, the work aims to determine not only which models perform best, but under which conditions each class of models is most appropriate. This enables a nuanced interpretation of when non-DP synthesis is sufficient, when formal differential privacy is necessary, and how LLM-based generators behave in terms of memorization and disclosure risk in clinical settings.
+
+Beyond generating comparative insights, the thesis contributes a reusable, methodologically grounded evaluation protocol that can support future research and practical governance. Although the study focuses on tabular EHR-like data and a defined set of generative models, the framework provides a foundation for subsequent extensions to longitudinal records, multimodal data, and emerging DP-enhanced LLMs. Ultimately, the expected findings are intended to inform model selection, guide responsible data release strategies, and strengthen the methodological basis for safe and high-utility synthetic data use in healthcare research.
+\newpage
+% --- Print the bibliography for biblatex ---
+\printbibliography[sorting=none]
+\end{document}

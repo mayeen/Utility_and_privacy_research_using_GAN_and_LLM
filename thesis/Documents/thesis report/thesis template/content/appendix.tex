@@ -1,0 +1,112 @@
+% !TEX root = ../thesis.tex
+
+% Appendices: invoked after \appendix in thesis.tex.
+
+\chapter{Hyperparameter Tables}
+\label{app:hyperparameters}
+
+% TODO: One \section per generator with a tabular layout listing every
+% hyperparameter actually used in the runs that produced the synthetic
+% files in thesis/data/<generator>/. Pull values from the source files:
+%   - HealthGAN:  ../../healthgan/generators/wgan_for_mac.py (params dict)
+%   - PATE-GAN:   ../../Pategan/generate_pategan_synthetic.py (CLI defaults)
+%   - Pythia:     ../../pythia/generate_pythia_synthetic.py (CLI defaults)
+%   - Pythia-DP:  ../../pythia/generate_pythia_synthetic_dp.py (CLI defaults
+%                 + DPConfig)
+
+\section{HealthGAN (WGAN-GP)}
+% TODO: table — base_nodes, critic_iters, lambda, num_epochs, batch_size,
+% Adam (lr, beta1, beta2), random_state.
+
+\section{PATE-GAN}
+% TODO: table — k (teachers), n_s, batch_size, lambda (Laplace), epsilon,
+% delta, RMSprop lr, weight clip range.
+
+\section{Pythia (LoRA)}
+% TODO: table — base model, LoRA r/alpha/dropout, epochs, batch_size, lr,
+% max_length, temperature, top_p, max_retries_per_row, generation_batch_size,
+% seed.
+
+\section{Pythia-DP (LoRA + Opacus)}
+% TODO: table — same as Pythia plus target_epsilon, target_delta,
+% max_grad_norm, per_device_batch_size, gradient_accumulation_steps,
+% effective_batch_size, achieved_epsilon (from run_metadata_dp.json).
+
+% --------------------------------------------------------------
+
+\chapter{Per-Column Distribution Plots}
+\label{app:distributions}
+
+% TODO: Overflow gallery from §6.2.1. Use \subsection per group:
+%  - Demographic columns (age, gender, race)
+%  - Encounter columns (time_in_hospital, num_*)
+%  - Diagnosis columns (diag_1, diag_2, diag_3, number_diagnoses)
+%  - Medication columns (23 binary)
+%  - A1C and target
+
+% --------------------------------------------------------------
+
+\chapter{Per-Attribute Privacy Risk}
+\label{app:privacy-detail}
+
+% TODO: Detailed per-attribute breakdown of attribute-inference advantage
+% (§6.2.3). The main text reports max advantage; here, list every attribute
+% × generator cell with the actual value.
+
+% --------------------------------------------------------------
+
+\chapter{Reproducibility}
+\label{app:reproducibility}
+
+\section{Repository Layout}
+% TODO: tree-style listing of the project showing
+%   thesis/, healthgan/, Pategan/, pythia/, and the shared data/ directory.
+
+\section{Run Commands}
+% TODO: shell snippets for each pipeline:
+
+% \begin{verbatim}
+% # 1. Preprocess
+% python -m thesis.feature_engineering ...
+%
+% # 2. Generate HealthGAN synthetic data
+% python healthgan/generators/sdv_converter.py ... encode
+% python healthgan/generators/wgan_for_mac.py 5 64
+% python healthgan/generators/sdv_converter.py ... decode samples_99999_5_64.npy
+%
+% # 3. Generate PATE-GAN synthetic data
+% python Pategan/generate_pategan_synthetic.py --epsilon 5.0 --splits train test
+%
+% # 4. Generate Pythia synthetic data (non-DP)
+% python pythia/generate_pythia_synthetic.py --splits train test
+%
+% # 5. Generate Pythia synthetic data (DP)
+% python pythia/generate_pythia_synthetic_dp.py --dp \
+%        --target-epsilon 5.0 --target-delta 1e-5
+%
+% # 6. Evaluate
+% jupyter execute thesis/data_analysis.ipynb
+% \end{verbatim}
+
+\section{Run Metadata Excerpts}
+% TODO: include excerpts from
+%   thesis/data/pythia/run_metadata.json
+%   thesis/data/pythia/run_metadata_dp.json
+% showing achieved_epsilon, training duration, hardware.
+
+\section{Computational Environment}
+% TODO: Python version, key library versions (torch, opacus, transformers,
+% peft, tensorflow, scikit-learn, lifelines), GPU model and memory, OS.
+% Wall-clock time per generator.
+
+% --------------------------------------------------------------
+
+\chapter{HealthGAN Variant Comparison}
+\label{app:hg-variants}
+
+% TODO: Optional appendix carrying the additional plots from notebook cells
+% 53–60 that are summarised in §4.2.5.
+%  - Mean KS table for samples_0, samples_3, samples_6.
+%  - Mean |corr diff| table.
+%  - Per-variant PCA overlay.
+%  - Per-variant marginal-distribution figures.

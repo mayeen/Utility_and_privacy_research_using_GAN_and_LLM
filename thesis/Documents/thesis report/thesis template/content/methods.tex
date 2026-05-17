@@ -1,0 +1,305 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Synthetic Data Generation Methods}
+\label{ch:methods}
+
+% Expansion of proposal §5.2 (Proposed Models). One section per generator
+% with architecture, hyperparameters, training protocol, and (where
+% applicable) the differential-privacy mechanism.
+
+\section{Selection Rationale}
+\label{sec:methods:rationale}
+
+% Migrated from proposal §5.2 (selection rationale).
+The four generators evaluated in this thesis are chosen to provide a
+$2 \times 2$ coverage of the design space: $\{\text{GAN},\text{LLM}\}$ on the
+modelling axis, and $\{\text{non-DP},\text{DP}\}$ on the privacy axis. Within
+each axis the choice is grounded in prior work:
+
+\begin{itemize}\itemsep0.25em
+  \item \textbf{HealthGAN (non-DP GAN baseline).} HealthGAN was designed
+        specifically for mixed-type EHR tables, comes with a complete
+        secure training-to-export workflow, and introduces nearest-neighbour
+        Adversarial Accuracy (AA) to co-measure resemblance and privacy
+        (TrainAA/TestAA and privacy loss), yielding competitive TSTR utility
+        while keeping a small footprint~\cite{healthgan,yale2020synthesizing,dash2020medical}.
+  \item \textbf{PATE-GAN (DP GAN).} PATE-GAN enforces formal
+        $(\varepsilon,\delta)$-DP by decoupling privacy from adversarial
+        training: multiple teacher discriminators are trained on disjoint
+        partitions, their votes are noisily aggregated, and a student
+        discriminator learns from these noisy labels so the generator inherits
+        DP by post-processing~\cite{pategan,Papernot2017PATE}.
+  \item \textbf{Pythia LLM (non-DP LLM baseline).} The benchmark study by
+        \textcite{Miletic2024} evaluates the Pythia family of decoder-only
+        LLMs for tabular health data and shows they can match or exceed
+        established tabular GANs. The authors introduce \emph{Tabula}, a
+        framework that treats each tabular row as a text sequence. Their
+        evaluation focuses on utility rather than privacy.
+  \item \textbf{Pythia-DP (DP LLM, scope extension).} Beyond the originally
+        proposed three models, this thesis adds a differentially private
+        variant of Pythia trained with DP-SGD via
+        Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}, enabling a
+        within-family DP-cost comparison parallel to the
+        HealthGAN $\to$ PATE-GAN comparison.
+\end{itemize}
+
+\section{HealthGAN: WGAN-GP Baseline}
+\label{sec:methods:healthgan}
+
+% Code references:
+%   - SDV encoding/decoding: ../../healthgan/generators/sdv_converter.py
+%   - WGAN-GP training:      ../../healthgan/generators/wgan_for_mac.py
+
+\subsection{SDV Encoding and Decoding}
+\label{sec:methods:healthgan:sdv}
+
+% TODO: Describe \texttt{encode}, \texttt{decode}, and the snap-to-nearest
+% post-processing in sdv_converter.py.
+%  - Categorical columns mapped via truncated normals (categorical())
+%  - Ordinal columns mapped via additive smoothing + truncated normals
+%  - Binary columns mapped via truncated beta (when --beta flag set)
+%  - Numeric columns min-max normalised to [0, 1]
+%  - Decoding inverts each, with a snap-to-nearest pass for low-cardinality
+%    numeric columns (e.g. age) that should not be reconstructed continuously.
+% Include the FORCE_ORDINAL set ({"age"}) and the rationale.
+
+\subsection{WGAN-GP Architecture}
+\label{sec:methods:healthgan:arch}
+
+% Architecture (from wgan_for_mac.py):
+%  Generator: input ~ N(0, I)^{100} → Dense(2F, ReLU) → Dense(1.5F, ReLU) → Dense(F, sigmoid)
+%  Critic:    input(F) → Dense(64, LeakyReLU) → Dense(128, LeakyReLU) → Dense(256, LeakyReLU) → Dense(1)
+%  F = 45 features after preprocessing.
+
+\subsection{Training Loss: Wasserstein + Gradient Penalty}
+\label{sec:methods:healthgan:loss}
+
+% TODO: WGAN loss + gradient penalty term \cite{Gulrajani2017WGANGP},
+% lambda = 10. Brief equation block.
+
+\subsection{Hyperparameters and Training Configuration}
+\label{sec:methods:healthgan:hp}
+
+% From wgan_for_mac.py params:
+%  - num_epochs = 100,000
+%  - critic_iters = 5
+%  - base_nodes = 64
+%  - samples_per_file = 57,214
+%  - Adam(lr=1e-4, beta1=0.5, beta2=0.9) for both G and D
+
+\subsection{Variant Selection: samples\_0 vs.\ samples\_3 vs.\ samples\_6}
+\label{sec:methods:healthgan:variants}
+
+% This subsection reports notebook cells 53–60: comparing the three decoded
+% samples by KS + correlation difference, justifying which variant feeds the
+% cross-method comparison in Chapter 6.
+% TODO:
+%  - Table: per-variant mean KS, mean |corr diff|, similarity rank.
+%  - Figure: PCA overlap (variant deep-dive cell 58).
+%  - State which variant was chosen and why.
+
+\subsection{Rationale for Excluding a DP-Augmented HealthGAN Variant}
+\label{sec:methods:healthgan:nodp}
+
+% Migrated from thesis_conversation.md scope-decision note.
+A natural question is whether differential privacy could be applied
+directly to the HealthGAN training loop --- for instance by replacing
+the Adam optimiser of the critic with a DP-SGD variant
+\cite{Abadi2016DPSGD} via \texttt{tensorflow\_privacy}. This thesis does
+not pursue that direction; the DP-GAN comparison is instead realised
+through the architecturally distinct PATE-GAN model
+(\S\ref{sec:methods:pategan}). Four technical considerations motivate
+this choice.
+
+First, the gradient-penalty term that distinguishes WGAN-GP from
+weight-clipping WGAN \cite{Arjovsky2017WGAN, Gulrajani2017WGANGP} is
+itself a function of real data, as it is computed over interpolated
+samples drawn between real and generated points. Its gradient cannot be
+cleanly clipped on a per-example basis as DP-SGD requires, so
+accommodating DP-SGD would necessitate dropping the gradient penalty
+and reverting to weight-clipping Wasserstein training, sacrificing the
+architectural property that motivated the WGAN-GP variant in the first
+place. Second, the training protocol applies five critic updates per
+generator update; because the critic is the sole component that
+directly processes real records, this $5{:}1$ ratio implies the privacy
+budget would be consumed five times faster than in a configuration
+performing one private gradient computation per logical batch, as is
+the case in the Pythia-DP setting (\S\ref{sec:methods:pythia-dp}).
+Third, the injection of Gaussian noise into critic gradients --- the
+core operation of DP-SGD --- is well documented to exacerbate the mode
+collapse and non-convergence that already characterise GAN training on
+tabular health data, with empirical results in the DP-GAN literature
+\cite{Xie2018DPGAN, pategan} demonstrating sharp utility cliffs at
+budgets of $\varepsilon \leq 10$. Fourth, the HealthGAN implementation
+relies on TensorFlow~1 compatibility mode with eager execution
+disabled, and the per-example gradient computation required by
+\texttt{tensorflow\_privacy} is substantially slower under graph
+execution, rendering the $100{,}000$-epoch training schedule
+computationally prohibitive within the resource envelope of this
+project.
+
+Beyond these technical obstacles, the experimental design already
+provides a controlled DP-GAN baseline through PATE-GAN, which attains
+formal $(\varepsilon,\delta)$-DP through a fundamentally different
+mechanism --- noisy aggregation of teacher discriminators
+\cite{pategan, Papernot2017PATE} --- rather than by injecting noise
+into the critic's gradients. The HealthGAN $\to$ PATE-GAN pairing
+therefore isolates the cost of formal DP on the GAN side without
+confounding it with an unstable adaptation of an architecture that was
+not designed for per-example gradient clipping. HealthGAN is retained
+as the non-private GAN utility baseline.
+
+\section{PATE-GAN: Differentially Private GAN}
+\label{sec:methods:pategan}
+
+% Code references:
+%   - Pategan/pate_gan.py
+%   - Pategan/generate_pategan_synthetic.py
+
+\subsection{Teacher--Student Framework}
+\label{sec:methods:pategan:teacher}
+
+% TODO: Describe the k=10 teacher discriminators trained on disjoint shards;
+% the student discriminator trained on noisily aggregated teacher labels;
+% and the generator updated against the student.
+
+\subsection{PATE Voting with the Laplace Mechanism}
+\label{sec:methods:pategan:laplace}
+
+% TODO: Equation for the noisy aggregation
+%   y_hat = argmax_c (\sum_t 1[T_t(x) = c] + Lap(0, \lambda))
+% with \lambda = 1.0 in the configuration used.
+
+\subsection{Privacy Accounting via the Moments Accountant}
+\label{sec:methods:pategan:accountant}
+
+% TODO: Brief summary of the moments accountant
+% \cite{Abadi2016DPSGD,Mironov2017RDP} as adapted by PATE-GAN \cite{pategan}.
+
+\subsection{Architecture}
+\label{sec:methods:pategan:arch}
+
+% Generator: input(F) → Dense(4F, tanh) → Dense(4F, tanh) → Dense(F, sigmoid)
+% Student:   input(F) → Dense(F, ReLU) → Dense(1)
+
+\subsection{Privacy Budget and Hyperparameters}
+\label{sec:methods:pategan:hp}
+
+% k = 10 teachers, n_s = 1, batch_size = 64, lambda = 1.0
+% Target privacy: epsilon = 5.0, delta = 1e-5.
+% RMSprop(lr=1e-4) for both student and generator.
+% Student weights clipped to [-0.01, 0.01].
+
+\section{Pythia: Non-DP LLM-based Generation}
+\label{sec:methods:pythia}
+
+% Code references:
+%   - pythia/pythia_tabular.py
+%   - pythia/generate_pythia_synthetic.py
+
+\subsection{Base Model}
+\label{sec:methods:pythia:base}
+
+% EleutherAI/pythia-70m \cite{Biderman2023Pythia}. Justify the small size
+% choice (training cost / commodity GPU feasibility), referencing
+% \cite{Miletic2024} who report Pythia-70m as a viable starting point.
+
+\subsection{Tabular-to-Text Serialisation}
+\label{sec:methods:pythia:serialisation}
+
+% Format: "Class_{label} | col_name=value | col_name2=value2 | ..."
+% Each row is converted to a single text sequence with the class token first
+% so that conditional generation can prefix the class.
+
+\subsection{Schema Derivation}
+\label{sec:methods:pythia:schema}
+
+% Per-column schema captures dtype, numeric bounds, discrete support, and
+% category set (if applicable). Used downstream for parsing/coercion.
+
+\subsection{LoRA Fine-tuning}
+\label{sec:methods:pythia:lora}
+
+% LoRA \cite{Hu2022LoRA} with r=8, alpha=16, dropout=0.05. Only LoRA
+% parameters are trainable; the base Pythia model is frozen. Trainer:
+% HuggingFace Trainer with DataCollatorForLanguageModeling (CLM objective).
+%
+% Hyperparameters (defaults):
+%   epochs = 10
+%   batch_size = 8
+%   lr = 2e-5
+%   max_length = 512
+
+\subsection{Class-Conditioned Generation}
+\label{sec:methods:pythia:generation}
+
+% Sampling: temperature = 0.8, top_p = 0.95, max_new_tokens = 512.
+% Prompt: "Class_{0|1} | col_name=" — let the model autoregressively complete
+% the row.
+
+\subsection{Schema-Aware Parsing, Coercion, and Retry}
+\label{sec:methods:pythia:parsing}
+
+% TODO:
+%  - Regex extraction of key=value pairs.
+%  - Coercion: range clip for numeric, discrete snapping, category fallback.
+%  - Validation: ≥10 % of non-target columns must be present; otherwise retry.
+%  - Fallback: resample from accepted rows; last resort schema-valid random rows.
+%  - max_retries_per_row = 8.
+
+\section{Pythia-DP: Differentially Private LLM}
+\label{sec:methods:pythia-dp}
+
+% Code references:
+%   - pythia/pythia_tabular_dp.py
+%   - pythia/generate_pythia_synthetic_dp.py
+
+\subsection{DP-SGD via Opacus}
+\label{sec:methods:pythia-dp:opacus}
+
+% PrivacyEngine() from Opacus \cite{Yousefpour2021Opacus} wraps the model,
+% optimizer, and dataloader. ModuleValidator.fix() is applied to make the
+% model Opacus-compatible.
+
+\subsection{Per-Example Gradient Clipping}
+\label{sec:methods:pythia-dp:clipping}
+
+% max_grad_norm = 1.0 — Opacus computes per-sample gradients (rather than
+% per-batch) and clips each sample's gradient norm before averaging and
+% adding noise.
+
+\subsection{Effective Batch Size}
+\label{sec:methods:pythia-dp:batch}
+
+% per_device_batch_size = 32, gradient_accumulation_steps = 16 →
+% effective_batch_size = 512. The privacy accountant tracks the effective
+% batch size, not the per-device one.
+
+\subsection{Privacy Budget and Achieved Epsilon}
+\label{sec:methods:pythia-dp:epsilon}
+
+% target_epsilon = 5.0, target_delta = 1e-5. Opacus computes the noise
+% multiplier needed to reach target epsilon over the planned number of
+% training steps. Achieved epsilon is reported in run_metadata_dp.json after
+% training and should be cited verbatim in Chapter 6.
+
+\subsection{Differences from the Non-DP Pipeline}
+\label{sec:methods:pythia-dp:diff}
+
+% TODO: Table or bulleted comparison highlighting:
+%  - Trainer (HF) → manual training loop with PrivacyEngine
+%  - Per-example gradients (memory cost)
+%  - Effective batch size 512 vs. 8 in non-DP run
+%  - Loss-curve dynamics typically shifted by noise injection
+
+\section{Implementation Summary}
+\label{sec:methods:summary}
+
+% TODO: One synthesis table comparing all four generators along:
+%  - Architecture
+%  - Formal DP guarantee (yes/no, mechanism)
+%  - Library stack (TensorFlow 1.x / PyTorch + Opacus / HF Transformers + LoRA)
+%  - Training time on the available hardware
+%  - Output file path under thesis/data/<generator>/
+
+\cleardoublepage

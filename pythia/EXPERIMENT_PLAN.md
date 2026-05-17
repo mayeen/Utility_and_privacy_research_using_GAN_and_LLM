@@ -716,31 +716,91 @@ Then run the test split separately after confirming the train output is valid.
 
 ---
 
-## Phase 8 - Final Paper Run (Fixed Parameters)
+## Phase 8 - Pythia-1B Model-Size Extension
 
-These are the fixed parameters from the paper. Run these after the sweep phases
-are complete and you are ready to produce the final thesis outputs.
+Treat `EleutherAI/pythia-1b` as the second model-size extension after 410M.
+The goal is to test whether larger pretrained capacity improves DP utility and
+row validity. Keep the formal privacy settings and effective batch size matched
+to 410M whenever possible.
 
-Parameters:
+Use a separate output directory:
 
 ```text
-lr = 4e-4
-DP physical batch size = 32
-DP gradient accumulation steps = 16
-effective batch size = 512
-epochs = 5  (best epoch auto-restored)
-epsilon = 5.0
-delta = 1e-5
-max_grad_norm = 1.0
+thesis/data/pythia_1b
 ```
 
-### Final non-DP generation
+### 1B DP memory strategy
+
+Start with effective batch size 512 and a smaller physical batch than 410M:
+
+| Physical batch | Grad accumulation | Effective batch |
+|---|---:|---:|
+| `8` | `64` | `512` |
+| `4` | `128` | `512` |
+| `2` | `256` | `512` |
+
+Try `4 x 128` first. It is slower than 410M, but more likely to fit.
+
+### 1B DP train-only test
+
+Start lower than the 410M `4e-4` setting:
+
+```bash
+python -m pythia.generate_pythia_synthetic_dp \
+  --model-name EleutherAI/pythia-1b \
+  --output-dir thesis/data/pythia_1b \
+  --dp \
+  --train-only \
+  --epochs 3 \
+  --lr 1e-4 \
+  --max-length 512 \
+  --dp-per-device-batch-size 4 \
+  --dp-grad-accum-steps 128 \
+  --target-epsilon 5.0 \
+  --target-delta 1e-5 \
+  --max-grad-norm 1.0 \
+  --splits train
+```
+
+Then test:
+
+```text
+--lr 2e-4
+--target-epsilon 8.0
+--target-epsilon 10.0
+```
+
+Use `4e-4` only if `1e-4` and `2e-4` clearly underfit.
+
+### 1B non-DP matched train-only test
 
 ```bash
 python -m pythia.generate_pythia_synthetic \
-  --epochs 5 \
+  --model-name EleutherAI/pythia-1b \
+  --output-dir thesis/data/pythia_1b \
+  --train-only \
+  --epochs 3 \
   --batch-size 512 \
-  --lr 4e-4 \
+  --lr 1e-4 \
+  --max-length 512 \
+  --splits train
+```
+
+If this OOMs, label the 1B non-DP result as not perfectly batch-matched unless
+non-DP gradient accumulation is added.
+
+### 1B full generation
+
+After choosing `<LR_1B>`, `<N_1B>`, `<PHYSICAL_BS_1B>`, and `<ACCUM_STEPS_1B>`,
+run:
+
+```bash
+python -m pythia.generate_pythia_synthetic \
+  --model-name EleutherAI/pythia-1b \
+  --output-dir thesis/data/pythia_1b \
+  --epochs <N_1B> \
+  --batch-size 512 \
+  --lr <LR_1B> \
   --max-length 512 \
   --temperature 0.8 \
   --top-p 0.95 \
@@ -748,16 +808,16 @@ python -m pythia.generate_pythia_synthetic \
   --splits train test
 ```
 
-### Final DP generation
-
 ```bash
 python -m pythia.generate_pythia_synthetic_dp \
+  --model-name EleutherAI/pythia-1b \
+  --output-dir thesis/data/pythia_1b \
   --dp \
-  --epochs 5 \
-  --lr 4e-4 \
+  --epochs <N_1B> \
+  --lr <LR_1B> \
   --max-length 512 \
-  --dp-per-device-batch-size 32 \
-  --dp-grad-accum-steps 16 \
+  --dp-per-device-batch-size <PHYSICAL_BS_1B> \
+  --dp-grad-accum-steps <ACCUM_STEPS_1B> \
   --target-epsilon 5.0 \
   --target-delta 1e-5 \
   --max-grad-norm 1.0 \
@@ -767,15 +827,69 @@ python -m pythia.generate_pythia_synthetic_dp \
   --splits train test
 ```
 
-Expected outputs:
+Expected 1B outputs:
 
 ```text
-thesis/data/pythia/diabetic_data_pythia_train_synthetic.csv
-thesis/data/pythia/diabetic_data_pythia_test_synthetic.csv
-thesis/data/pythia/diabetic_data_pythia_train_dp_synthetic.csv
-thesis/data/pythia/diabetic_data_pythia_test_dp_synthetic.csv
-thesis/data/pythia/run_metadata.json
-thesis/data/pythia/run_metadata_dp.json
+thesis/data/pythia_1b/diabetic_data_pythia_train_synthetic.csv
+thesis/data/pythia_1b/diabetic_data_pythia_test_synthetic.csv
+thesis/data/pythia_1b/diabetic_data_pythia_train_dp_synthetic.csv
+thesis/data/pythia_1b/diabetic_data_pythia_test_dp_synthetic.csv
+thesis/data/pythia_1b/run_metadata.json
+thesis/data/pythia_1b/run_metadata_dp.json
+```
+
+---
+
+## Phase 9 - Final Model-Size Runs
+
+Run final outputs for both 410M and 1B only after train-only loss curves and row
+validity checks are acceptable. Best-loss epoch weights are restored before
+generation by default.
+
+### Final 410M DP generation
+
+Use this if 410M is stable at `lr=4e-4`:
+
+```bash
+python -m pythia.generate_pythia_synthetic_dp \
+  --model-name EleutherAI/pythia-410m \
+  --output-dir thesis/data/pythia_410m \
+  --dp \
+  --epochs 5 \
+  --lr 4e-4 \
+  --max-length 512 \
+  --dp-per-device-batch-size 16 \
+  --dp-grad-accum-steps 32 \
+  --target-epsilon 5.0 \
+  --target-delta 1e-5 \
+  --max-grad-norm 1.0 \
+  --temperature 0.8 \
+  --top-p 0.95 \
+  --max-retries-per-row 8 \
+  --splits train test
+```
+
+### Final 1B DP generation
+
+Use the selected 1B values from Phase 8. A conservative starting point is:
+
+```bash
+python -m pythia.generate_pythia_synthetic_dp \
+  --model-name EleutherAI/pythia-1b \
+  --output-dir thesis/data/pythia_1b \
+  --dp \
+  --epochs 3 \
+  --lr 1e-4 \
+  --max-length 512 \
+  --dp-per-device-batch-size 4 \
+  --dp-grad-accum-steps 128 \
+  --target-epsilon 5.0 \
+  --target-delta 1e-5 \
+  --max-grad-norm 1.0 \
+  --temperature 0.8 \
+  --top-p 0.95 \
+  --max-retries-per-row 8 \
+  --splits train test
 ```
 
 ---

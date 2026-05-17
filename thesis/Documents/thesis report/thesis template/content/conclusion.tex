@@ -1,0 +1,134 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Conclusion and Future Work}
+\label{ch:conclusion}
+
+% Expansion of proposal §7 (Conclusion). Three top-level sections:
+% Contributions, Direct RQ Answers, Future Work.
+
+\section{Summary of Contributions}
+\label{sec:conclusion:contributions}
+
+% Migrated and lightly edited from proposal §7 with thesis-specific scope
+% (four generators rather than three).
+This thesis delivers a systematic and rigorously controlled comparison of
+GAN-based and LLM-based methods for privacy-preserving synthetic medical data
+generation. By evaluating HealthGAN, PATE-GAN, Pythia, and Pythia-DP under a
+unified experimental framework on the \emph{Diabetes 130-US Hospitals}
+dataset~\cite{diabetes_db}, the study establishes a transparent basis for
+analysing the privacy--utility trade-off across fundamentally different
+generative paradigms. The integration of aligned training conditions,
+consistent preprocessing, and a 17-metric evaluation pipeline ensures that
+differences in performance reflect model characteristics rather than
+experimental variability.
+
+The four concrete contributions of this work are:
+
+\begin{enumerate}\itemsep0.25em
+  \item \textbf{Unified evaluation pipeline.} A reproducible two-pillar
+        framework --- \emph{utility} (split into statistical similarity to
+        the real data and predictive performance of downstream models) and
+        \emph{privacy} --- instantiated as 17 metrics applied identically to
+        every generator under comparison. The pipeline
+        is released as the
+        \href{run:../../thesis/data_analysis.ipynb}{\texttt{data\_analysis.ipynb}}
+        notebook with the supporting feature-engineering module
+        \href{run:../../thesis/feature_engineering.py}{\texttt{feature\_engineering.py}}.
+  \item \textbf{Head-to-head benchmark.} Direct comparison of four generators
+        spanning the GAN/LLM and DP/non-DP axes:
+        HealthGAN~\cite{healthgan},
+        PATE-GAN~\cite{pategan},
+        Pythia-LoRA~\cite{Biderman2023Pythia,Hu2022LoRA,Miletic2024}, and
+        Pythia-DP-LoRA (Opacus DP-SGD~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}).
+        The Pythia-DP variant constitutes a scope extension beyond the
+        originally submitted proposal, yielding the first within-family
+        DP-cost comparison for tabular LLM synthesis on this benchmark.
+  \item \textbf{Within-family DP cost characterisation.} Quantitative
+        evidence on the marginal cost of formal $(\varepsilon = 5.0,
+        \delta = 10^{-5})$-differential privacy, separately measured for the
+        GAN family (HealthGAN $\to$ PATE-GAN) and the LLM family (Pythia
+        $\to$ Pythia-DP).
+  \item \textbf{Practical guidance.} A decision-oriented summary identifying
+        when a non-DP GAN suffices, when formal DP via PATE-GAN is warranted,
+        and where LLM-based synthesis remains competitive given privacy
+        budgets and governance constraints.
+\end{enumerate}
+
+\section{Direct Answers to the Research Questions}
+\label{sec:conclusion:rq-answers}
+
+% TODO: Carry forward the "Answer to RQx" paragraphs from §6.1.4, §6.2.5,
+% §6.3.5 here, possibly with slight rephrasing for the close.
+
+\paragraph{RQ1 -- Evaluation Methods.}
+% TODO: 2--3 sentences. Reference the recommended minimal suite from
+% §\ref{sec:results:rq1:minimal-suite}.
+
+\paragraph{RQ2 -- Trade-offs Per Generator.}
+% TODO: 3--4 sentences. One short sentence per generator family
+% (GAN vs.\ LLM, DP vs.\ non-DP).
+
+\paragraph{RQ3 -- The Better Balance.}
+% TODO: 3--4 sentences. State the conditional recommendation from
+% §\ref{sec:results:rq3:answer} clearly.
+
+\section{Future Work}
+\label{sec:conclusion:future}
+
+% Enumerate concrete extensions that the thesis explicitly does not pursue
+% but flags as natural follow-ups. Pulled from proposal §7's reference to
+% "longitudinal records, multimodal data, and emerging DP-enhanced LLMs".
+
+\subsection{Larger Language Models}
+\label{sec:conclusion:future:llm}
+
+% TODO: Pythia-410M, Pythia-1.4B, or Llama-3-8B with parameter-efficient
+% fine-tuning. \textcite{Miletic2024} suggest gains scale with model size.
+
+\subsection{Cross-Dataset Generalisation}
+\label{sec:conclusion:future:cross-data}
+
+% TODO: MIMIC-III/IV \cite{mimic}, eICU. Test whether the rankings observed
+% on Diabetes 130-US Hospitals transfer to richer ICU records.
+
+\subsection{Privacy-Budget Ablation}
+\label{sec:conclusion:future:epsilon}
+
+% TODO: Run PATE-GAN and Pythia-DP at ε ∈ {1, 3, 5, 10} to trace the slope
+% of the utility–privacy trade-off explicitly, as suggested by
+% \cite{Nahid2024} for SafeSynthDP.
+
+\subsection{Stronger Privacy Adversaries}
+\label{sec:conclusion:future:adversaries}
+
+% TODO: Reconstruction attacks \cite{Carlini2021Extracting}, shadow-model MIA
+% \cite{Shokri2017MIA}, and white-box adversaries with model access.
+
+\subsection{Longitudinal and Multimodal Records}
+\label{sec:conclusion:future:longitudinal}
+
+% TODO: Time-series synthesis (cf. \cite{dash2020medical,bhanot2022investigating})
+% and multimodal records (combining tabular EHR with imaging or notes).
+
+\section{Closing Remarks}
+\label{sec:conclusion:closing}
+
+% Migrated and lightly adjusted from proposal §7 closing paragraphs.
+Through a combined assessment of utility --- spanning both distributional
+similarity to the real data and predictive performance of downstream
+models --- alongside instance-level privacy risks, this thesis aims to
+determine not only which models perform best, but under which conditions
+each class of models is most appropriate. This enables a nuanced interpretation of when non-DP synthesis is
+sufficient, when formal differential privacy is necessary, and how LLM-based
+generators behave in terms of memorisation and disclosure risk in clinical
+settings. Beyond generating comparative insights, the thesis contributes a
+reusable, methodologically grounded evaluation protocol that can support
+future research and practical governance. Although the study focuses on
+tabular EHR-like data and a defined set of generative models, the framework
+provides a foundation for subsequent extensions to longitudinal records,
+multimodal data, and emerging DP-enhanced LLMs. Ultimately, the findings are
+intended to inform model selection, guide responsible data-release strategies,
+and strengthen the methodological basis for safe and high-utility synthetic
+data use in healthcare research.
+
+\cleardoublepage

@@ -1,0 +1,233 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Dataset and Preprocessing}
+\label{ch:dataset}
+
+\section{The Diabetes 130-US Hospitals Dataset}
+\label{sec:data:dataset}
+
+The benchmark used throughout this thesis is the \emph{UCI Diabetes 130-US
+Hospitals} dataset~\cite{diabetes_db,strack2014impact}. It contains 101{,}766
+inpatient encounters from diabetic patients treated across 130 U.S.\ hospitals
+between 1999 and 2008. Each record describes a hospital admission of 1--14
+days and includes 47 mixed-type features covering demographics (age, gender,
+race), admission characteristics, laboratory test results, diagnoses,
+medication use, and prior inpatient, outpatient, and emergency visits. The
+data consists primarily of categorical and integer variables and represents
+detailed clinical, administrative, and treatment-related information collected
+during the patient's hospital stay. Missing values are present, and no
+predefined data splits are provided, enabling flexible
+train--validation--test partitioning. The binary target used throughout this
+work is \texttt{readmitted}: hospital readmissions of any kind are encoded as
+the positive class and ``no readmission'' as the negative class.
+
+\paragraph{Scope.} The proposal contemplated MIMIC-III as a secondary
+benchmark; the final thesis is restricted to the Diabetes 130-US Hospitals
+dataset to keep training budgets and evaluation runs manageable across four
+generators and seventeen metrics. Cross-dataset generalisation is discussed as
+future work in Section~\ref{sec:conclusion:future}.
+
+\section{Exploratory Data Analysis}
+\label{sec:data:eda}
+
+\subsection{Schema and Data Types}
+\label{sec:data:eda:schema}
+
+The raw CSV contains 50 columns: 13 integer columns and 37 object columns when
+loaded directly with \texttt{pandas}. The integer fields include encounter and
+patient identifiers, utilisation counts, procedure counts, medication counts,
+diagnosis counts, and length of stay. Most remaining fields are categorical,
+including demographic variables, admission and discharge codes, ICD-9 diagnosis
+codes, laboratory-result indicators, medication-change indicators, and the
+readmission target. The preprocessing loader treats \texttt{?} as a missing
+value and then casts known count and identifier fields to numeric type while
+leaving the remaining columns as categorical variables.
+
+\subsection{Missingness Patterns}
+\label{sec:data:eda:missingness}
+
+Missingness is concentrated in a small number of clinical and administrative
+fields. The raw columns with the most missing data are weight (96.86\% missing),
+max-glucose-serum (94.75\%), \texttt{A1Cresult} (83.28\%),
+medical specialty (49.08\%), and payer code (39.56\%).
+Lower missingness is observed in \texttt{race} (2.23\%), \texttt{diag\_3}
+(1.40\%), \texttt{diag\_2} (0.35\%), and \texttt{diag\_1} (0.02\%).
+
+The pipeline removes \texttt{weight}, \texttt{payer\_code}, and
+\texttt{medical\_specialty} because their missingness is high and their values
+are not needed for the downstream synthetic-data comparison. \texttt{race} is
+also removed after resolving multiple encounters, avoiding use of a sensitive
+demographic field. \texttt{A1Cresult} and diagnosis fields are retained because
+their missingness can be represented or imputed after clinically motivated
+encoding.
+
+\subsection{Near-Zero-Variance Columns}
+\label{sec:data:eda:nzv}
+
+Several medication variables are highly imbalanced in the raw dataset because
+almost all encounters record \texttt{No}. Fifteen medication fields have fewer
+than 1\% non-mode values, including rare drugs such as \texttt{examide},
+\texttt{citoglipton}, \texttt{troglitazone}, and several combination
+medications. The pipeline keeps these medication fields, but converts each from
+the original \texttt{No}, \texttt{Steady}, \texttt{Up}, and \texttt{Down}
+representation into a binary exposure indicator. This preserves whether a drug
+was used while reducing sparse categorical levels that would be difficult for
+tabular generators to model reliably.
+
+\subsection{Target Distribution and Class Imbalance}
+\label{sec:data:eda:imbalance}
+
+The raw target has three categories: \texttt{NO}, \texttt{>30}, and
+\texttt{<30}. In the full raw dataset, \texttt{NO} accounts for 54{,}864
+encounters (53.91\%), \texttt{>30} for 35{,}545 encounters (34.93\%), and
+\texttt{<30} for 11{,}357 encounters (11.16\%). For this thesis, the two
+readmission categories are collapsed into a single positive class because the
+main modelling task is whether any readmission occurred.
+
+After multiple-encounter resolution and binary target encoding, the processed
+dataset contains 47{,}188 non-readmitted records (65.98\%) and 24{,}330
+readmitted records (34.02\%). The stratified training split preserves this
+imbalance with 37{,}750 negatives and 19{,}464 positives. This class
+distribution is used as a baseline property that synthetic generators should
+reproduce.
+
+\section{Feature Engineering Pipeline}
+\label{sec:data:fe}
+
+The preprocessing and feature-engineering code is implemented in the
+feature-engineering module and executed by the data-preprocessing script. The
+script loads the raw data, applies the engineering pipeline, writes the full
+preprocessed table, and then creates stratified train and test CSV files. The
+transformation order is fixed so that row-level deduplication and clinically
+meaningful grouping occur before imputation and label encoding.
+
+\subsection{Multiple-Encounter Resolution}
+\label{sec:data:fe:multipleencounters}
+
+The raw dataset contains repeated encounters for some patients. Although there
+are 101{,}766 encounter rows, there are 71{,}518 unique values of
+\texttt{patient\_nbr}; 16{,}773 patients appear more than once, and the maximum
+number of encounters for a single patient is 40. To avoid patient-level leakage
+between train and test splits, \texttt{process\_multiple\_encounters} keeps one
+row per patient. It sorts by \texttt{patient\_nbr} and
+\texttt{time\_in\_hospital}, retains the encounter with the longest hospital
+stay for each patient, and drops duplicate patient rows.
+
+After this step, \texttt{patient\_nbr} is removed because it is a direct patient
+identifier. The \texttt{race} column is also removed, reducing the use of
+sensitive demographic information in the modelling pipeline.
+
+\subsection{Age Bucket Consolidation}
+\label{sec:data:fe:age}
+
+\texttt{consolidate\_age} converts the original decade-based age buckets into
+ordered numeric values. The final experiments use a 1--10 ordinal encoding:
+\texttt{[0-10)} maps to 1, \texttt{[10-20)} maps to 2, and so on through
+\texttt{[90-100)}, which maps to 10. This preserves the natural ordering of
+age while avoiding a high-cardinality string representation.
+
+An earlier preprocessing variant collapsed the ten decades into a three-level
+grouping (young / middle-aged / elderly) to reduce categorical sparsity. A
+direct ablation against the ten-bin encoding showed that the coarser grouping
+substantially degraded downstream synthetic-data utility for the LLM-based
+generator, while leaving the GAN baselines largely unaffected. The native
+ten-bin encoding is therefore retained for all experiments in this thesis.
+Quantitative results of the ablation are reported in
+Section~\ref{sec:results:rq2:utility:age-binning}.
+
+\subsection{Dropping High-Missingness Columns}
+\label{sec:data:fe:drop}
+
+This step removes three sparse fields: weight, payer code, and medical
+specialty. Weight is almost entirely missing, while payer code and medical
+specialty have substantial missingness and introduce many administrative
+categories. Dropping these fields reduces dimensionality and prevents the
+synthetic-data generators from spending capacity on sparse or poorly observed
+variables.
+
+\subsection{ICD-9 Diagnosis Grouping}
+\label{sec:data:fe:icd9}
+
+\texttt{change\_diag\_columns} maps \texttt{diag\_1}, \texttt{diag\_2}, and
+\texttt{diag\_3} from raw ICD-9 strings into broader diagnosis groups using
+\texttt{\_icd9\_to\_group}. Codes beginning with 250 are mapped to
+\texttt{Diabetes}. Numeric ICD-9 ranges are grouped as circulatory,
+respiratory, digestive, genitourinary, neoplasm, musculoskeletal, and injury
+categories. External
+cause and supplementary codes beginning with \texttt{E} or \texttt{V}, missing
+values, and unrecognised codes are mapped to \texttt{Other}.
+
+This step reduces thousands of possible diagnosis-code values into nine
+clinically interpretable categories. The categories are still categorical at
+this stage and are converted to integer labels later by the label-encoding
+step.
+
+\subsection{Binary Medication Encoding}
+\label{sec:data:fe:medication}
+
+\texttt{change\_medication\_columns} transforms 23 medication columns into
+binary indicators. For each medication, \texttt{No} is encoded as 0 and every
+other value, including \texttt{Steady}, \texttt{Up}, and \texttt{Down}, is
+encoded as 1. The encoded set includes the individual diabetes medications and
+combination therapies represented in the raw dataset, such as metformin,
+insulin, sulfonylureas, thiazolidinediones, and metformin-based combinations.
+
+The binary representation emphasises whether a medication was prescribed or
+changed during the encounter, rather than attempting to model sparse dosage
+direction categories separately.
+
+\subsection{A1C Result Encoding}
+\label{sec:data:fe:a1c}
+
+\texttt{encode\_a1cresult} converts \texttt{A1Cresult} into an ordinal
+laboratory indicator. Missing A1C values are encoded as 0, \texttt{Norm} as 1,
+\texttt{>7} as 2, and \texttt{>8} as 3. This keeps the absence of an A1C test
+as an explicit value while preserving the severity ordering of observed test
+results.
+
+\subsection{Imputation Strategy}
+\label{sec:data:fe:impute}
+
+\texttt{impute\_data} is applied after diagnosis grouping, medication
+encoding, and A1C encoding. Categorical columns are imputed with the most
+frequent observed value, while numeric columns are imputed with the median. The
+pipeline uses \texttt{SimpleImputer} for both operations. After imputation, the
+preprocessed dataset contains no missing values.
+
+\subsection{Categorical Label Encoding}
+\label{sec:data:fe:label}
+
+\texttt{label\_encode} converts all remaining object-type feature columns into
+integer labels using \texttt{LabelEncoder}. By default, the target column is
+excluded from this step so that it can be encoded with an explicit clinical
+mapping. This step is applied to categorical predictors such as gender,
+admission categories, discharge categories, glucose-serum result categories,
+diagnosis groups, medication-change indicators, and diabetes-medication
+indicators. The resulting preprocessed table contains only numeric columns.
+
+\subsection{Target Encoding}
+\label{sec:data:fe:target}
+
+\texttt{target\_encode} maps the original three-class readmission variable into
+a binary outcome. \texttt{NO} is encoded as 0, while both \texttt{>30} and
+\texttt{<30} are encoded as 1. The binary formulation treats any hospital
+readmission as the actionable positive outcome and is used consistently for
+model training, synthetic-data evaluation, and downstream metric computation.
+
+\section{Train/Test Split}
+\label{sec:data:split}
+
+The preprocessing script writes three CSV files under \texttt{thesis/data}: the
+full preprocessed dataset, the training split, and the test split. The full
+processed dataset contains 71{,}518 rows and 45 columns. The split is created
+with \texttt{train\_test\_split}, \texttt{test\_size = 0.2}, and
+\texttt{random\_state = 42}. The target column is passed as the stratification
+variable, preserving the binary readmission ratio across splits.
+
+The final training set contains 57{,}214 rows and 45 columns, with 37{,}750
+negative records and 19{,}464 positive records. The held-out test set contains
+14{,}304 rows and 45 columns, with 9{,}438 negative records and 4{,}866
+positive records. Both splits contain no missing values and no object-type
+columns after preprocessing.
+
+\cleardoublepage

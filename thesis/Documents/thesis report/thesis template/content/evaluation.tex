@@ -1,0 +1,272 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Evaluation Framework}
+\label{ch:evaluation}
+
+% Expansion of proposal §5.3 (Evaluation Metrics). Methodology only — every
+% definition, formula, and rationale lives here. Numerical results live in
+% Chapter~\ref{ch:results}.
+
+\section{Two Pillars: Utility and Privacy}
+\label{sec:eval:pillars}
+
+% TODO: One short paragraph framing the two-pillar structure adopted in this
+% thesis, anchored in \cite{hernandez2022synthetic,Murtaza2023}.
+%  - Utility: encompasses both statistical similarity (do the synthetic
+%    distributions resemble the real ones?) and predictive performance
+%    (do downstream models trained on synthetic perform comparably?).
+%    These two branches are complementary: similarity is necessary but not
+%    sufficient for downstream task success, and high predictive
+%    performance without distributional match can mask shortcut behaviour.
+%  - Privacy: does the synthetic data leak information about real records?
+
+This chapter defines a two-pillar evaluation framework: \emph{utility} and
+\emph{privacy}. The utility pillar is treated as a single concept with two
+complementary branches: \emph{statistical similarity} between the synthetic
+and real datasets (Section~\ref{sec:eval:utility:similarity}) and
+\emph{predictive performance} of downstream models trained on the synthetic
+data (Section~\ref{sec:eval:utility:predictive}). The privacy pillar is
+defined in Section~\ref{sec:eval:privacy} via instance-level distance and
+inference-attack metrics. Section~\ref{sec:eval:aggregate} introduces the
+aggregation views that combine both pillars into a single comparative
+picture.
+
+\section{Utility Metrics}
+\label{sec:eval:utility}
+
+% Maps to data_analysis.ipynb cells 29–41.
+
+The utility pillar combines two complementary aspects. The first is whether
+the synthetic dataset \emph{looks like} the real one in a distributional
+sense; the second is whether the synthetic dataset \emph{acts like} the real
+one when used as training data for downstream predictive and survival models.
+The same set of synthetic records is evaluated under both views.
+
+\subsection{Statistical Similarity to the Real Data}
+\label{sec:eval:utility:similarity}
+
+% Maps to data_analysis.ipynb cells 29–34. These metrics correspond to what
+% \cite{Murtaza2023,hernandez2022synthetic} term resemblance / fidelity; in
+% this thesis they are the first branch of the utility pillar.
+
+\subsubsection{Per-Column Distributional Match}
+\label{sec:eval:utility:similarity:dist}
+
+% TODO: KDE for continuous, bar plots for categorical. Visual diagnostic only.
+
+\subsubsection{Summary Statistics (Mean, Standard Deviation)}
+\label{sec:eval:utility:similarity:stats}
+
+% TODO: Per-column mean / std table; relative differences from real.
+
+\subsubsection{Pairwise Correlation Difference (PCD)}
+\label{sec:eval:utility:similarity:pcd}
+
+% Following \cite{goncalves2020generation}, define
+%   PCD = || corr(Real) - corr(Synth) ||_F
+% the Frobenius norm of the Pearson correlation matrix difference.
+% Smaller PCD indicates better preservation of joint linear structure.
+
+\subsubsection{Kolmogorov--Smirnov Two-Sample Test}
+\label{sec:eval:utility:similarity:ks}
+
+% TODO:
+%  - Definition of KS statistic.
+%  - Per-column KS computed via scipy.stats.ks_2samp.
+%  - Note: the proposal listed KL divergence; the implemented pipeline uses
+%    KS as a non-parametric alternative requiring no PMF binning. Discuss
+%    in §7.5.5 (Limitations) and Ch 2 (background) — both metrics share the
+%    same purpose of distributional similarity.
+
+\subsubsection{PCA-Based Manifold Overlap}
+\label{sec:eval:utility:similarity:pca}
+
+% Standardise (StandardScaler), fit PCA on combined Real + Synth, project to
+% 2D, scatter plot per source. Visual assessment of manifold overlap.
+
+\subsection{Predictive Performance of Downstream Models}
+\label{sec:eval:utility:predictive}
+
+% Maps to data_analysis.ipynb cells 35–41.
+
+\subsubsection{Train--Test Regimes: TRTR and TSTR}
+\label{sec:eval:utility:predictive:tstr}
+
+% TRTR (train on real, test on real) baseline; TSTR (train on synthetic,
+% test on real) per generator. The proposal additionally listed TRTS and
+% TSTS; these are scope-narrowed in the implemented pipeline. Note this in
+% §7.5.5 (Limitations).
+
+\subsubsection{Classifier Suite}
+\label{sec:eval:utility:predictive:classifiers}
+
+% Three downstream classifiers:
+%  - Logistic Regression (max_iter=1000)
+%  - Random Forest (n_estimators=100)
+%  - Gradient Boosting (n_estimators=100)
+% Justification: covers a linear baseline, a nonparametric ensemble, and a
+% boosted tree learner — capturing diverse decision-boundary biases.
+
+\subsubsection{Performance Metrics}
+\label{sec:eval:utility:predictive:metrics}
+
+% Per (Train Source × Classifier) cell, report:
+%  - Accuracy
+%  - F1 (zero_division=0)
+%  - AUC-ROC
+%  - Precision (zero_division=0)
+%  - Recall (zero_division=0)
+% AUC-ROC is the headline metric (class-imbalance robust); F1 secondary.
+
+\subsubsection{ROC Curve Analysis}
+\label{sec:eval:utility:predictive:roc}
+
+% Gradient-Boosting ROC curves overlaid for Real (TRTR) vs. each synthetic
+% source. Compare AUC and the false-positive trade-off.
+
+\subsubsection{Feature Importance Preservation}
+\label{sec:eval:utility:predictive:fi}
+
+% Random Forest .feature_importances_ ranking per training source.
+% Comparison metric: Spearman rank correlation of feature importances
+% (Real vs. each Synth). Higher ρ = better preservation.
+
+\subsubsection{Cox Proportional Hazards Regression}
+\label{sec:eval:utility:predictive:cox}
+
+% Cox model from lifelines.
+%  - Duration: time_in_hospital
+%  - Event:    readmitted
+%  - Covariates: age, gender, num_medications, num_lab_procedures,
+%    num_procedures, number_diagnoses, number_inpatient, number_emergency,
+%    number_outpatient, insulin, diabetesMed, change, admission_type_id.
+% Reports hazard ratios with 95 % confidence intervals.
+% Note: this analysis is an addition beyond the proposal — it provides
+% medically interpretable utility evidence.
+
+\subsubsection{Cox CI Overlap Analysis}
+\label{sec:eval:utility:predictive:cox-overlap}
+
+% For each covariate, compute fraction of overlap between Real-fit CI and
+% Synth-fit CI. Aggregate fraction (covariates with overlapping CI) is a
+% scalar utility score: higher = better preservation of causal/risk
+% relationships.
+
+\section{Privacy Metrics}
+\label{sec:eval:privacy}
+
+% Maps to data_analysis.ipynb cells 42–48.
+
+\subsection{Nearest-Neighbour Distance}
+\label{sec:eval:privacy:nn}
+
+% For each synthetic record, compute the L2 distance (in StandardScaler
+% feature space) to its nearest real record. Report median NN distance per
+% generator. Larger = better privacy (no near-duplicates of real patients).
+% Real→Real baseline: second-nearest-neighbour distance within real data
+% (first nearest is self-match).
+
+\subsection{Nearest-Neighbour Distance Ratio (NNDR)}
+\label{sec:eval:privacy:nndr}
+
+% Define
+%   NNDR = median(d_{Synth → Real}) / median(d_{Real → Real})
+% NNDR > 1 indicates synthetic records are farther from real than real
+% records are from each other — the desired privacy regime.
+
+\subsection{Nearest-Neighbour Adversarial Accuracy (NNAA)}
+\label{sec:eval:privacy:nnaa}
+
+% Yale et al. \cite{healthgan} adversarial-accuracy test:
+%   AA = 0.5 × (mean(d_{TS} > d_{TT}) + mean(d_{ST} > d_{SS}))
+% computed separately for the train and test halves of real data.
+% Privacy loss = TestAA - TrainAA (target ≈ 0).
+% Promote NNAA from a literature-review citation to a first-class metric.
+
+\subsection{Membership Inference Attack}
+\label{sec:eval:privacy:mia}
+
+% Threat model: adversary has access to synthetic data and a candidate
+% record; must decide whether the record was in the training set.
+%
+% Adversary: distance-feature logistic regression
+%  Features per record: min, mean, max distance to synthetic records
+%  Labels: 1 = in training set, 0 = in held-out test set
+%  Sample size: min(5,000 train members, 5,000 test non-members).
+%  Evaluation: 5-fold cross-validated ROC-AUC.
+%
+% Reported metrics: MIA AUC (target ≈ 0.5, random) and MIA Advantage
+% (= AUC - 0.5; target ≈ 0).
+
+\subsection{Attribute Inference Attack}
+\label{sec:eval:privacy:aia}
+
+% Threat model: adversary knows all but one sensitive attribute of a target
+% record and tries to infer the missing attribute by querying the synthetic
+% data.
+%
+% Method: k-NN lookup in synthetic data (k = 10), majority vote among
+% neighbours' values for the target attribute.
+%
+% Sensitive attributes evaluated: readmitted, gender, age, diag_1.
+% Baseline: random-guess accuracy (= class prior).
+% Advantage = Accuracy_attack - Accuracy_baseline.
+% Reported metric: max attribute-inference advantage across the four
+% attributes (target ≈ 0).
+
+\subsection{Clustering Proximity / Outlier Linkability}
+\label{sec:eval:privacy:linkability}
+
+% Identify outliers in real data: top 5 % of records ranked by distance from
+% the centroid in StandardScaler feature space. Compute the fraction of
+% synthetic records within a privacy radius of any outlier, where the radius
+% is the median real→real NN distance. Lower = better privacy.
+% Note: the proposal §5.3.2 (item 4 + item 5) cited a DBSCAN-based outlier
+% definition \cite{wang2019generating}; the implemented pipeline uses the
+% centroid-distance variant for compute simplicity. Discuss in §7.5.5.
+
+\section{Comparative Aggregation}
+\label{sec:eval:aggregate}
+
+% Maps to data_analysis.ipynb cells 49–52.
+
+\subsection{Privacy--Utility Tradeoff Scatter}
+\label{sec:eval:aggregate:tradeoff}
+
+% Single 2D plot:
+%   X = utility (Gradient-Boosting AUC-ROC under TSTR)
+%   Y = privacy (NNDR median; higher = better)
+% Reference line at NNDR = 1.0 (privacy threshold) and at TRTR AUC.
+
+\subsection{Six-Dimension Radar Chart}
+\label{sec:eval:aggregate:radar}
+
+% Six axes (all scaled to [0, 1] with higher = better). Three axes belong to
+% the utility pillar (similarity + predictive); three to the privacy pillar.
+%
+%  Utility axes:
+%   1. Statistical similarity:    1 - mean(|corr difference|)
+%   2. Predictive performance:    Gradient-Boosting AUC-ROC
+%   3. Cox CI overlap:            fraction of covariates with overlapping CIs
+%
+%  Privacy axes:
+%   4. Privacy (NN):              NNDR median, capped to [0, 1] for plotting
+%   5. Privacy (MIA):             1 - |MIA AUC - 0.5|
+%   6. Privacy (AIA):             1 - max(attr inference advantage)
+
+\subsection{Comprehensive Summary Table}
+\label{sec:eval:aggregate:table}
+
+% 18 metrics × 5 sources (Real (TRTR) + 4 generators). Columns are grouped
+% by pillar:
+%
+%  Utility / Statistical similarity:    mean KS, mean |corr diff|
+%  Utility / Predictive performance:    AUC, F1, Cox CI overlap %
+%  Privacy / Distance:                  NN dist median, NNDR median
+%  Privacy / Membership inference:      MIA AUC, MIA Advantage
+%  Privacy / Attribute inference:       max attr inf advantage
+%  Privacy / Linkability:               outlier linkability %
+%
+% Conventions: ↑ better / ↓ better / ≈ 0.5 best — denote in the column header.
+
+\cleardoublepage

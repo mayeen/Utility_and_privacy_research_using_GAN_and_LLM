@@ -1,0 +1,136 @@
+% !TEX root = ../thesis.tex
+
+\chapter{Introduction}
+\label{ch:introduction}
+
+\section{Background and Motivation}
+\label{sec:intro:motivation}
+
+% Migrated and lightly edited from proposal §1 (Introduction) + §2 (Motivation).
+The exponential growth of digital health records, together with rapid advances
+in artificial intelligence (AI), offers significant potential to transform
+healthcare delivery. At the same time, robust regulatory frameworks such as the
+General Data Protection Regulation (GDPR) and the Health Insurance Portability
+and Accountability Act (HIPAA) play a crucial role in safeguarding patient
+confidentiality and ensuring responsible data use. These protections are
+essential for maintaining public trust in digital health systems, but they also
+require researchers to explore innovative methods that enable data-driven
+innovation while upholding proper privacy standards. Conventional anonymisation
+methods have repeatedly proven insufficient to guarantee privacy in
+high-dimensional health data, as re-identification and linkage attacks remain
+viable~\cite{Murtaza2023,stadler2022synthetic}.
+
+Synthetic data generation (SDG) has emerged as a promising alternative,
+enabling the creation of artificial datasets that retain the statistical
+properties of the original while mitigating privacy risks. Among the most
+prominent approaches are \emph{Generative Adversarial Networks} (GANs) and
+\emph{Large Language Models} (LLMs). GANs have demonstrated success in
+structured medical datasets and imaging data, while transformer-based LLMs
+offer advantages in modelling heterogeneous and unstructured
+records~\cite{Miletic2024}. Generative Adversarial Networks work by training
+two neural networks --- a generator that creates synthetic samples and a
+discriminator that tries to distinguish them from real data --- until the
+generator learns to produce highly realistic outputs. Large Language Models
+operate using transformer architectures that leverage self-attention to learn
+long-range patterns in sequences, allowing them to generate coherent text or
+structured records. While GANs focus on matching data distributions through
+adversarial learning, LLMs generate data by predicting the next most probable
+token based on context.
+
+The need for privacy-preserving data generation in healthcare is not only a
+technical challenge but a foundational concern of medical research. The
+scarcity of openly accessible, high-quality clinical data constrains
+innovation in diagnosis, treatment planning, and epidemiological modelling.
+Regulatory restrictions and ethical imperatives make direct sharing of
+identifiable records infeasible. Synthetic data presents a pathway to alleviate
+this bottleneck by allowing the distribution of data without direct disclosure
+of personal identifiers, thus accelerating AI model development and
+validation.
+
+\section{Problem Statement: The Utility--Privacy Tension}
+\label{sec:intro:problem}
+
+% From proposal §2 (Motivation, two-item enumerated list) — kept as a
+% prominent statement of the central trade-off.
+The adoption of synthetic data hinges on balancing two competing objectives:
+\begin{enumerate}\itemsep0.25em
+  \item \textbf{Utility:} the synthetic dataset must preserve the statistical
+        and structural characteristics necessary for downstream analytical
+        tasks.
+  \item \textbf{Privacy:} the dataset must provide strong resistance to
+        adversarial attacks, such as membership inference and attribute
+        disclosure.
+\end{enumerate}
+While GANs and LLMs each offer unique strengths, there is limited comparative
+work evaluating their effectiveness under a unified privacy--utility framework,
+particularly for heterogeneous healthcare datasets.
+
+\section{Research Questions}
+\label{sec:intro:rqs}
+
+% Verbatim from proposal §3 (Research Questions).
+This thesis addresses the following research questions:
+\begin{enumerate}[label=\textbf{RQ\arabic*.},leftmargin=2.5em]\itemsep0.4em
+  \item \label{rq:rq1} Which methods and metrics are used to evaluate privacy
+      risks and utility (including predictive performance and distributional
+       resemblance) in synthetic medical data?
+  \item \label{rq:rq2} What are the trade-offs in utility and privacy in GAN-
+        and LLM-based synthesised data generation models?
+  \item \label{rq:rq3} Which synthetic data generation approach, based on GANs
+        or Large Language Models, achieves a more effective balance between
+        data utility and privacy preservation when applied to medical
+        datasets?
+\end{enumerate}
+
+\section{Contributions}
+\label{sec:intro:contributions}
+
+The work in this thesis makes the following contributions:
+\begin{itemize}\itemsep0.25em
+  \item A unified, reproducible evaluation pipeline for synthetic medical
+        tabular data spanning two pillars --- \emph{utility} (encompassing
+        both statistical similarity to the real data and predictive
+        performance of downstream models) and \emph{privacy} --- with
+        seventeen quantitative metrics in total.
+  \item A head-to-head empirical comparison of four generators on the
+        \emph{Diabetes 130-US Hospitals} dataset~\cite{diabetes_db}: HealthGAN
+        (WGAN-GP)~\cite{healthgan}, PATE-GAN ($(\varepsilon,\delta)$-DP)
+        \cite{pategan}, Pythia-LoRA~\cite{Biderman2023Pythia,Hu2022LoRA,Miletic2024}, and
+        Pythia-DP-LoRA (DP-SGD via Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}).
+  \item Empirical evidence on the \emph{marginal cost of formal differential
+        privacy} within both the GAN family (HealthGAN $\rightarrow$ PATE-GAN
+        at $\varepsilon=5.0$) and the LLM family (Pythia $\rightarrow$
+        Pythia-DP at $\varepsilon=5.0$). The Pythia-DP variant constitutes a
+        scope extension beyond the originally submitted proposal.
+  \item Practical recommendations for medical data stewards, indicating
+        when a non-DP GAN suffices, when formal DP via PATE-GAN is warranted,
+        and where LLM-based synthesis is competitive given privacy budgets and
+        governance constraints.
+\end{itemize}
+
+\section{Thesis Outline}
+\label{sec:intro:outline}
+
+The remainder of this thesis is structured as follows.
+\textbf{Chapter~\ref{ch:background}} surveys the background and related work
+on tabular synthetic data generation, GAN- and LLM-based approaches,
+differential privacy, and existing evaluation frameworks.
+\textbf{Chapter~\ref{ch:methodology}} consolidates the experimental
+methodology of the thesis. Section~\ref{sec:method:data} describes the
+\emph{Diabetes 130-US Hospitals} benchmark and the feature-engineering
+pipeline used to prepare it for synthesis.
+Section~\ref{sec:method:generators} details the four generators compared in
+this work --- HealthGAN, PATE-GAN, Pythia-LoRA, and Pythia-DP-LoRA ---
+including architectures, training protocols, and the differentially private
+mechanisms employed. Section~\ref{sec:method:evaluation} defines the unified
+two-pillar evaluation framework: utility (statistical similarity and
+predictive performance) and privacy.
+\textbf{Chapter~\ref{ch:results}} reports the empirical findings, structured
+around the three research questions.
+\textbf{Chapter~\ref{ch:discussion}} interprets the results, discusses
+strengths and weaknesses of each generator, and acknowledges threats to
+validity. Finally, \textbf{Chapter~\ref{ch:conclusion}} summarises the
+contributions, returns directly to RQ1--RQ3, and outlines avenues for future
+work.
+
+\cleardoublepage
