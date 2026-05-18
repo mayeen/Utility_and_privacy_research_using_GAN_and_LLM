@@ -85,6 +85,7 @@ class WGAN():
         self.col_names = scratch.columns
         train_data = scratch.values
         self.test_data = pd.read_csv(test_filepath).values
+        self.params['samples_per_file'] = self.test_data.shape[0]
 
         self.params['n_features'] = train_data.shape[1]
         self.params['1.5_n_features'] = round(1.5 * self.params['n_features'])
@@ -330,6 +331,22 @@ class WGAN():
 
             tf.io.write_graph(session.graph, '.', 'wgan_graph.pbtxt')
 
+    def generate(self, checkpoint_path, n_files=10):
+        """Generate synthetic data from a saved checkpoint without retraining."""
+        saver = tf.train.Saver()
+        sample_dir = Path(__file__).resolve().parents[2] / "thesis" / "data" / "healthgan"
+        sample_dir.mkdir(parents=True, exist_ok=True)
+
+        with tf.Session() as session:
+            saver.restore(session, checkpoint_path)
+            print(f'Loaded checkpoint: {checkpoint_path}')
+            for i in range(n_files):
+                samples = session.run(self.rand_noise_samples)
+                samples_df = pd.DataFrame(samples, columns=self.col_names)
+                out_path = sample_dir / f'synthetic_{self.params["critic_iters"]}_{self.params["base_nodes"]}_test_{i}.csv'
+                samples_df.to_csv(out_path, index=False)
+                print(f'Saved {out_path}')
+
 
 if __name__ == '__main__':
     # parse arguments
@@ -347,5 +364,12 @@ if __name__ == '__main__':
         base_nodes=int(sys.argv[2]) if len(sys.argv) > 2 else 64)
     # define the computation graph
     wgan.create_graph()
-    # train the model
-    wgan.train()
+
+    if '--generate' in sys.argv:
+        idx = sys.argv.index('--generate')
+        ckpt_path = sys.argv[idx + 1]
+        n_files = int(sys.argv[idx + 2]) if len(sys.argv) > idx + 2 else 10
+        wgan.generate(ckpt_path, n_files=n_files)
+    else:
+        # train the model
+        wgan.train()
