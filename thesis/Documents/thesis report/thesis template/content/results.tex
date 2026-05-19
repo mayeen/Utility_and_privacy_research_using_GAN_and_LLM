@@ -110,56 +110,93 @@ The preprocessing pipeline (\S\ref{sec:data:fe:age}) retains the dataset's
 native ten-decade encoding of \texttt{age} after an earlier design that
 collapsed it into three coarse groups (young / middle-aged / elderly) was
 abandoned. Table~\ref{tab:age-binning-tstr} quantifies the impact on
-Train-on-Synthetic, Test-on-Real (TSTR) utility, evaluated on the real
+Train-on-Synthetic, Test-on-Real (TSTR) utility for all three non-DP
+generators (PATE-GAN, HealthGAN, Pythia-70M), evaluated on the real
 held-out test split ($n = 14{,}304$) with \texttt{readmitted} as the
-binary target.
+binary target. Gradient Boosting is reported as the headline downstream
+classifier; results for Logistic Regression and Random Forest follow the
+same qualitative pattern.
+\vspace{0.5em}
 
-The Pythia LLM generator improves substantially under the ten-bin encoding
-across all three classifiers: AUC-ROC rises by $0.044$--$0.067$ and
-macro-F1 by $0.099$--$0.112$. The Train-on-Real upper bound is essentially
-unchanged between the two preprocessing variants (Gradient-Boosting TRTR
-AUC: $0.7014$ under the three-bin scheme vs.\ $0.7008$ under the ten-bin
-scheme), confirming that the gain originates from improved synthetic
-generation rather than a shift in the real-data signal. Scaling Pythia from
-70M to 1B parameters under the ten-bin encoding further raises
-Gradient-Boosting TSTR AUC to $0.6818$, recovering $\approx 97.3\%$ of the
-TRTR upper bound.
+Two observations frame the analysis. First, the Train-on-Real upper bound
+is essentially invariant between the two encodings (TRTR AUC-ROC: $0.7008$
+under ten-bin vs.\ $0.7014$ under three-bin), confirming that any
+generator-side difference cannot be attributed to a shift in the real-data
+signal. Second, the three generators react to the binning choice in
+qualitatively different ways, exposing the encoding sensitivity of each
+synthesis family.
 
 \begin{table}[h]
 \centering
 \small
-\caption{TSTR utility for the Pythia LLM generator under the discarded
-three-bin age encoding versus the retained ten-bin encoding. Test set: real
-held-out split ($n = 14{,}304$); target: \texttt{readmitted}.
-$\Delta$ reports the change from three-bin to ten-bin (Pythia-70M).}
+\caption{TSTR utility under the discarded three-bin age encoding versus
+the retained ten-bin encoding. Test set: real held-out split
+($n = 14{,}304$); target: \texttt{readmitted}; classifier: Gradient
+Boosting. $\Delta$ reports the change from three-bin to ten-bin.}
 \label{tab:age-binning-tstr}
-\begin{tabular}{llcccc}
+\begin{tabular}{llccc}
 \toprule
-Classifier & Metric & 3-bin (Pythia-70M) & 10-bin (Pythia-70M) & $\Delta$ & 10-bin (Pythia-1B) \\
+Train Source & Metric & 3-bin & 10-bin & $\Delta$ (10 $-$ 3) \\
 \midrule
-Logistic Regression & AUC-ROC & 0.6128 & 0.6570 & $+0.0442$ & 0.6612 \\
-Logistic Regression & F1      & 0.4046 & 0.5038 & $+0.0992$ & 0.4995 \\
-Random Forest       & AUC-ROC & 0.5917 & 0.6588 & $+0.0671$ & 0.6682 \\
-Random Forest       & F1      & 0.3843 & 0.4966 & $+0.1123$ & 0.5048 \\
-Gradient Boosting   & AUC-ROC & 0.5981 & 0.6634 & $+0.0653$ & \textbf{0.6818} \\
-Gradient Boosting   & F1      & 0.3944 & 0.5005 & $+0.1061$ & 0.5036 \\
+Real (TRTR) & AUC-ROC & 0.7014 & 0.7008 & $-0.0006$ \\
+Real (TRTR) & F1      & 0.3644 & 0.3668 & $+0.0024$ \\
 \midrule
-\multicolumn{2}{l}{TRTR (real) Gradient-Boosting AUC} & 0.7014 & 0.7008 & --- & --- \\
+PATE-GAN    & AUC-ROC & 0.4823 & 0.5108 & $+0.0285$ \\
+PATE-GAN    & F1      & 0.0437 & 0.0093 & $-0.0344$ \\
+HealthGAN   & AUC-ROC & 0.6605 & 0.6312 & $-0.0293$ \\
+HealthGAN   & F1      & 0.2647 & 0.3824 & $+0.1177$ \\
+Pythia-70M  & AUC-ROC & 0.5981 & \textbf{0.6634} & $\mathbf{+0.0653}$ \\
+Pythia-70M  & F1      & 0.3944 & \textbf{0.5005} & $\mathbf{+0.1061}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A plausible mechanistic explanation is that Pythia emits each field as a
-discrete token: under the three-bin scheme, three tokens absorbed the entire
-0--100 year range, erasing conditional structure between age and clinically
-correlated features (\texttt{number\_diagnoses},
-\texttt{number\_inpatient}, \texttt{insulin}). Restoring the ten-decade
-encoding provides a finer conditioning vocabulary, recovering age-specific
-co-occurrence patterns relevant to readmission prediction. The PATE-GAN and
-HealthGAN baselines did not exhibit a comparable sensitivity to this
-preprocessing choice, suggesting that categorical cardinality affects
-token-based LLM synthesisers more than GAN-based ones on tabular medical
-data. This observation is discussed further in
+\paragraph{Pythia-70M: large gain under finer binning.}
+The token-based LLM generator benefits unambiguously from the ten-decade
+encoding: AUC-ROC rises by $+0.0653$ ($0.5981 \rightarrow 0.6634$) and
+macro-F1 by $+0.1061$ ($0.3944 \rightarrow 0.5005$), with the same
+direction observed under Logistic Regression
+($\Delta\text{AUC} = +0.0442$, $\Delta\text{F1} = +0.0992$) and Random
+Forest ($\Delta\text{AUC} = +0.0671$, $\Delta\text{F1} = +0.1123$).
+Because each field is emitted as a discrete token, the three-bin scheme
+collapsed the entire $0$--$100$ year range into three vocabulary items,
+erasing conditional structure between age and clinically correlated
+features (\texttt{number\_diagnoses}, \texttt{number\_inpatient},
+\texttt{insulin}). The ten-decade encoding restores a finer conditioning
+vocabulary and recovers age-specific co-occurrence patterns relevant to
+readmission prediction.
+
+\paragraph{HealthGAN: metric-dependent direction.}
+HealthGAN exhibits the opposite ranking behaviour to Pythia: AUC-ROC is
+slightly \emph{higher} under three-bin ($0.6605$ vs.\ $0.6312$,
+$\Delta = -0.0293$ moving to ten-bin). The threshold-based F1, however,
+moves in the reverse direction, $0.2647 \rightarrow 0.3824$
+($+0.1177$ in favour of ten-bin), driven primarily by recall recovery
+($0.1697 \rightarrow 0.2984$). The interpretation is that HealthGAN did
+not capture the fine-grained ten-bin age structure: under the coarser
+encoding its distributional output is closer to the simpler target and
+yields marginally better probability ranking, but the synthetic data
+over-concentrates on the majority (non-readmit) class and suppresses
+positive-class recall. The ten-bin encoding therefore degrades AUC
+marginally while restoring usable clinical decision performance.
+
+\paragraph{PATE-GAN: differential-privacy noise dominates.}
+PATE-GAN remains close to chance under both encodings (AUC-ROC $0.4823$
+three-bin vs.\ $0.5108$ ten-bin); the binning choice produces only a
+$+0.0285$ AUC shift, an order of magnitude smaller than the Pythia
+delta. F1 is near zero in either case ($0.0437$ vs.\ $0.0093$). The
+DP-PATE noise mechanism dominates over the encoding-level signal, so the
+generator does not meaningfully exploit either age representation. This
+sets the floor against which the within-family DP-utility cost is later
+quantified in \S\ref{sec:results:rq2:dp-cost}.
+\vspace{0.5em}
+
+Taken together, the three generators react to the same preprocessing
+change in three distinct regimes: a token-based LLM that gains
+substantially from finer categorical cardinality, a continuous-latent GAN
+whose ranking and threshold behaviour diverge under the change, and a
+DP-noised GAN that is largely insensitive to it. This generator-specific
+encoding sensitivity is discussed further in
 Section~\ref{sec:discussion:gan-vs-llm}.
 
 \paragraph{ROC Curves (Gradient Boosting).}
@@ -199,14 +236,14 @@ Section~\ref{sec:discussion:gan-vs-llm}.
 \subsection{Within-Family DP Cost}
 \label{sec:results:rq2:dp-cost}
 
-\subsubsection{HealthGAN $\to$ PATE-GAN}
+\subsubsection{HealthGAN and PATE-GAN}
 % TODO: Side-by-side comparison.
 %  - Utility delta (similarity branch): KS / PCD / PCA changes.
 %  - Utility delta (predictive branch): AUC drop, F1 drop, Cox CI overlap drop.
 %  - Privacy gain: NNDR change, MIA Advantage change, AIA Advantage change.
 %  - Net assessment: is the utility sacrifice "paid for" by privacy gains?
 
-\subsubsection{Pythia $\to$ Pythia-DP}
+\subsubsection{Pythia and Pythia-DP}
 % TODO: Same structure as above, for the LLM family. Note the achieved
 % epsilon from run_metadata_dp.json.
 

@@ -1,13 +1,13 @@
 % !TEX root = ../thesis.tex
 
-\chapter{Synthetic Data Generation Methods}
-\label{ch:methods}
+\section{Synthetic Data Generation Methods}
+\label{sec:method:generators}
 
-% Expansion of proposal §5.2 (Proposed Models). One section per generator
+% Expansion of proposal §5.2 (Proposed Models). One subsection per generator
 % with architecture, hyperparameters, training protocol, and (where
 % applicable) the differential-privacy mechanism.
 
-\section{Selection Rationale}
+\subsection{Selection Rationale}
 \label{sec:methods:rationale}
 
 % Migrated from proposal §5.2 (selection rationale).
@@ -43,14 +43,14 @@ each axis the choice is grounded in prior work:
         HealthGAN $\to$ PATE-GAN comparison.
 \end{itemize}
 
-\section{HealthGAN: WGAN-GP Baseline}
+\subsection{HealthGAN: WGAN-GP Baseline}
 \label{sec:methods:healthgan}
 
 % Code references:
 %   - SDV encoding/decoding: ../../healthgan/generators/sdv_converter.py
 %   - WGAN-GP training:      ../../healthgan/generators/wgan_for_mac.py
 
-\subsection{SDV Encoding and Decoding}
+\subsubsection{SDV Encoding and Decoding}
 \label{sec:methods:healthgan:sdv}
 
 % TODO: Describe \texttt{encode}, \texttt{decode}, and the snap-to-nearest
@@ -63,7 +63,7 @@ each axis the choice is grounded in prior work:
 %    numeric columns (e.g. age) that should not be reconstructed continuously.
 % Include the FORCE_ORDINAL set ({"age"}) and the rationale.
 
-\subsection{WGAN-GP Architecture}
+\subsubsection{WGAN-GP Architecture}
 \label{sec:methods:healthgan:arch}
 
 % Architecture (from wgan_for_mac.py):
@@ -71,13 +71,13 @@ each axis the choice is grounded in prior work:
 %  Critic:    input(F) → Dense(64, LeakyReLU) → Dense(128, LeakyReLU) → Dense(256, LeakyReLU) → Dense(1)
 %  F = 45 features after preprocessing.
 
-\subsection{Training Loss: Wasserstein + Gradient Penalty}
+\subsubsection{Training Loss: Wasserstein + Gradient Penalty}
 \label{sec:methods:healthgan:loss}
 
 % TODO: WGAN loss + gradient penalty term \cite{Gulrajani2017WGANGP},
 % lambda = 10. Brief equation block.
 
-\subsection{Hyperparameters and Training Configuration}
+\subsubsection{Hyperparameters and Training Configuration}
 \label{sec:methods:healthgan:hp}
 
 % From wgan_for_mac.py params:
@@ -87,10 +87,10 @@ each axis the choice is grounded in prior work:
 %  - samples_per_file = 57,214
 %  - Adam(lr=1e-4, beta1=0.5, beta2=0.9) for both G and D
 
-\subsection{Variant Selection: samples\_0 vs.\ samples\_3 vs.\ samples\_6}
+\subsubsection{Variant Selection: samples\_0 vs.\ samples\_3 vs.\ samples\_6}
 \label{sec:methods:healthgan:variants}
 
-% This subsection reports notebook cells 53–60: comparing the three decoded
+% This subsubsection reports notebook cells 53–60: comparing the three decoded
 % samples by KS + correlation difference, justifying which variant feeds the
 % cross-method comparison in Chapter 6.
 % TODO:
@@ -98,7 +98,7 @@ each axis the choice is grounded in prior work:
 %  - Figure: PCA overlap (variant deep-dive cell 58).
 %  - State which variant was chosen and why.
 
-\subsection{Rationale for Excluding a DP-Augmented HealthGAN Variant}
+\subsubsection{Rationale for Excluding a DP-Augmented HealthGAN Variant}
 \label{sec:methods:healthgan:nodp}
 
 % Migrated from thesis_conversation.md scope-decision note.
@@ -149,40 +149,40 @@ confounding it with an unstable adaptation of an architecture that was
 not designed for per-example gradient clipping. HealthGAN is retained
 as the non-private GAN utility baseline.
 
-\section{PATE-GAN: Differentially Private GAN}
+\subsection{PATE-GAN: Differentially Private GAN}
 \label{sec:methods:pategan}
 
 % Code references:
 %   - Pategan/pate_gan.py
 %   - Pategan/generate_pategan_synthetic.py
 
-\subsection{Teacher--Student Framework}
+\subsubsection{Teacher--Student Framework}
 \label{sec:methods:pategan:teacher}
 
 % TODO: Describe the k=10 teacher discriminators trained on disjoint shards;
 % the student discriminator trained on noisily aggregated teacher labels;
 % and the generator updated against the student.
 
-\subsection{PATE Voting with the Laplace Mechanism}
+\subsubsection{PATE Voting with the Laplace Mechanism}
 \label{sec:methods:pategan:laplace}
 
 % TODO: Equation for the noisy aggregation
 %   y_hat = argmax_c (\sum_t 1[T_t(x) = c] + Lap(0, \lambda))
 % with \lambda = 1.0 in the configuration used.
 
-\subsection{Privacy Accounting via the Moments Accountant}
+\subsubsection{Privacy Accounting via the Moments Accountant}
 \label{sec:methods:pategan:accountant}
 
 % TODO: Brief summary of the moments accountant
 % \cite{Abadi2016DPSGD,Mironov2017RDP} as adapted by PATE-GAN \cite{pategan}.
 
-\subsection{Architecture}
+\subsubsection{Architecture}
 \label{sec:methods:pategan:arch}
 
 % Generator: input(F) → Dense(4F, tanh) → Dense(4F, tanh) → Dense(F, sigmoid)
 % Student:   input(F) → Dense(F, ReLU) → Dense(1)
 
-\subsection{Privacy Budget and Hyperparameters}
+\subsubsection{Privacy Budget and Hyperparameters}
 \label{sec:methods:pategan:hp}
 
 % k = 10 teachers, n_s = 1, batch_size = 64, lambda = 1.0
@@ -190,34 +190,34 @@ as the non-private GAN utility baseline.
 % RMSprop(lr=1e-4) for both student and generator.
 % Student weights clipped to [-0.01, 0.01].
 
-\section{Pythia: Non-DP LLM-based Generation}
+\subsection{Pythia: Non-DP LLM-based Generation}
 \label{sec:methods:pythia}
 
 % Code references:
 %   - pythia/pythia_tabular.py
 %   - pythia/generate_pythia_synthetic.py
 
-\subsection{Base Model}
+\subsubsection{Base Model}
 \label{sec:methods:pythia:base}
 
 % EleutherAI/pythia-70m \cite{Biderman2023Pythia}. Justify the small size
 % choice (training cost / commodity GPU feasibility), referencing
 % \cite{Miletic2024} who report Pythia-70m as a viable starting point.
 
-\subsection{Tabular-to-Text Serialisation}
+\subsubsection{Tabular-to-Text Serialisation}
 \label{sec:methods:pythia:serialisation}
 
 % Format: "Class_{label} | col_name=value | col_name2=value2 | ..."
 % Each row is converted to a single text sequence with the class token first
 % so that conditional generation can prefix the class.
 
-\subsection{Schema Derivation}
+\subsubsection{Schema Derivation}
 \label{sec:methods:pythia:schema}
 
 % Per-column schema captures dtype, numeric bounds, discrete support, and
 % category set (if applicable). Used downstream for parsing/coercion.
 
-\subsection{LoRA Fine-tuning}
+\subsubsection{LoRA Fine-tuning}
 \label{sec:methods:pythia:lora}
 
 % LoRA \cite{Hu2022LoRA} with r=8, alpha=16, dropout=0.05. Only LoRA
@@ -230,14 +230,14 @@ as the non-private GAN utility baseline.
 %   lr = 2e-5
 %   max_length = 512
 
-\subsection{Class-Conditioned Generation}
+\subsubsection{Class-Conditioned Generation}
 \label{sec:methods:pythia:generation}
 
 % Sampling: temperature = 0.8, top_p = 0.95, max_new_tokens = 512.
 % Prompt: "Class_{0|1} | col_name=" — let the model autoregressively complete
 % the row.
 
-\subsection{Schema-Aware Parsing, Coercion, and Retry}
+\subsubsection{Schema-Aware Parsing, Coercion, and Retry}
 \label{sec:methods:pythia:parsing}
 
 % TODO:
@@ -247,35 +247,35 @@ as the non-private GAN utility baseline.
 %  - Fallback: resample from accepted rows; last resort schema-valid random rows.
 %  - max_retries_per_row = 8.
 
-\section{Pythia-DP: Differentially Private LLM}
+\subsection{Pythia-DP: Differentially Private LLM}
 \label{sec:methods:pythia-dp}
 
 % Code references:
 %   - pythia/pythia_tabular_dp.py
 %   - pythia/generate_pythia_synthetic_dp.py
 
-\subsection{DP-SGD via Opacus}
+\subsubsection{DP-SGD via Opacus}
 \label{sec:methods:pythia-dp:opacus}
 
 % PrivacyEngine() from Opacus \cite{Yousefpour2021Opacus} wraps the model,
 % optimizer, and dataloader. ModuleValidator.fix() is applied to make the
 % model Opacus-compatible.
 
-\subsection{Per-Example Gradient Clipping}
+\subsubsection{Per-Example Gradient Clipping}
 \label{sec:methods:pythia-dp:clipping}
 
 % max_grad_norm = 1.0 — Opacus computes per-sample gradients (rather than
 % per-batch) and clips each sample's gradient norm before averaging and
 % adding noise.
 
-\subsection{Effective Batch Size}
+\subsubsection{Effective Batch Size}
 \label{sec:methods:pythia-dp:batch}
 
 % per_device_batch_size = 32, gradient_accumulation_steps = 16 →
 % effective_batch_size = 512. The privacy accountant tracks the effective
 % batch size, not the per-device one.
 
-\subsection{Privacy Budget and Achieved Epsilon}
+\subsubsection{Privacy Budget and Achieved Epsilon}
 \label{sec:methods:pythia-dp:epsilon}
 
 % target_epsilon = 5.0, target_delta = 1e-5. Opacus computes the noise
@@ -283,7 +283,7 @@ as the non-private GAN utility baseline.
 % training steps. Achieved epsilon is reported in run_metadata_dp.json after
 % training and should be cited verbatim in Chapter 6.
 
-\subsection{Differences from the Non-DP Pipeline}
+\subsubsection{Differences from the Non-DP Pipeline}
 \label{sec:methods:pythia-dp:diff}
 
 % TODO: Table or bulleted comparison highlighting:
@@ -292,7 +292,7 @@ as the non-private GAN utility baseline.
 %  - Effective batch size 512 vs. 8 in non-DP run
 %  - Loss-curve dynamics typically shifted by noise injection
 
-\section{Implementation Summary}
+\subsection{Implementation Summary}
 \label{sec:methods:summary}
 
 % TODO: One synthesis table comparing all four generators along:
@@ -301,5 +301,3 @@ as the non-private GAN utility baseline.
 %  - Library stack (TensorFlow 1.x / PyTorch + Opacus / HF Transformers + LoRA)
 %  - Training time on the available hardware
 %  - Output file path under thesis/data/<generator>/
-
-\cleardoublepage

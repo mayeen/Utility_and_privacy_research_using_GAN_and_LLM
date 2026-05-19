@@ -10,7 +10,7 @@
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }
-\contentsline {table}{\numberline {4.1}{\ignorespaces TSTR utility for the Pythia LLM generator under the discarded three-bin age encoding versus the retained ten-bin encoding. Test set: real held-out split ($n = 14{,}304$); target: \texttt {readmitted}. $\Delta $ reports the change from three-bin to ten-bin (Pythia-70M).}}{19}{table.caption.34}%
+\contentsline {table}{\numberline {4.1}{\ignorespaces TSTR utility under the discarded three-bin age encoding versus the retained ten-bin encoding. Test set: real held-out split ($n = 14{,}304$); target: \texttt {readmitted}; classifier: Gradient Boosting. $\Delta $ reports the change from three-bin to ten-bin.}}{21}{table.caption.47}%
 \addvspace {10\p@ }
 \addvspace {10\p@ }
 \addvspace {10\p@ }

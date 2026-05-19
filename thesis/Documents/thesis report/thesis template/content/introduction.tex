@@ -28,8 +28,8 @@ prominent approaches are \emph{Generative Adversarial Networks} (GANs) and
 structured medical datasets and imaging data, while transformer-based LLMs
 offer advantages in modelling heterogeneous and unstructured
 records~\cite{Miletic2024}. Generative Adversarial Networks work by training
-two neural networks --- a generator that creates synthetic samples and a
-discriminator that tries to distinguish them from real data --- until the
+two neural networks: a generator that creates synthetic samples and a
+discriminator that tries to distinguish them from real data until the
 generator learns to produce highly realistic outputs. Large Language Models
 operate using transformer architectures that leverage self-attention to learn
 long-range patterns in sequences, allowing them to generate coherent text or
@@ -88,20 +88,19 @@ This thesis addresses the following research questions:
 The work in this thesis makes the following contributions:
 \begin{itemize}\itemsep0.25em
   \item A unified, reproducible evaluation pipeline for synthetic medical
-        tabular data spanning two pillars --- \emph{utility} (encompassing
+        tabular data spanning two pillars: \emph{utility} (encompassing
         both statistical similarity to the real data and predictive
-        performance of downstream models) and \emph{privacy} --- with
-        seventeen quantitative metrics in total.
+        performance of downstream models) and \emph{privacy}.
   \item A head-to-head empirical comparison of four generators on the
         \emph{Diabetes 130-US Hospitals} dataset~\cite{diabetes_db}: HealthGAN
         (WGAN-GP)~\cite{healthgan}, PATE-GAN ($(\varepsilon,\delta)$-DP)
         \cite{pategan}, Pythia-LoRA~\cite{Biderman2023Pythia,Hu2022LoRA,Miletic2024}, and
         Pythia-DP-LoRA (DP-SGD via Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}).
   \item Empirical evidence on the \emph{marginal cost of formal differential
-        privacy} within both the GAN family (HealthGAN $\rightarrow$ PATE-GAN
-        at $\varepsilon=5.0$) and the LLM family (Pythia $\rightarrow$
-        Pythia-DP at $\varepsilon=5.0$). The Pythia-DP variant constitutes a
-        scope extension beyond the originally submitted proposal.
+        privacy} within both the GAN family (non-DP HealthGAN versus
+        PATE-GAN at $\varepsilon=5.0$) and the LLM family (non-DP Pythia
+        versus Pythia-DP at $\varepsilon=5.0$). The Pythia-DP variant
+        constitutes a scope extension beyond the originally submitted proposal.
   \item Practical recommendations for medical data stewards, indicating
         when a non-DP GAN suffices, when formal DP via PATE-GAN is warranted,
         and where LLM-based synthesis is competitive given privacy budgets and
@@ -120,7 +119,7 @@ methodology of the thesis. Section~\ref{sec:method:data} describes the
 \emph{Diabetes 130-US Hospitals} benchmark and the feature-engineering
 pipeline used to prepare it for synthesis.
 Section~\ref{sec:method:generators} details the four generators compared in
-this work --- HealthGAN, PATE-GAN, Pythia-LoRA, and Pythia-DP-LoRA ---
+this work: HealthGAN, PATE-GAN, Pythia-LoRA, and Pythia-DP-LoRA,
 including architectures, training protocols, and the differentially private
 mechanisms employed. Section~\ref{sec:method:evaluation} defines the unified
 two-pillar evaluation framework: utility (statistical similarity and
