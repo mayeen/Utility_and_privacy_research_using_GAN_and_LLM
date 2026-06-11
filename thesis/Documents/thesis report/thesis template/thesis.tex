@@ -17,6 +17,7 @@
 \usepackage{amssymb}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{float}
 \usepackage{rotating}
 \usepackage{longtable}
 \usepackage{multirow}
@@ -26,8 +27,12 @@
 \usepackage{enumitem}
 \usepackage{listings}
 \usepackage{hyperref}
+\usepackage{fancyhdr}
 
-\geometry{a4paper, margin=1in, includefoot}
+\geometry{a4paper, margin=1in, includefoot, headheight=14.5pt, headsep=12pt}
+
+% Running header: "N. Chapter Title" in top-right of every page.
+\renewcommand{\chaptermark}[1]{\markboth{\thechapter.\ #1}{}}
 
 % Title-page metadata
 \author{Kazi Mostafa Shahriar\\[1ex] \normalsize Mat. Nr. 222100444 \\[1ex] \normalsize shahriar@uni-koblenz.de}
@@ -68,6 +73,19 @@
     \cleardoublepage
 
     \pagenumbering{arabic}
+
+    % Activate running header for main matter: chapter on top-right, page
+    % number bottom-centre. Chapter-opening pages stay plain by default.
+    \pagestyle{fancy}
+    \fancyhf{}
+    \fancyhead[R]{\nouppercase{\leftmark}}
+    \fancyfoot[C]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+    \fancypagestyle{plain}{%
+        \fancyhf{}%
+        \fancyfoot[C]{\thepage}%
+        \renewcommand{\headrulewidth}{0pt}%
+    }
 
     % --- Main chapters ---
     \include{content/introduction}

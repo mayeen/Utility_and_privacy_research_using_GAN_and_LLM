@@ -11,35 +11,115 @@
 \section{RQ1 -- Methods and Metrics for Evaluating Synthetic Medical Data}
 \label{sec:results:rq1}
 
-% RQ1 (verbatim): "Which methods and metrics are used to evaluate privacy
-% risks and utility (including predictive performance and distributional
-% resemblance) in synthetic medical data?"
+% RQ1 (verbatim, finalised — see introduction.tex §1.3): "Which methods and
+% metrics are suitable for evaluating the utility (statistical resemblance
+% and predictive performance) and privacy risk of synthetic tabular medical
+% data, and what distinct dimension of data characteristics does each
+% capture?"
 %
-% This RQ has both a literature-review answer (Chapter 2.6) and an empirical
-% answer: of all the metrics implemented, which ones actually discriminated
-% between the four generators on the Diabetes 130-US benchmark? Surface that
-% empirical answer here.
+% RQ1 is answered in two parts:
+%  (a) which metrics are suitable for evaluating the two pillars — the
+%      framework-selection answer, supported by the literature survey of
+%      Chapter 2.6 and the operational definitions of §3.3 and recapped
+%      below in §6.1.1; and
+%  (b) what distinct data-characteristic dimension each metric captures —
+%      the complementarity claim, addressed per-metric in §6.1.2.
+% A recommended minimal evaluation suite that covers both pillars without
+% redundancy is then proposed in §6.1.3 and synthesised in §6.1.4.
 
 \subsection{Operationalising the Two-Pillar Framework}
 \label{sec:results:rq1:operationalising}
 
-% TODO: Brief recap of the 17-metric framework operationalised on Diabetes
-% 130-US Hospitals. Cross-reference §5.
+The evaluation framework adopted to answer RQ1 is the two-pillar
+structure of \emph{utility} (statistical similarity to the real data and
+predictive performance of downstream models) and \emph{privacy}
+(instance-level distance metrics and inference-attack simulations), as
+operationalised on the Diabetes 130-US Hospitals benchmark across eleven
+distinct single-number metrics. The full per-metric definitions, the data-preparation
+steps that precede them, and the experimental parameters under which
+they are computed are not restated here; they are given in
+Section~\ref{sec:method:evaluation}. This subsection therefore serves
+only as an orientation: it names the two pillars and their three
+branches (similarity, predictive performance, privacy), and it forward
+references the methodology chapter for every operational detail.
+The distinct data-characteristic dimension that each metric is designed
+to capture is the substantive part of the RQ1 answer and is treated
+per-metric in Section~\ref{sec:results:rq1:diagnostic}.
 
-\subsection{Per-Pillar Diagnostic Value}
+\subsection{Distinct Data-Characteristic Coverage of the Evaluation Metrics}
 \label{sec:results:rq1:diagnostic}
 
-% TODO: For each metric, report:
-%  - Range observed across generators (min, max).
-%  - Whether the metric ranked the generators consistently with the others.
-%  - Identify metrics that collapsed (e.g., all 4 generators got near-perfect
-%    AUC) vs. metrics that meaningfully separated them.
-% Recommended: a table titled "Discriminative power of each evaluation
-% metric" with one row per metric and columns for (range, separates DP vs.
-% non-DP?, separates GAN vs. LLM?). Group rows by sub-branch:
-%   (a) Utility / statistical similarity
-%   (b) Utility / predictive performance
-%   (c) Privacy
+The headline numerical summary of the evaluation framework
+(Section~\ref{sec:eval:aggregate:table}) reports eleven single-number
+metrics per generator, organised across the three branches defined in
+the methodology chapter: statistical similarity, predictive performance,
+and privacy. Each of these metrics is designed to capture a distinct
+dimension of data characteristics, and the branches are intended to be
+jointly necessary rather than individually sufficient. The
+design-intent dimension and primary blind spot of every metric in this
+suite are summarised in Table~\ref{tab:rq1-coverage}; the statements
+below are restated in compact form from
+Section~\ref{sec:method:evaluation}, to which the reader is referred for
+the full operational definitions, the data preparation that precedes
+each metric, and the precise parameters under which it is computed.
+
+\begin{table}[H]
+\centering
+\footnotesize
+\caption{Distinct data-characteristic dimension captured by each metric
+in the evaluation suite, and the primary blind spot that motivates
+reporting it alongside complementary metrics in the same branch. The
+listed metrics correspond to the comprehensive summary view of
+Section~\ref{sec:eval:aggregate:table}.}
+\label{tab:rq1-coverage}
+\begin{tabular}{p{2.0cm}p{3.0cm}p{4.0cm}p{4.0cm}}
+\toprule
+Branch & Metric & Captured dimension & Primary blind spot \\
+\midrule
+Similarity & Mean Kolmogorov--Smirnov statistic & Worst-case marginal discrepancy averaged across columns & Joint dependency structure; column-pair interactions \\
+Similarity & Mean pairwise correlation difference (PCD) & Joint linear dependency fidelity across column pairs & Non-linear dependency; higher-order multivariate structure \\
+\midrule
+Predictive & TSTR AUC-ROC (Gradient Boosting) & Threshold-independent transferability of conditional structure to a downstream classifier & Calibration of the decision rule at any specific operating point \\
+Predictive & TSTR F1 (Gradient Boosting) & Balance of false positives and false negatives at the default decision threshold & Threshold-independent ranking quality \\
+Predictive & Cox confidence-interval overlap fraction & Agreement of clinically interpretable effect sizes with the real-data hazards & Predictive accuracy on the binary readmission decision \\
+\midrule
+Privacy & Synthetic-to-real nearest-neighbour distance (median) & Bulk-level proximity of typical synthetic records to real records in the standardised feature space & Tail disclosure risk concentrated in the closest synthetic records \\
+Privacy & Nearest-Neighbour Distance Ratio (median) & Scale-normalised proximity relative to the real distribution's intrinsic spacing & Per-record outlier disclosure risk masked by the median \\
+Privacy & Membership-inference AUC & Distinguishability of training-set members from non-members under a distance-based adversary, reported on the AUC scale & Per-attribute conditional leakage \\
+Privacy & Membership-inference advantage & The same adversary's accuracy expressed as excess over the random-guess baseline & Per-attribute conditional leakage \\
+Privacy & Maximum attribute-inference advantage & Worst-case conditional information leakage on a sensitive attribute, taken over the four attributes considered & Aggregate training-set leakage; outlier-specific risk \\
+Privacy & Outlier linkability (percentage) & Differential disclosure risk for outlier real records relative to a non-outlier baseline & Bulk leakage on typical (non-outlier) records \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two members of the privacy branch (membership-inference AUC and
+membership-inference advantage) report the same underlying adversary
+score on two scales --- AUC and AUC minus the random-guess baseline of
+$0.5$ respectively. Both are listed because the advantage form is the
+quantity directly thresholdable against the privacy-risk bands defined
+in Section~\ref{sec:eval:privacy:mia}, whereas the AUC form aligns
+with the convention adopted elsewhere in the membership-inference
+literature~\cite{Shokri2017MIA}; reporting both makes the same finding
+readable under either framing without re-deriving the conversion. No
+other metric pair in Table~\ref{tab:rq1-coverage} expresses the same
+underlying quantity in two forms.
+
+The branches as a whole are designed to be jointly necessary rather
+than individually sufficient. A generator can score well on the
+Kolmogorov--Smirnov statistic and fail on the pairwise correlation
+difference if it preserves marginal shape but distorts joint linear
+dependency; it can score well on the pairwise correlation difference
+and fail on TSTR AUC-ROC if the linear-correlation structure of the
+synthetic table is faithful but the conditional distribution that
+supports a downstream classifier is shifted; and it can score well on
+TSTR AUC-ROC and fail on the privacy axis if the conditional structure
+that makes a classifier learn the readmission target also encodes
+enough record-level detail to support membership inference. The
+empirical positions of the five generators evaluated in this thesis on
+each of these metric axes are reported per pillar in
+Section~\ref{sec:results:rq2}, and combined into the cross-family
+summary table of Section~\ref{sec:results:rq2:table}.
 
 \subsection{Recommended Minimal Evaluation Suite}
 \label{sec:results:rq1:minimal-suite}
@@ -50,20 +130,48 @@
 \subsection*{Answer to RQ1}
 \label{sec:results:rq1:answer}
 
-% TODO: One-paragraph synthesis. Example structure:
-%  - Surveying the literature (§2.6) yields two pillars (utility and
-%    privacy) and ~20 candidate metrics; this thesis instantiates 17 of them.
-%  - Empirically, the most diagnostic metrics on Diabetes 130-US Hospitals
-%    are: <list>. Less diagnostic: <list>.
-%  - Recommended minimal suite for medical SDG evaluation: <list>.
+RQ1 is answered along its two halves. Surveying the synthetic-data
+evaluation literature in Section~\ref{sec:bg:eval} and operationalising
+it for this thesis in Section~\ref{sec:method:evaluation} yields a
+two-pillar framework in which utility decomposes into two complementary
+branches --- statistical similarity to the real data and predictive
+performance of downstream models --- and privacy is reported separately
+through instance-level distance metrics and explicit inference-attack
+simulations. Within this framework, the eleven single-number metrics
+enumerated in Table~\ref{tab:rq1-coverage} constitute the set of
+metrics deemed suitable for evaluating the privacy and utility of
+synthetic tabular medical data in the configuration adopted here. Each
+of these metrics is designed to capture a distinct dimension of data
+characteristics --- worst-case marginal discrepancy, joint linear
+dependency, threshold-independent transferability of conditional
+structure under TSTR, balance of false positives and false negatives at
+the default decision threshold, agreement of clinically interpretable
+effect sizes, bulk-level point proximity, scale-normalised proximity,
+aggregate training-set leakage on two reporting scales, worst-case
+conditional attribute leakage, and outlier-specific disclosure risk
+--- and the suite as a whole covers these dimensions across the three
+branches without redundancy within any single branch beyond the
+deliberate two-scale reporting of membership inference. The
+recommended minimal subset of these eleven metrics that still covers
+both pillars is examined separately in
+Section~\ref{sec:results:rq1:minimal-suite}.
 
 % -------------------------------------------------------------------
 
-\section{RQ2 -- Utility--Privacy Trade-offs Per Generator}
+\section{RQ2 -- The Privacy--Utility Landscape Across Five Generators}
 \label{sec:results:rq2}
 
-% RQ2: "What are the trade-offs in utility and privacy in GAN- and LLM-based
-% synthesised data generation models?"
+% RQ2 (finalised): "How do GAN-based and LLM-based synthesisers compare on
+% the privacy--utility trade-off when applied to tabular medical data, and
+% which achieves a more effective balance?"
+%
+% Scope: five generators are positioned on a single privacy--utility plane
+%  (HealthGAN, PATE-GAN, Pythia-70M, Pythia-1B, Pythia-1B-DP). PATE-GAN
+% appears here for landscape completeness despite incorporating DP by
+% construction; this is acknowledged in the figure caption and discussed
+% further in \S\ref{sec:discussion:limit:pategan-dual-role}. The
+% within-family DP-toggle analysis (HealthGAN $\to$ PATE-GAN; Pythia-1B
+% $\to$ Pythia-1B-DP) is reported separately in \S\ref{sec:results:rq3}.
 
 \subsection{Utility Results}
 \label{sec:results:rq2:utility}
@@ -76,32 +184,327 @@
 \subsubsection{Statistical Similarity}
 \label{sec:results:rq2:utility:similarity}
 
-% Notebook cells 29–34. Per-generator findings:
+Statistical similarity is reported along the three complementary views
+defined in Section~\ref{sec:eval:utility:similarity}: per-column marginal
+agreement, pairwise linear-dependency agreement, and a global
+manifold-overlap check. All five generators and the real reference are
+evaluated on the aligned feature space introduced in
+Section~\ref{sec:data:fe}.
 
-\paragraph{Per-Column Distributions and Marginals.}
-% TODO: Summarise marginal-match quality. Headline figure: a 4×N grid of
-% selected columns × generator (or supplementary appendix).
+\paragraph{Per-Column Marginal Distributions.}
+Figure~\ref{fig:rq2:marginals} overlays the real and synthetic marginals
+for a representative block of columns spanning categorical
+(\texttt{gender}, \texttt{admission\_type\_id}), ordinal (\texttt{age}),
+an institutional disposition code (\texttt{discharge\_disposition\_id}),
+and continuous clinical counts (\texttt{num\_lab\_procedures},
+\texttt{num\_medications}). Four of the five generators --- HealthGAN and
+all three Pythia variants --- reproduce the real marginals closely: their
+bars and density curves overlie the real reference across categorical and
+continuous columns alike. PATE-GAN is the consistent exception. It
+assigns probability mass to category codes that do not occur in the real
+data (for example a spurious third \texttt{gender} level), flattens the
+sharply peaked \texttt{discharge\_disposition\_id} distribution into a
+broad smear, and displaces continuous fields such as
+\texttt{num\_medications} and \texttt{num\_lab\_procedures} markedly to
+the right of their real supports. The remaining column blocks follow the
+same qualitative split; the full per-column gallery for all five
+generators is provided in Appendix~\ref{app:distributions}.
 
-\paragraph{Pairwise Correlation Difference (PCD).}
-% TODO: Report per-generator scalar PCD (Frobenius norm of the correlation
-% matrix difference). Add column-level heatmaps in Appendix.
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.86\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/results/marginals_0}
+\caption{Categorical, ordinal, and disposition-code columns.}
+\end{subfigure}
+\\[1.5ex]
+\begin{subfigure}{0.86\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/results/marginals_1}
+\caption{Continuous clinical-count columns.}
+\end{subfigure}
+\caption{Representative per-column marginal distributions, real versus all
+five synthetic generators. HealthGAN and the three Pythia variants track
+the real reference; PATE-GAN places mass on invalid category codes and
+distorts both the categorical and the continuous marginals.}
+\label{fig:rq2:marginals}
+\end{figure}
 
-\paragraph{Kolmogorov--Smirnov Statistics.}
-% TODO: Mean KS per generator + boxplot across columns. Identify columns
-% with the largest distributional drift per generator.
+\paragraph{Marginal and Joint Similarity Scores.}
+Table~\ref{tab:rq2:ks-pcd} reduces the per-column comparison to two
+headline scalars defined in
+Sections~\ref{sec:eval:utility:similarity:ks}
+and~\ref{sec:eval:utility:similarity:pcd}: the mean Kolmogorov--Smirnov
+(KS) statistic averaged across columns, which measures worst-case
+marginal discrepancy, and the mean pairwise correlation difference (PCD),
+which measures the fidelity of the joint linear-dependency structure.
+Lower is better on both.
 
-\paragraph{PCA-Based Manifold Overlap.}
-% TODO: Single 2D PCA plot with all four synthetic clouds + real points.
-% Discuss which generator achieves the broadest overlap.
+\begin{table}[H]
+\centering
+\small
+\caption{Mean Kolmogorov--Smirnov statistic and mean pairwise correlation
+difference per generator (lower is better on both). KS is averaged over
+all compared columns; PCD is the mean absolute difference between the real
+and synthetic correlation matrices. The best non-trivial value in each
+column is shown in bold.}
+\label{tab:rq2:ks-pcd}
+\begin{tabular}{lcc}
+\toprule
+Generator & Mean KS $\downarrow$ & PCD $\downarrow$ \\
+\midrule
+PATE-GAN     & 0.5381 & 0.1142 \\
+HealthGAN    & \textbf{0.0480} & 0.0336 \\
+Pythia-70M   & 0.0856 & 0.0308 \\
+Pythia-1B    & 0.0805 & \textbf{0.0206} \\
+Pythia-1B-DP & 0.0992 & 0.0466 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The two scalars confirm the visual reading. HealthGAN attains the lowest
+marginal discrepancy (mean KS $0.0480$) and Pythia-1B the lowest joint
+discrepancy (PCD $0.0206$), with the four non-PATE generators all falling
+in a narrow band (mean KS $0.048$--$0.099$; PCD $0.021$--$0.047$).
+PATE-GAN is more than an order of magnitude worse on the marginal axis
+(mean KS $0.5381$) and three to five times worse on the joint axis
+(PCD $0.1142$), placing it in a separate regime from every other
+generator. Within the LLM family, the differentially private variant is
+modestly worse than its non-private counterpart on both axes (mean KS
+$0.0992$ vs.\ $0.0805$; PCD $0.0466$ vs.\ $0.0206$), an early indication
+of the differential-privacy utility cost quantified within-family in
+Section~\ref{sec:results:rq3:llm-toggle}.
+
+\paragraph{Correlation Structure.}
+Figure~\ref{fig:rq2:corrheat} contrasts the correlation-difference
+heatmaps (real minus synthetic correlation matrix) of the two
+joint-similarity extremes. PATE-GAN exhibits dense blocks of large
+residual correlation across the clinical and medication columns,
+indicating that the dependency structure of its output departs
+substantially from the real data. Pythia-1B is near-uniformly pale,
+indicating that most pairwise correlations are reproduced to within a
+small residual. The per-generator heatmaps of the remaining three
+generators, consistent with the PCD ordering of
+Table~\ref{tab:rq2:ks-pcd}, are collected in Appendix~\ref{app:corrheat}.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/results/corrheat_0}
+\caption{PATE-GAN (PCD $0.1142$).}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/results/corrheat_3}
+\caption{Pythia-1B (PCD $0.0206$).}
+\end{subfigure}
+\caption{Correlation-difference heatmaps (real minus synthetic) for the
+worst and best generators on the joint-dependency axis. Saturated cells
+denote large residual correlation; pale cells denote faithful
+reproduction.}
+\label{fig:rq2:corrheat}
+\end{figure}
+
+\paragraph{Manifold Overlap.}
+Figure~\ref{fig:rq2:pca} projects the real and synthetic records onto the
+first two principal components of the real data
+(Section~\ref{sec:eval:utility:similarity:pca}). The real cloud and four
+of the five synthetic clouds occupy a common region of the projected
+space, whereas PATE-GAN forms a disjoint cluster displaced along the
+first principal component. The projection therefore corroborates at the
+joint level what the marginal and correlation views establish separately:
+PATE-GAN's samples lie off the real-data manifold, while the remaining
+four generators populate it.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{images/results/pca}
+\caption{Two-dimensional PCA projection (onto the principal components of
+the real data) of real and synthetic records. Four generators overlap the
+real cloud; PATE-GAN is displaced into a disjoint region along the first
+principal component.}
+\label{fig:rq2:pca}
+\end{figure}
 
 \subsubsection{Predictive Performance}
 \label{sec:results:rq2:utility:predictive}
 
-% Notebook cells 35–41. Per-generator findings:
+Predictive utility is measured under the Train-on-Synthetic,
+Test-on-Real (TSTR) protocol defined in
+Section~\ref{sec:eval:utility:predictive:tstr}: a classifier is trained
+on each synthetic table and evaluated on the held-out real test split
+($n = 14{,}304$) with \texttt{readmitted} as the binary target. The
+Train-on-Real, Test-on-Real (TRTR) model provides the upper-bound
+reference. Three downstream classifiers are reported
+(Section~\ref{sec:eval:utility:predictive:classifiers}); Gradient
+Boosting is taken as the headline model, with Logistic Regression and
+Random Forest included for robustness.
 
 \paragraph{TSTR Classifier Performance.}
-% TODO: Master table — Train Source × Classifier with AUC, F1, Accuracy,
-% Precision, Recall. Highlight the gap to the TRTR baseline.
+Table~\ref{tab:rq2:tstr} reports the full Train-Source $\times$ Classifier
+matrix. Read by threshold-independent ranking (AUC-ROC), the headline
+Gradient-Boosting column orders the generators
+Pythia-1B $(0.6818) >$ Pythia-70M $(0.6634) >$ HealthGAN $(0.6312) >$
+Pythia-1B-DP $(0.5827) >$ PATE-GAN $(0.5108)$, against the real ceiling of
+$0.7008$. Pythia-1B thus recovers roughly $97\%$ of the real-data
+discriminative signal, while PATE-GAN sits almost on the chance diagonal.
+A notable inversion appears on the threshold-dependent F1 score: the three
+Pythia variants and HealthGAN all exceed the real-trained baseline's
+macro-F1 ($0.3668$), with both non-private Pythia models reaching
+$\approx 0.50$. This does not indicate better discrimination --- their AUC
+remains below the real ceiling --- but reflects an operating-point shift:
+the synthetic-trained models predict the minority (readmitted) class far
+more liberally, roughly doubling recall ($0.51$--$0.53$ vs.\ the real
+model's $0.26$) at the cost of precision ($0.47$--$0.50$ vs.\ $0.63$). The
+two metrics therefore capture different facets of predictive utility, as
+anticipated by the coverage map of Table~\ref{tab:rq1-coverage}. PATE-GAN
+collapses on both: its Gradient-Boosting F1 of $0.0093$ corresponds to a
+classifier that almost never predicts the positive class
+(recall $0.0047$).
+
+\begin{table}[H]
+\centering
+\small
+\caption{Train-on-Synthetic, Test-on-Real (TSTR) utility for all five
+generators and the Train-on-Real (TRTR) reference, evaluated on the real
+held-out split ($n = 14{,}304$) with \texttt{readmitted} as the target.
+The best synthetic AUC-ROC per classifier block is shown in bold.}
+\label{tab:rq2:tstr}
+\begin{tabular}{llccccc}
+\toprule
+Train Source & Classifier & AUC-ROC & F1 & Accuracy & Precision & Recall \\
+\midrule
+Real (TRTR)  & Logistic Regression & 0.6670 & 0.2837 & 0.6804 & 0.5974 & 0.1860 \\
+Real (TRTR)  & Random Forest       & 0.6790 & 0.3648 & 0.6895 & 0.6000 & 0.2620 \\
+Real (TRTR)  & Gradient Boosting   & 0.7008 & 0.3668 & 0.6962 & 0.6301 & 0.2587 \\
+\midrule
+PATE-GAN     & Logistic Regression & 0.5079 & 0.0417 & 0.6528 & 0.3407 & 0.0222 \\
+PATE-GAN     & Random Forest       & 0.5018 & 0.0246 & 0.6567 & 0.3669 & 0.0127 \\
+PATE-GAN     & Gradient Boosting   & 0.5108 & 0.0093 & 0.6583 & 0.3433 & 0.0047 \\
+\midrule
+HealthGAN    & Logistic Regression & 0.6130 & 0.3889 & 0.6651 & 0.5128 & 0.3132 \\
+HealthGAN    & Random Forest       & 0.6153 & 0.3826 & 0.6655 & 0.5142 & 0.3046 \\
+HealthGAN    & Gradient Boosting   & 0.6312 & 0.3824 & 0.6720 & 0.5321 & 0.2984 \\
+\midrule
+Pythia-70M   & Logistic Regression & 0.6573 & 0.5035 & 0.6337 & 0.4671 & 0.5460 \\
+Pythia-70M   & Random Forest       & 0.6588 & 0.4966 & 0.6442 & 0.4787 & 0.5158 \\
+Pythia-70M   & Gradient Boosting   & 0.6634 & 0.5005 & 0.6408 & 0.4749 & 0.5290 \\
+\midrule
+Pythia-1B    & Logistic Regression & 0.6613 & 0.4984 & 0.6393 & 0.4730 & 0.5267 \\
+Pythia-1B    & Random Forest       & 0.6682 & 0.5048 & 0.6523 & 0.4896 & 0.5210 \\
+Pythia-1B    & Gradient Boosting   & \textbf{0.6818} & 0.5036 & 0.6569 & 0.4959 & 0.5115 \\
+\midrule
+Pythia-1B-DP & Logistic Regression & 0.5868 & 0.2509 & 0.6477 & 0.4535 & 0.1734 \\
+Pythia-1B-DP & Random Forest       & 0.5823 & 0.2369 & 0.6456 & 0.4426 & 0.1617 \\
+Pythia-1B-DP & Gradient Boosting   & 0.5827 & 0.2714 & 0.6389 & 0.4327 & 0.1977 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{ROC Curves.}
+Figure~\ref{fig:rq2:roc} overlays the Gradient-Boosting ROC curves of all
+five generators against the real reference. The curves recover the AUC
+ordering of Table~\ref{tab:rq2:tstr} visually: the real curve (AUC
+$0.701$) bounds the family from above; Pythia-1B ($0.682$) and Pythia-70M
+($0.663$) lie just beneath it; HealthGAN ($0.631$) is lower; Pythia-1B-DP
+($0.583$) lower still; and PATE-GAN ($0.511$) tracks the chance diagonal
+across almost the entire false-positive range.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{images/results/roc}
+\caption{Gradient-Boosting ROC curves under TSTR for all five generators
+and the real (TRTR) reference. Legend values are the corresponding
+AUC-ROC scores.}
+\label{fig:rq2:roc}
+\end{figure}
+
+\paragraph{Feature-Importance Stability.}
+Figure~\ref{fig:rq2:featimp} compares the random-forest feature
+importances of a model trained on each source
+(Section~\ref{sec:eval:utility:predictive:fi}). For the real model and the
+four faithful generators, the same small set of predictors dominates ---
+\texttt{num\_lab\_procedures}, \texttt{num\_medications},
+\texttt{time\_in\_hospital}, and \texttt{age} lead in every case --- so
+the downstream notion of which variables drive readmission is preserved.
+PATE-GAN again departs: it redistributes importance onto sparsely
+populated indicators (for example \texttt{number\_outpatient} and several
+rare medication flags such as \texttt{metformin-pioglitazone}) that carry
+negligible weight in the real model, a direct consequence of the marginal
+and correlation distortions documented above.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{images/results/featimp}
+\caption{Random-forest feature importances, real versus synthetic. The
+four faithful generators preserve the real top-ranked predictors;
+PATE-GAN shifts importance onto sparsely populated indicators.}
+\label{fig:rq2:featimp}
+\end{figure}
+
+\paragraph{Survival-Model Agreement.}
+Beyond classification, agreement on a Cox proportional-hazards model
+(Section~\ref{sec:eval:utility:predictive:cox}) tests whether the
+synthetic data preserve clinically interpretable effect sizes. A Cox model
+is fitted on each source, and agreement is summarised by the fraction of
+covariates whose synthetic $95\%$ hazard-ratio confidence interval
+overlaps the corresponding real interval
+(Section~\ref{sec:eval:utility:predictive:cox-overlap}); the per-generator
+fractions are reported in Table~\ref{tab:rq2:cox}. HealthGAN and the two
+1B-parameter Pythia variants recover the largest share of real hazard
+ratios (seven covariates each), Pythia-70M fewer (four), and PATE-GAN
+none --- every PATE-GAN hazard-ratio interval is disjoint from the real
+one, including sign-level disagreements such as the \texttt{change}
+covariate (Figure~\ref{fig:rq2:cox}, left). Notably, the non-private and
+differentially private Pythia-1B variants agree on the same number of
+covariates (seven of thirteen), so the differential-privacy cost that is
+clearly visible in the TSTR discrimination scores is not apparent in the
+coarser Cox-overlap measure.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Cox proportional-hazards confidence-interval overlap per
+generator: the number of covariates whose synthetic $95\%$ hazard-ratio
+interval overlaps the real interval, out of those fitted (higher is
+better). HealthGAN is fitted on twelve covariates because one
+zero-variance column was dropped.}
+\label{tab:rq2:cox}
+\begin{tabular}{lcc}
+\toprule
+Generator & CIs overlapping & Fraction $\uparrow$ \\
+\midrule
+PATE-GAN     & 0 / 13 & 0.000 \\
+HealthGAN    & 7 / 12 & 0.583 \\
+Pythia-70M   & 4 / 13 & 0.308 \\
+Pythia-1B    & 7 / 13 & 0.538 \\
+Pythia-1B-DP & 7 / 13 & 0.538 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/results/cox_0}
+\caption{PATE-GAN (0 / 13 overlapping).}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.49\textwidth}
+\centering
+\includegraphics[width=\textwidth]{images/results/cox_3}
+\caption{Pythia-1B (7 / 13 overlapping).}
+\end{subfigure}
+\caption{Cox hazard-ratio estimates with $95\%$ confidence intervals, real
+(black) versus synthetic (colour). Shaded rows mark covariates whose
+intervals do not overlap. PATE-GAN disagrees on every covariate; Pythia-1B
+recovers the majority. The hazard-ratio plots for the remaining three
+generators appear in Appendix~\ref{app:cox}.}
+\label{fig:rq2:cox}
+\end{figure}
 
 \subsubsection{Ablation: Age Binning Granularity}
 \label{sec:results:rq2:utility:age-binning}
@@ -126,7 +529,7 @@ signal. Second, the three generators react to the binning choice in
 qualitatively different ways, exposing the encoding sensitivity of each
 synthesis family.
 
-\begin{table}[h]
+\begin{table}[H]
 \centering
 \small
 \caption{TSTR utility under the discarded three-bin age encoding versus
@@ -188,7 +591,7 @@ delta. F1 is near zero in either case ($0.0437$ vs.\ $0.0093$). The
 DP-PATE noise mechanism dominates over the encoding-level signal, so the
 generator does not meaningfully exploit either age representation. This
 sets the floor against which the within-family DP-utility cost is later
-quantified in \S\ref{sec:results:rq2:dp-cost}.
+quantified in \S\ref{sec:results:rq3:gan-toggle}.
 \vspace{0.5em}
 
 Taken together, the three generators react to the same preprocessing
@@ -199,112 +602,680 @@ DP-noised GAN that is largely insensitive to it. This generator-specific
 encoding sensitivity is discussed further in
 Section~\ref{sec:discussion:gan-vs-llm}.
 
-\paragraph{ROC Curves (Gradient Boosting).}
-% TODO: Single overlay plot — Real (TRTR) + 4 synthetic ROC curves.
-
-\paragraph{Feature Importance Stability.}
-% TODO: Spearman ρ between Real RF importances and each generator's RF
-% importances. Identify any feature whose ranking flips dramatically.
-
-\paragraph{Cox Proportional Hazards.}
-% TODO: HR table per generator vs. Real. Forest plot.
-
-\paragraph{Cox CI Overlap.}
-% TODO: Bar chart — fraction of covariates with overlapping CIs.
+% ROC, feature-importance, and Cox predictive results are reported above
+% within Predictive Performance (§\ref{sec:results:rq2:utility:predictive});
+% the age-binning ablation that follows is a preprocessing-sensitivity
+% finding kept as the final subsubsection of the utility results.
 
 \subsection{Privacy Results}
 \label{sec:results:rq2:privacy}
 
-% Notebook cells 42–48. Per-generator findings:
+Privacy is assessed through the two complementary classes of instrument
+defined in Section~\ref{sec:eval:privacy}: instance-level distance
+metrics, which ask how close synthetic records lie to real records, and
+inference-attack simulations, which ask whether an adversary can recover
+membership or attribute information from the synthetic data. Throughout,
+the natural scale of reference is the spacing of the real data itself: the
+median real-to-real nearest-neighbour distance is $2.019$, so a synthetic
+record at a comparable or larger distance carries no proximity-based
+disclosure beyond what the real distribution already exhibits. The
+simulation-based views are consolidated in Figure~\ref{fig:rq2:privacy}.
 
-\subsubsection{Nearest-Neighbour Distance and NNDR}
-% TODO: NNDR table per generator + boxplot of synth→real NN distances.
+\subsubsection{Nearest-Neighbour Distance and Distance Ratio}
+\label{sec:results:rq2:privacy:nn}
+
+Table~\ref{tab:rq2:nn} reports the median real-to-synthetic and
+synthetic-to-real nearest-neighbour distances and the
+nearest-neighbour distance ratio (NNDR) defined in
+Sections~\ref{sec:eval:privacy:nn} and~\ref{sec:eval:privacy:nndr}. An
+NNDR at or above unity indicates that synthetic records are no closer to
+real records than real records are to one another, and therefore pose no
+proximity-based disclosure risk.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Median nearest-neighbour distances and distance ratio per
+generator. The real-to-real median nearest-neighbour distance is $2.019$
+for reference. Larger distances and $\text{NNDR} \geq 1$ indicate lower
+proximity-based disclosure risk.}
+\label{tab:rq2:nn}
+\begin{tabular}{lccc}
+\toprule
+Generator & R$\rightarrow$S median & S$\rightarrow$R median & NNDR median \\
+\midrule
+PATE-GAN     & 41.268 & 219.879 & 105.082 \\
+HealthGAN    & 2.924  & 2.233   & 1.066 \\
+Pythia-70M   & 2.684  & 1.440   & 0.717 \\
+Pythia-1B    & 2.581  & 1.406   & 0.695 \\
+Pythia-1B-DP & 2.811  & 1.533   & 0.771 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The four faithful generators produce synthetic records whose distances to
+real data are of the same order as the real intrinsic spacing. HealthGAN
+attains an NNDR of $1.066$, just above unity, so its records are on
+average no closer to the training data than real records are to each
+other. The three Pythia variants sit slightly below unity (NNDR
+$0.695$--$0.771$), indicating that their records lie marginally closer to
+real records than the real spacing --- a mild proximity signal, but far
+from replication, since the absolute distances ($1.41$--$1.53$) remain
+well within the real distribution's own scatter. PATE-GAN is a degenerate
+outlier: its synthetic-to-real median distance of $219.9$ and NNDR of
+$105.1$ do not reflect strong privacy but distributional collapse. Its
+samples lie so far off the real-data manifold (Section~\ref{sec:results:rq2:utility:similarity})
+that they are trivially distant from every real record. This is exactly
+the blind spot of distance-based privacy metrics noted in
+Table~\ref{tab:rq1-coverage}: a generator that fails utility entirely can
+appear maximally private, so PATE-GAN's distances must be read jointly
+with its similarity failure rather than as genuine protection.
 
 \subsubsection{Nearest-Neighbour Adversarial Accuracy}
-% TODO: TrainAA, TestAA, Privacy Loss per generator (target loss ≈ 0).
+\label{sec:results:rq2:privacy:nnaa}
 
-\subsubsection{Membership Inference Attack}
-% TODO: MIA AUC and MIA Advantage per generator.
+The nearest-neighbour adversarial accuracy (NNAA;
+Section~\ref{sec:eval:privacy:nnaa}) decomposes into a train-set and a
+test-set adversarial accuracy, whose difference --- the privacy loss ---
+measures memorisation: a value near zero indicates that the generator
+treats training and held-out records indistinguishably and has therefore
+not overfit to its training split. Table~\ref{tab:rq2:nnaa} reports both
+components.
 
-\subsubsection{Attribute Inference Attack}
-% TODO: Per-attribute advantage table (rows: readmitted, gender, age,
-% diag_1; columns: generators). Headline metric = max advantage.
+\begin{table}[H]
+\centering
+\small
+\caption{Nearest-neighbour adversarial accuracy per generator. Train and
+test adversarial accuracy near $0.5$ indicates good resemblance; privacy
+loss (test $-$ train) near $0.0$ indicates no memorisation.}
+\label{tab:rq2:nnaa}
+\begin{tabular}{lccc}
+\toprule
+Generator & Train AA & Test AA & Privacy loss \\
+\midrule
+PATE-GAN     & 1.0000 & 0.9999 & $-0.0001$ \\
+HealthGAN    & 0.7182 & 0.7199 & $+0.0017$ \\
+Pythia-70M   & 0.6469 & 0.6499 & $+0.0030$ \\
+Pythia-1B    & 0.6207 & 0.6204 & $-0.0003$ \\
+Pythia-1B-DP & 0.7063 & 0.7139 & $+0.0076$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The privacy loss is negligible for every generator (between $-0.0001$ and
+$+0.0076$): none reproduces its training records more closely than it
+reproduces unseen records, so there is no evidence of memorisation. The
+adversarial accuracy itself measures resemblance rather than privacy, and
+follows the now-familiar pattern: PATE-GAN's value of $\approx 1.0$ means
+the adversary separates its synthetic samples from real data with near
+certainty (off-manifold output), whereas the faithful generators fall in
+the $0.62$--$0.72$ range, with Pythia-1B the most realistic ($0.621$).
+None reaches the ideal of $0.5$, so all remain statistically
+distinguishable from real data, but the near-zero privacy loss confirms
+that this distinguishability does not arise from training-set
+memorisation.
+
+\subsubsection{Membership Inference}
+\label{sec:results:rq2:privacy:mia}
+
+A distance-based membership-inference adversary
+(Section~\ref{sec:eval:privacy:mia}) attempts to decide whether a given
+real record was part of the generator's training set.
+Table~\ref{tab:rq2:mia} reports the attack AUC and the corresponding
+advantage over random guessing.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Membership-inference attack results per generator. AUC near
+$0.5$ and advantage near $0.0$ indicate that the adversary cannot
+distinguish training members from non-members.}
+\label{tab:rq2:mia}
+\begin{tabular}{lcc}
+\toprule
+Generator & MIA AUC & MIA advantage \\
+\midrule
+PATE-GAN     & 0.4984 & $-0.0016$ \\
+HealthGAN    & 0.5005 & $+0.0005$ \\
+Pythia-70M   & 0.5119 & $+0.0119$ \\
+Pythia-1B    & 0.4926 & $-0.0074$ \\
+Pythia-1B-DP & 0.4931 & $-0.0069$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Membership inference fails uniformly: every attack AUC lies within
+$[0.493, 0.512]$ of the random-guess baseline, and every advantage is
+within $\pm 0.012$ of zero. The largest signal, Pythia-70M's AUC of
+$0.512$, remains negligible. No generator --- private or otherwise ---
+exposes which records belonged to its training set, consistent with the
+absence of memorisation indicated by the privacy-loss measure above.
+
+\subsubsection{Attribute Inference}
+\label{sec:results:rq2:privacy:aia}
+
+The attribute-inference attack (Section~\ref{sec:eval:privacy:aia}) trains
+a predictor on the synthetic data and measures its advantage, over a
+marginal baseline, at recovering a held-out sensitive attribute of real
+records. Table~\ref{tab:rq2:aia} reports the per-attribute advantage for
+the four attributes considered; the rightmost column is the per-generator
+maximum, which is the headline figure carried into the comprehensive
+summary.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Attribute-inference advantage per generator and attribute
+(positive values indicate leakage above the marginal baseline). The
+final column is the per-generator maximum advantage.}
+\label{tab:rq2:aia}
+\begin{tabular}{lccccc}
+\toprule
+Generator & \texttt{readmitted} & \texttt{gender} & \texttt{age} & \texttt{diag\_1} & Max \\
+\midrule
+PATE-GAN     & $-0.3334$ & $-0.0560$ & $-0.0266$ & $-0.2330$ & $-0.0266$ \\
+HealthGAN    & $-0.0046$ & $-0.0040$ & $-0.0338$ & $-0.0218$ & $-0.0040$ \\
+Pythia-70M   & $-0.0236$ & $-0.0052$ & $-0.0332$ & $+0.0064$ & $+0.0064$ \\
+Pythia-1B    & $-0.0168$ & $+0.0104$ & $+0.0024$ & $+0.0410$ & $+0.0410$ \\
+Pythia-1B-DP & $-0.0296$ & $-0.0056$ & $-0.0322$ & $-0.0166$ & $-0.0056$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Almost every advantage is zero or negative, meaning an adversary trained
+on the synthetic data generally does no better --- and often worse ---
+than predicting the attribute's marginal. The one substantive exception
+is Pythia-1B, which leaks mild information about the primary diagnosis
+(\texttt{diag\_1} advantage $+0.0410$, the only value the detector flags
+as medium-risk), together with marginal positive advantages on
+\texttt{gender} and \texttt{age}. The differentially private variant
+removes this leakage: Pythia-1B-DP's \texttt{diag\_1} advantage falls to
+$-0.0166$ and its maximum advantage to $-0.0056$. This is the clearest
+within-family privacy benefit of differential privacy on the LLM side, and
+it complements the utility cost documented in
+Section~\ref{sec:results:rq2:utility:predictive}; both are revisited under
+the DP-toggle lens in Section~\ref{sec:results:rq3:llm-toggle}. PATE-GAN's
+large negative advantages on \texttt{readmitted} ($-0.3334$) and
+\texttt{diag\_1} ($-0.2330$) once more reflect uninformative output rather
+than protection.
 
 \subsubsection{Outlier Linkability}
-% TODO: Fraction of synthetic neighbours within radius of real outliers.
+\label{sec:results:rq2:privacy:linkability}
 
-\subsection{Within-Family DP Cost}
-\label{sec:results:rq2:dp-cost}
+The clustering-proximity test (Section~\ref{sec:eval:privacy:linkability})
+isolates the disclosure risk for the most vulnerable real records by
+comparing the fraction of outliers with a nearby synthetic neighbour to
+the same fraction for non-outliers, within a radius equal to the
+$75^{\text{th}}$ percentile of the real-to-real nearest-neighbour distance
+($2.636$). The top $5\%$ of real records by centroid distance ($2{,}861$
+records) are taken as outliers. Table~\ref{tab:rq2:linkability} reports
+both fractions and their gap.
 
-\subsubsection{HealthGAN and PATE-GAN}
-% TODO: Side-by-side comparison.
-%  - Utility delta (similarity branch): KS / PCD / PCA changes.
-%  - Utility delta (predictive branch): AUC drop, F1 drop, Cox CI overlap drop.
-%  - Privacy gain: NNDR change, MIA Advantage change, AIA Advantage change.
-%  - Net assessment: is the utility sacrifice "paid for" by privacy gains?
+\begin{table}[H]
+\centering
+\small
+\caption{Outlier versus non-outlier linkability per generator (percentage
+of real records with a synthetic neighbour within radius $2.636$). Low
+outlier linkability indicates that the generator does not concentrate mass
+around vulnerable records; a positive gap indicates coverage of common
+rather than extreme patterns.}
+\label{tab:rq2:linkability}
+\begin{tabular}{lccc}
+\toprule
+Generator & Outlier \% & Non-outlier \% & Gap \\
+\midrule
+PATE-GAN     & 0.0 & 0.0  & $+0.0$ \\
+HealthGAN    & 0.0 & 42.0 & $+42.0$ \\
+Pythia-70M   & 0.1 & 50.6 & $+50.6$ \\
+Pythia-1B    & 0.6 & 53.3 & $+52.6$ \\
+Pythia-1B-DP & 0.0 & 46.8 & $+46.8$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsubsection{Pythia and Pythia-DP}
-% TODO: Same structure as above, for the LLM family. Note the achieved
-% epsilon from run_metadata_dp.json.
+Outlier linkability is near zero for every generator (at most $0.6\%$, for
+Pythia-1B): none places synthetic records in the neighbourhood of the
+vulnerable tail of the real distribution. The faithful generators link a
+substantial fraction of non-outliers ($42$--$53\%$), and the resulting
+large positive gap is the desirable pattern --- they reproduce the common
+clinical patterns that drive utility while leaving the rare, identifiable
+records uncovered. PATE-GAN links neither outliers nor non-outliers
+($0\%$ on both), consistent with output that lies away from the real
+manifold altogether.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/results/privacy}
+\caption{Consolidated privacy view across the five generators: synthetic
+-to-real nearest-neighbour distance (top left), membership-inference AUC
+against the random-guess baseline (top right), attribute-inference
+advantage per attribute (bottom left), and outlier versus non-outlier
+linkability (bottom right).}
+\label{fig:rq2:privacy}
+\end{figure}
+
+\subsection{Privacy--Utility Landscape}
+\label{sec:results:rq2:landscape}
+
+Figure~\ref{fig:rq2:landscape} positions all five generators on a single
+privacy--utility plane, with predictive utility (Gradient-Boosting TSTR
+AUC-ROC) on the horizontal axis and a distance-based privacy measure (the
+median nearest-neighbour distance ratio) on the vertical axis. The dashed
+reference lines mark the real-data utility ceiling (AUC $0.701$) and the
+NNDR privacy threshold of unity. This is the primary figure for the first
+half of RQ2: it shows where each family sits and whether either dominates.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{images/results/landscape}
+\caption{Privacy--utility landscape across the five generators. Horizontal
+axis: predictive utility (Gradient-Boosting TSTR AUC-ROC); vertical axis:
+privacy (median NNDR, where values above $1.0$ indicate no
+proximity-based disclosure). PATE-GAN sits far above the plane because its
+off-manifold output inflates the distance ratio; it is included for
+landscape completeness and interpreted as the GAN family's DP-enforced
+operating point (\S\ref{sec:discussion:limit:pategan-dual-role}).}
+\label{fig:rq2:landscape}
+\end{figure}
+
+The plane separates into two regimes. PATE-GAN occupies an isolated
+position high on the privacy axis (NNDR $\approx 105$) but at the lowest
+utility (AUC $0.511$, essentially chance); as established in
+Section~\ref{sec:results:rq2:privacy}, its extreme distance ratio is an
+artefact of distributional collapse rather than genuine protection. The
+remaining four generators lie close together near the NNDR threshold and
+spread along the utility axis: Pythia-1B-DP at the low-utility end (AUC
+$0.583$), then HealthGAN ($0.631$), Pythia-70M ($0.663$), and Pythia-1B
+($0.682$) closest to the real-data ceiling. Among these usable
+generators, HealthGAN alone sits at or above the NNDR threshold (NNDR
+$1.066$), while the three Pythia variants fall just below it (NNDR
+$0.70$--$0.77$). No single family dominates the plane: the LLM family
+supplies the highest-utility operating points, whereas the GAN family
+supplies the only usable point that clears the NNDR privacy threshold.
+
+\subsection{Five-Dimension Radar Comparison}
+\label{sec:results:rq2:radar}
+
+Figure~\ref{fig:rq2:radar} overlays the five generators across five
+normalised axes --- fidelity ($1 - $ mean KS), correlation preservation
+(inverse pairwise correlation difference), predictive utility (TSTR
+AUC-ROC), Cox confidence-interval overlap, and a composite privacy score
+(combining NNDR, membership inference, attribute inference, and outlier
+linkability, oriented so that higher is more private). Each axis is scaled
+so that a larger radius is better.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.78\textwidth]{images/results/radar}
+\caption{Radar comparison of the five generators across two fidelity axes
+(fidelity as $1-$KS, correlation preservation), two predictive axes (TSTR
+AUC-ROC, Cox CI overlap), and a composite privacy axis. Larger radius is
+better on every axis.}
+\label{fig:rq2:radar}
+\end{figure}
+
+The four faithful generators trace large, broadly balanced polygons:
+they extend well along the fidelity, correlation, utility, and Cox axes
+while retaining a high privacy radius. PATE-GAN, by contrast, collapses to
+a narrow spike --- it reaches the outer ring only on the composite privacy
+axis (again the distributional-collapse artefact) and on partial fidelity,
+while sitting near the centre on utility, Cox overlap, and correlation
+preservation. Among the faithful generators the polygons differ in
+emphasis rather than size: Pythia-1B covers the most area, leading on
+predictive utility and correlation preservation; HealthGAN leads on
+fidelity and Cox overlap; and Pythia-1B-DP is inset on the two predictive
+axes relative to its non-private counterpart while holding the privacy
+axis. The radar therefore visualises the central RQ2 finding that no
+generator dominates every dimension, and that the practical choice is a
+trade-off across complementary axes.
+
+\subsection{Comprehensive Summary}
+\label{sec:results:rq2:table}
+
+Table~\ref{tab:rq2:summary} collects the eleven headline single-number
+metrics for the five generators and the real reference in a single view,
+grouped by pillar and branch. It is the numerical anchor for the
+qualitative readings of the preceding figures; the best value per row
+among the synthetic generators is shown in bold for the utility rows
+(the privacy rows are left unmarked because PATE-GAN's distance metrics,
+as noted, reflect collapse rather than protection).
+
+\begin{table}[H]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\caption{Comprehensive summary of the eleven headline metrics across the
+five generators and the real (TRTR) reference. Arrows indicate the
+preferred direction; ($\approx 0.5$) indicates that values closest to
+$0.5$ are best. Bold marks the best synthetic value on each utility row.
+PATE-GAN's nearest-neighbour distance and ratio are degenerate (off-manifold
+output) and should be read with Section~\ref{sec:results:rq2:privacy}.}
+\label{tab:rq2:summary}
+\begin{tabular}{lcccccc}
+\toprule
+Metric & Real & PATE-GAN & HealthGAN & Pythia-70M & Pythia-1B & Pythia-1B-DP \\
+\midrule
+\multicolumn{7}{l}{\emph{Utility --- statistical similarity}}\\
+Mean KS $\downarrow$        & ---    & 0.5381 & \textbf{0.0480} & 0.0856 & 0.0805 & 0.0992 \\
+Corr.\ diff.\ $\downarrow$  & ---    & 0.1142 & 0.0336 & 0.0308 & \textbf{0.0206} & 0.0466 \\
+\midrule
+\multicolumn{7}{l}{\emph{Utility --- predictive performance}}\\
+AUC-ROC $\uparrow$          & 0.7008 & 0.5108 & 0.6312 & 0.6634 & \textbf{0.6818} & 0.5827 \\
+F1 $\uparrow$               & 0.3668 & 0.0093 & 0.3824 & 0.5005 & \textbf{0.5036} & 0.2714 \\
+Cox CI overlap $\uparrow$   & ---    & 0.0000 & \textbf{0.5833} & 0.3077 & 0.5385 & 0.5385 \\
+\midrule
+\multicolumn{7}{l}{\emph{Privacy}}\\
+NN dist.\ median $\uparrow$ & ---    & 219.879 & 2.233 & 1.440 & 1.406 & 1.533 \\
+NNDR median $\uparrow$      & ---    & 105.082 & 1.066 & 0.717 & 0.695 & 0.771 \\
+MIA AUC ($\approx 0.5$)     & ---    & 0.4984 & 0.5005 & 0.5119 & 0.4926 & 0.4931 \\
+MIA advantage $\downarrow$  & ---    & $-0.0016$ & 0.0005 & 0.0119 & $-0.0074$ & $-0.0069$ \\
+Max.\ attr.\ adv.\ $\downarrow$ & --- & $-0.0266$ & $-0.0040$ & 0.0064 & 0.0410 & $-0.0056$ \\
+Outlier link.\ \% $\downarrow$ & --- & 0.0 & 0.0 & 0.1 & 0.6 & 0.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The table makes the division of strengths explicit. On the utility side,
+Pythia-1B holds four of the five best synthetic values (correlation
+difference, AUC-ROC, F1, and joint-best fidelity behind HealthGAN), while
+HealthGAN holds the best mean KS and the best Cox confidence-interval
+overlap. On the privacy side, every usable generator returns membership
+and attribute advantages within a narrow band of zero, so the privacy
+columns do not separate the four faithful generators; the only structured
+differences --- Pythia-1B's attribute advantage on the primary diagnosis
+and its suppression under differential privacy --- are the within-family
+DP signals examined in Section~\ref{sec:results:rq3}.
+
+\subsection{Pareto Analysis}
+\label{sec:results:rq2:pareto}
+
+To answer the second half of RQ2 --- which family achieves a more
+effective balance --- the generators are assessed for Pareto optimality on
+the (utility, privacy) pair used in the landscape of
+Figure~\ref{fig:rq2:landscape}, taking predictive utility as the
+Gradient-Boosting TSTR AUC-ROC and privacy as the median NNDR. A generator
+is Pareto-optimal if no other generator is at least as good on both axes
+and strictly better on one.
+
+On the full set, the Pareto frontier is
+$\{\text{PATE-GAN}, \text{HealthGAN}, \text{Pythia-70M}, \text{Pythia-1B}\}$,
+and Pythia-1B-DP is the only dominated generator --- HealthGAN attains both
+a higher utility ($0.631$ vs.\ $0.583$) and a higher NNDR ($1.066$ vs.\
+$0.771$). PATE-GAN appears on the frontier only by occupying the
+degenerate maximum-privacy, minimum-utility corner, where its position is
+the distance artefact discussed above rather than a genuinely attractive
+operating point. Setting that degenerate corner aside, the usable frontier
+is $\{\text{HealthGAN}, \text{Pythia-70M}, \text{Pythia-1B}\}$: the two
+non-private LLMs anchor the high-utility end, while HealthGAN anchors the
+high-privacy (NNDR) end. The LLM family therefore contributes two of the
+three usable Pareto-optimal points and the GAN family one.
+
+The single dominated generator is instructive. Pythia-1B-DP is dominated
+not because differential privacy is intrinsically costly on this plane, but
+because its utility cost (a $0.099$ AUC drop from Pythia-1B) is not repaid
+by any NNDR-measurable privacy gain: membership and attribute leakage are
+already negligible for every faithful generator, so the distance-based
+privacy axis cannot reward the DP variant for the attribute-leakage
+reduction it does achieve (Section~\ref{sec:results:rq2:privacy:aia}). This
+limitation of a single composite plane --- and the within-family question
+of what differential privacy actually costs --- motivates the dedicated
+DP-toggle analysis of Section~\ref{sec:results:rq3}.
 
 \subsection*{Answer to RQ2}
 \label{sec:results:rq2:answer}
 
-% TODO: One paragraph per generator family, synthesising each model's
-% tradeoff position. Example skeleton (utility = similarity + predictive):
-%  - HealthGAN:  high similarity, high predictive, MODERATE privacy (no DP).
-%  - PATE-GAN:   lower utility on both branches, higher privacy, formal DP.
-%  - Pythia:     <similarity / predictive / privacy summary>.
-%  - Pythia-DP:  <similarity / predictive / privacy summary>.
+The GAN family spans the two extremes of the landscape. HealthGAN is the
+strongest single operating point produced by any generator without a
+formal guarantee: it attains the best marginal fidelity (mean KS $0.0480$)
+and the best survival agreement (Cox overlap $0.583$), respectable
+predictive utility (AUC $0.631$), and is the only usable generator whose
+distance ratio clears the NNDR privacy threshold ($1.066$), with
+membership and attribute leakage indistinguishable from chance. PATE-GAN,
+the GAN family's differentially private member, sits at the opposite
+extreme: at $\varepsilon = 5.0$ it collapses on both utility branches
+(mean KS $0.5381$, AUC $0.511$, Cox overlap $0/13$), and its apparently
+perfect privacy scores are the artefact of off-manifold output rather than
+genuine protection. The GAN family therefore offers either high usable
+utility without a formal guarantee (HealthGAN) or a formal guarantee
+without usable utility (PATE-GAN), but not both.
+
+The LLM family is more uniform and occupies the high-utility region of the
+plane. Pythia-1B is the closest of all generators to the real-data utility
+ceiling (AUC $0.682$ against $0.701$) and additionally achieves the best
+joint-dependency fidelity (correlation difference $0.0206$) and the best
+predictive F1; Pythia-70M trails it only slightly (AUC $0.663$) despite
+its far smaller scale. Both resist membership inference and, apart from
+Pythia-1B's mild leakage on the primary diagnosis, attribute inference as
+well. The differentially private Pythia-1B-DP retains meaningful utility
+under a formal guarantee (AUC $0.583$, well above chance) and removes the
+one attribute-leakage signal its non-private counterpart exhibited, at the
+cost of a $0.099$ drop in predictive utility. The LLM family thus provides
+the two highest-utility non-private points and the only differentially
+private generator that remains usable.
+
+Taken together, the answer to RQ2 is that neither family dominates the
+privacy--utility plane outright, but they dominate different regions and
+under different requirements. Where no formal guarantee is needed, both
+families offer strong operating points --- the LLM family for peak
+statistical and predictive utility (Pythia-1B, Pythia-70M), and the GAN
+family for the best fidelity combined with a distance ratio that clears
+the privacy threshold (HealthGAN) --- and the choice between them is a
+genuine trade-off rather than a clear win. Once a formal differential
+privacy guarantee at $\varepsilon = 5.0$ is required, however, the balance
+tips decisively toward the LLM family: its DP member preserves usable
+utility while its GAN counterpart does not. The more effective balance
+under a formal guarantee is therefore achieved by the LLM family, a
+conclusion examined directly through the within-family DP-toggle lens of
+Section~\ref{sec:results:rq3}.
 
 % -------------------------------------------------------------------
 
-\section{RQ3 -- Which Approach Achieves Better Balance}
+\section{RQ3 -- The Cost of DP Enforcement, Within-Family}
 \label{sec:results:rq3}
 
-% RQ3: "Which synthetic data generation approach, based on GANs or Large
-% Language Models, achieves a more effective balance between data utility
-% and privacy preservation when applied to medical datasets?"
+% RQ3 (finalised): "At a matched privacy budget (ε=5.0), how does enforcing
+% differential privacy using mechanisms appropriate to each family affect
+% utility, and how do the resulting privacy--utility profiles differ
+% between GAN-based (PATE-GAN vs HealthGAN) and LLM-based (Pythia 1B-DP vs
+% Pythia 1B) synthesisers of tabular medical data?"
+%
+% The four generators analysed in this section are a subset of the five
+% reported in \S\ref{sec:results:rq2}; the same experimental outputs are
+% re-examined under a within-family DP-toggle lens, not re-run. Pythia-70M
+% is excluded from RQ3's main comparison because DP-SGD failed at that
+% scale (\S\ref{sec:results:rq3:pythia-70m-failure}).
 
-\subsection{Tradeoff Landscape}
-\label{sec:results:rq3:tradeoff}
+\subsection{Convergence Failure of DP-SGD at the Pythia-70M Scale}
+\label{sec:results:rq3:pythia-70m-failure}
 
-% Notebook cell 50.
-% TODO: Privacy–Utility scatter plot (NNDR vs. Gradient-Boosting AUC) with
-% all four generators + Real (TRTR) reference. Identify the upper-right
-% quadrant occupants.
+An initial attempt to apply DP-SGD to Pythia-70M at $\varepsilon = 5.0$
+failed to train usefully: the injected noise exceeded the gradient
+magnitudes, and the model did not converge to a useful synthesis
+distribution. The LLM-side DP comparison was therefore scaled to
+Pythia-1B, which trained successfully under DP-SGD at the same privacy
+budget. This itself constitutes a finding: DP-SGD on small LLMs is
+impractical at moderate privacy budgets, consistent with prior work
+showing that larger LLMs tolerate DP noise more
+gracefully~\cite{Li2022LargeDP}. The methodological consequence ---
+that the LLM-family DP toggle is operationalised at the 1B scale --- is
+discussed in \S\ref{sec:methods:pythia-dp:why-1b}.
 
-\subsection{Six-Dimension Radar Comparison}
-\label{sec:results:rq3:radar}
+\subsection{Cost of Differential Privacy on the GAN Family}
+\label{sec:results:rq3:gan-toggle}
 
-% Notebook cell 51.
-% TODO: Radar chart with the four generators overlaid; describe the shape
-% of each polygon and which generator dominates which axes (three utility
-% axes — similarity, predictive, Cox CI overlap — and three privacy axes —
-% NN, MIA, AIA).
+The GAN-family comparison contrasts the non-private HealthGAN with the
+differentially private PATE-GAN.
 
-\subsection{Comprehensive Summary Table}
-\label{sec:results:rq3:table}
+Because PATE-GAN incorporates differential privacy by construction whereas
+HealthGAN does not, the contrast measures the cost of moving to a formally
+private generator within the GAN family.
+Table~\ref{tab:rq3:gan-toggle} reports the change on each headline metric.
 
-% Notebook cell 52.
-% TODO: 18-metric × 5-source comprehensive table, columns grouped by
-% pillar/branch (Utility-similarity, Utility-predictive, Privacy). Highlight
-% the best entry per column (excluding the Real reference).
+\begin{table}[H]
+\centering
+\small
+\caption{Within-family differential-privacy transition for the GAN family
+(HealthGAN $\to$ PATE-GAN). $\Delta$ is the private value minus the
+non-private value; on a utility row a negative $\Delta$ denotes a loss.}
+\label{tab:rq3:gan-toggle}
+\begin{tabular}{lccc}
+\toprule
+Metric & HealthGAN & PATE-GAN & $\Delta$ \\
+\midrule
+Mean KS $\downarrow$       & 0.0480 & 0.5381 & $+0.4901$ \\
+Corr.\ diff.\ $\downarrow$ & 0.0336 & 0.1142 & $+0.0806$ \\
+AUC-ROC $\uparrow$         & 0.6312 & 0.5108 & $-0.1204$ \\
+F1 $\uparrow$              & 0.3824 & 0.0093 & $-0.3731$ \\
+Cox CI overlap $\uparrow$  & 0.5833 & 0.0000 & $-0.5833$ \\
+NNDR median                & 1.066  & 105.082 & (degenerate) \\
+Max.\ attr.\ adv.\ $\downarrow$ & $-0.0040$ & $-0.0266$ & $-0.0226$ \\
+\bottomrule
+\end{tabular}
+\end{table}
 
-\subsection{Pareto Analysis: GAN Family vs. LLM Family}
-\label{sec:results:rq3:pareto}
+The transition is destructive across the entire utility pillar. Marginal
+fidelity collapses (mean KS rises more than tenfold, $0.0480 \to 0.5381$),
+joint-dependency fidelity worsens by a factor of roughly three
+(correlation difference $0.0336 \to 0.1142$), and the predictive branch is
+effectively wiped out: AUC-ROC falls by $0.1204$ to near chance, macro-F1
+drops from $0.3824$ to $0.0093$, and the survival model loses every
+confidence-interval overlap it previously held ($7/12 \to 0/13$). The
+apparent privacy improvement --- NNDR rising from $1.066$ to $105.082$ ---
+is not a genuine gain but the off-manifold artefact established in
+Section~\ref{sec:results:rq2:privacy:nn}; the simulation-based privacy
+measures barely move, since both generators already resist membership and
+attribute inference. Crucially, this comparison is not a clean
+differential-privacy toggle: HealthGAN and PATE-GAN are architecturally
+distinct generators, so the measured cost conflates the DP mechanism with
+the architecture change, and the utility collapse cannot be attributed to
+differential privacy alone
+(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}).
 
-% TODO: Identify Pareto-optimal generators (not dominated on (utility,
-% privacy)). Discuss which family contributes more Pareto-optimal points.
+\subsection{Cost of Differential Privacy on the LLM Family}
+\label{sec:results:rq3:llm-toggle}
+
+The LLM-family comparison contrasts the non-private Pythia-1B with the
+differentially private Pythia-1B-DP.
+
+Because both variants share the same Pythia-1B backbone, the same
+row-as-text serialisation, and the same low-rank fine-tuning
+configuration, this comparison is a clean differential-privacy toggle: the
+only material difference is the DP-SGD training procedure. The private
+variant was trained under a privacy budget that the accounting reports as
+an achieved $\varepsilon = 4.998$ against a target of $5.0$ (with
+$\delta = 10^{-5}$, gradient-clipping norm $1.0$, noise multiplier
+$0.789$, and an effective batch size of $512$).
+Table~\ref{tab:rq3:llm-toggle} reports the change on each headline metric.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Within-family differential-privacy transition for the LLM family
+(Pythia-1B $\to$ Pythia-1B-DP), a clean toggle on a shared backbone at
+achieved $\varepsilon = 4.998$. $\Delta$ is the private value minus the
+non-private value.}
+\label{tab:rq3:llm-toggle}
+\begin{tabular}{lccc}
+\toprule
+Metric & Pythia-1B & Pythia-1B-DP & $\Delta$ \\
+\midrule
+Mean KS $\downarrow$       & 0.0805 & 0.0992 & $+0.0187$ \\
+Corr.\ diff.\ $\downarrow$ & 0.0206 & 0.0466 & $+0.0260$ \\
+AUC-ROC $\uparrow$         & 0.6818 & 0.5827 & $-0.0991$ \\
+F1 $\uparrow$              & 0.5036 & 0.2714 & $-0.2322$ \\
+Cox CI overlap $\uparrow$  & 0.5385 & 0.5385 & $\phantom{+}0.0000$ \\
+NNDR median                & 0.695  & 0.771  & $+0.076$ \\
+Max.\ attr.\ adv.\ $\downarrow$ & $+0.0410$ & $-0.0056$ & $-0.0466$ \\
+Outlier link.\ \% $\downarrow$  & 0.6 & 0.0 & $-0.6$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The cost is real but contained, and it falls almost entirely on the
+predictive branch: AUC-ROC drops by $0.0991$ (to $0.5827$, still well
+above chance) and macro-F1 by $0.2322$. The statistical-similarity branch
+is barely affected --- mean KS rises by only $0.0187$ and the correlation
+difference by $0.0260$, both leaving the private variant comfortably within
+the faithful regime --- and the survival model is untouched, with identical
+confidence-interval overlap ($7/13$) before and after. On the privacy side
+the toggle produces a genuine, if small, benefit: the attribute-inference
+advantage on the primary diagnosis, the one structured leak exhibited by
+the non-private model, is removed (maximum advantage
+$+0.0410 \to -0.0056$), and outlier linkability falls to zero. Differential
+privacy on the LLM family therefore trades a moderate predictive-utility
+reduction for a measurable reduction in attribute disclosure, while
+preserving distributional fidelity and survival-model agreement.
+
+\subsection{Cross-Family Comparison of Differential-Privacy Cost}
+\label{sec:results:rq3:arrow-plot}
+
+Figure~\ref{fig:rq3:arrow} places the four generators on the
+privacy--utility plane of Figure~\ref{fig:rq2:landscape} and draws each
+within-family differential-privacy transition as an arrow from the
+non-private to the private variant. The vertical axis (NNDR) is shown on a
+logarithmic scale so that both transitions are visible despite PATE-GAN's
+off-scale distance ratio.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.82\textwidth]{images/results/arrow}
+\caption{Within-family differential-privacy transitions on the
+privacy--utility plane. Each arrow runs from the non-private to the
+differentially private variant of one family: HealthGAN $\to$ PATE-GAN
+(GAN family) and Pythia-1B $\to$ Pythia-1B-DP (LLM family). The vertical
+axis is logarithmic; PATE-GAN's high NNDR is the off-manifold artefact of
+Section~\ref{sec:results:rq2:privacy:nn}.}
+\label{fig:rq3:arrow}
+\end{figure}
+
+The two arrows differ sharply in length and meaning. The LLM arrow is
+short and almost horizontal: it moves left by $0.0991$ in utility and only
+slightly upward in NNDR, a controlled step that keeps the private variant
+within the usable region of the plane. The GAN arrow is long and steep,
+plunging the operating point from HealthGAN's usable position
+down-and-left to PATE-GAN's degenerate corner --- but, as noted, its
+vertical extent is the distance artefact and its horizontal extent
+conflates architecture with mechanism. Read together, the figure shows
+that the controlled, architecture-matched differential-privacy step (the
+LLM arrow) is far less destructive to utility than the GAN-side
+transition, and that the only differentially private generator to remain
+in the usable region of the plane is the LLM one.
+
+\subsection{Supplementary Per-Family Analyses}
+\label{sec:results:rq3:supplementary}
+
+The full per-generator diagnostics underlying both transitions are
+referenced rather than re-plotted here. The complete metric values for all
+four generators appear in the comprehensive summary of
+Table~\ref{tab:rq2:summary}; the per-generator correlation-difference
+heatmaps and Cox hazard-ratio plots for HealthGAN, PATE-GAN, Pythia-1B, and
+Pythia-1B-DP are collected in Appendix~\ref{app:utility-diag}, where the
+two within-family pairs can be compared panel by panel.
 
 \subsection*{Answer to RQ3}
 \label{sec:results:rq3:answer}
 
-% TODO: Conditional recommendation in 3–4 sentences:
-%  - If formal DP is required AND similarity-sensitive downstream task →
-%    <generator>.
-%  - If formal DP is required AND tabular-rich data structure → <generator>.
-%  - If informal privacy is acceptable AND maximum utility → <generator>.
-% Make explicit which family "wins" in your specific empirical setting.
+At a matched privacy budget of $\varepsilon = 5.0$, the cost of enforcing
+differential privacy differs sharply between the two families, and the LLM
+family's privacy--utility profile degrades far more gracefully. The
+LLM-family toggle (Pythia-1B $\to$ Pythia-1B-DP) loses $0.0991$ in TSTR
+AUC-ROC while leaving statistical similarity essentially intact (mean KS
+$+0.0187$) and survival-model agreement unchanged ($7/13$ confidence-interval
+overlaps before and after), and it converts this moderate utility cost into
+a real privacy gain --- the sole attribute-inference leak is removed
+(maximum advantage $+0.0410 \to -0.0056$) and outlier linkability falls to
+zero. The GAN-family toggle (HealthGAN $\to$ PATE-GAN) instead loses
+$0.1204$ in AUC-ROC and collapses the rest of the utility pillar (mean KS
+$+0.4901$, Cox overlap $7/12 \to 0/13$), while its only apparent privacy
+gain is the off-manifold distance artefact rather than a genuine reduction
+in disclosure. This cross-family difference must, however, be read with the
+asymmetry caveat: the LLM toggle isolates the DP-SGD effect on a shared
+backbone, whereas the GAN toggle conflates the differential-privacy
+mechanism with an architecture change between two distinct generators
+(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}). Even under that
+caveat, the practical conclusion is unambiguous: at $\varepsilon = 5.0$
+the LLM family yields a differentially private generator that remains in
+the usable region of the privacy--utility plane, whereas the GAN family's
+differentially private instance does not.
 
 \cleardoublepage

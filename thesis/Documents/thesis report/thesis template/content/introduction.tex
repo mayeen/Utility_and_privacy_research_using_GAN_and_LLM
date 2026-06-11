@@ -68,18 +68,21 @@ particularly for heterogeneous healthcare datasets.
 \section{Research Questions}
 \label{sec:intro:rqs}
 
-% Verbatim from proposal §3 (Research Questions).
 This thesis addresses the following research questions:
 \begin{enumerate}[label=\textbf{RQ\arabic*.},leftmargin=2.5em]\itemsep0.4em
-  \item \label{rq:rq1} Which methods and metrics are used to evaluate privacy
-      risks and utility (including predictive performance and distributional
-       resemblance) in synthetic medical data?
-  \item \label{rq:rq2} What are the trade-offs in utility and privacy in GAN-
-        and LLM-based synthesised data generation models?
-  \item \label{rq:rq3} Which synthetic data generation approach, based on GANs
-        or Large Language Models, achieves a more effective balance between
-        data utility and privacy preservation when applied to medical
-        datasets?
+  \item \label{rq:rq1} Which methods and metrics are suitable for evaluating
+        the utility (statistical resemblance and predictive performance) and
+        privacy risk of synthetic tabular medical data, and what distinct
+        dimension of data characteristics does each capture?
+  \item \label{rq:rq2} How do GAN-based and LLM-based synthesisers compare
+        on the privacy--utility trade-off when applied to tabular medical
+        data, and which achieves a more effective balance?
+  \item \label{rq:rq3} At a matched privacy budget ($\varepsilon = 5.0$), how
+        does enforcing differential privacy using mechanisms appropriate to
+        each family affect utility, and how do the resulting
+        privacy--utility profiles differ between GAN-based (PATE-GAN vs.\
+        HealthGAN) and LLM-based (Pythia-1B-DP vs.\ Pythia-1B)
+        synthesisers of tabular medical data?
 \end{enumerate}
 
 \section{Contributions}
@@ -91,16 +94,22 @@ The work in this thesis makes the following contributions:
         tabular data spanning two pillars: \emph{utility} (encompassing
         both statistical similarity to the real data and predictive
         performance of downstream models) and \emph{privacy}.
-  \item A head-to-head empirical comparison of four generators on the
-        \emph{Diabetes 130-US Hospitals} dataset~\cite{diabetes_db}: HealthGAN
-        (WGAN-GP)~\cite{healthgan}, PATE-GAN ($(\varepsilon,\delta)$-DP)
-        \cite{pategan}, Pythia-LoRA~\cite{Biderman2023Pythia,Hu2022LoRA,Miletic2024}, and
-        Pythia-DP-LoRA (DP-SGD via Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}).
+  \item A head-to-head empirical comparison of five generators on the
+        \emph{Diabetes 130-US Hospitals} dataset~\cite{diabetes_db}:
+        HealthGAN (WGAN-GP)~\cite{healthgan}, PATE-GAN
+        ($(\varepsilon,\delta)$-DP)~\cite{pategan},
+        Pythia-70M-LoRA and Pythia-1B-LoRA~\cite{Biderman2023Pythia,Hu2022LoRA,Miletic2024},
+        and Pythia-1B-DP-LoRA (DP-SGD via
+        Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}).
   \item Empirical evidence on the \emph{marginal cost of formal differential
         privacy} within both the GAN family (non-DP HealthGAN versus
-        PATE-GAN at $\varepsilon=5.0$) and the LLM family (non-DP Pythia
-        versus Pythia-DP at $\varepsilon=5.0$). The Pythia-DP variant
-        constitutes a scope extension beyond the originally submitted proposal.
+        PATE-GAN at $\varepsilon=5.0$) and the LLM family (non-DP
+        Pythia-1B versus Pythia-1B-DP at $\varepsilon=5.0$). The non-DP
+        Pythia-1B scale anchor and the Pythia-1B-DP variant together
+        constitute a scope extension beyond the originally submitted
+        proposal, motivated by the observation that DP-SGD applied to
+        Pythia-70M fails to converge usefully at this privacy budget
+        (\S\ref{sec:results:rq3:pythia-70m-failure}).
   \item Practical recommendations for medical data stewards, indicating
         when a non-DP GAN suffices, when formal DP via PATE-GAN is warranted,
         and where LLM-based synthesis is competitive given privacy budgets and
@@ -118,10 +127,10 @@ differential privacy, and existing evaluation frameworks.
 methodology of the thesis. Section~\ref{sec:method:data} describes the
 \emph{Diabetes 130-US Hospitals} benchmark and the feature-engineering
 pipeline used to prepare it for synthesis.
-Section~\ref{sec:method:generators} details the four generators compared in
-this work: HealthGAN, PATE-GAN, Pythia-LoRA, and Pythia-DP-LoRA,
-including architectures, training protocols, and the differentially private
-mechanisms employed. Section~\ref{sec:method:evaluation} defines the unified
+Section~\ref{sec:method:generators} details the five generators compared in
+this work: HealthGAN, PATE-GAN, Pythia-70M-LoRA, Pythia-1B-LoRA, and
+Pythia-1B-DP-LoRA, including architectures, training protocols, and the
+differentially private mechanisms employed. Section~\ref{sec:method:evaluation} defines the unified
 two-pillar evaluation framework: utility (statistical similarity and
 predictive performance) and privacy.
 \textbf{Chapter~\ref{ch:results}} reports the empirical findings, structured

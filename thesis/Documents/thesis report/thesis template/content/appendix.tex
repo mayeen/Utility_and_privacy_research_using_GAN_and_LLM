@@ -8,11 +8,12 @@
 % TODO: One \section per generator with a tabular layout listing every
 % hyperparameter actually used in the runs that produced the synthetic
 % files in thesis/data/<generator>/. Pull values from the source files:
-%   - HealthGAN:  ../../healthgan/generators/wgan_for_mac.py (params dict)
-%   - PATE-GAN:   ../../Pategan/generate_pategan_synthetic.py (CLI defaults)
-%   - Pythia:     ../../pythia/generate_pythia_synthetic.py (CLI defaults)
-%   - Pythia-DP:  ../../pythia/generate_pythia_synthetic_dp.py (CLI defaults
-%                 + DPConfig)
+%   - HealthGAN:    ../../healthgan/generators/wgan_for_mac.py (params dict)
+%   - PATE-GAN:     ../../Pategan/generate_pategan_synthetic.py (CLI defaults)
+%   - Pythia-70M:   ../../pythia/generate_pythia_synthetic.py --model pythia-70m
+%   - Pythia-1B:    ../../pythia/generate_pythia_synthetic.py --model pythia-1b
+%   - Pythia-1B-DP: ../../pythia/generate_pythia_synthetic_dp.py (CLI
+%                   defaults + DPConfig)
 
 \section{HealthGAN (WGAN-GP)}
 % TODO: table — base_nodes, critic_iters, lambda, num_epochs, batch_size,
@@ -22,13 +23,17 @@
 % TODO: table — k (teachers), n_s, batch_size, lambda (Laplace), epsilon,
 % delta, RMSprop lr, weight clip range.
 
-\section{Pythia (LoRA)}
-% TODO: table — base model, LoRA r/alpha/dropout, epochs, batch_size, lr,
-% max_length, temperature, top_p, max_retries_per_row, generation_batch_size,
-% seed.
+\section{Pythia-70M (LoRA)}
+% TODO: table — base model = EleutherAI/pythia-70m, LoRA r/alpha/dropout,
+% epochs, batch_size, lr, max_length, temperature, top_p,
+% max_retries_per_row, generation_batch_size, seed.
 
-\section{Pythia-DP (LoRA + Opacus)}
-% TODO: table — same as Pythia plus target_epsilon, target_delta,
+\section{Pythia-1B (LoRA)}
+% TODO: table — base model = EleutherAI/pythia-1b, identical LoRA and
+% generation configuration to Pythia-70M; record only the deltas.
+
+\section{Pythia-1B-DP (LoRA + Opacus)}
+% TODO: table — same as Pythia-1B plus target_epsilon, target_delta,
 % max_grad_norm, per_device_batch_size, gradient_accumulation_steps,
 % effective_batch_size, achieved_epsilon (from run_metadata_dp.json).
 
@@ -37,12 +42,114 @@
 \chapter{Per-Column Distribution Plots}
 \label{app:distributions}
 
-% TODO: Overflow gallery from §6.2.1. Use \subsection per group:
-%  - Demographic columns (age, gender, race)
-%  - Encounter columns (time_in_hospital, num_*)
-%  - Diagnosis columns (diag_1, diag_2, diag_3, number_diagnoses)
-%  - Medication columns (23 binary)
-%  - A1C and target
+This appendix provides the complete per-column marginal gallery summarised
+in Section~\ref{sec:results:rq2:utility:similarity}, where only the first
+two column blocks are reproduced in the main text
+(Figure~\ref{fig:rq2:marginals}). Each figure overlays the real reference
+and all five synthetic generators for a block of columns; the column range
+is annotated in each panel title. Across every block the same pattern
+holds: HealthGAN and the three Pythia variants track the real marginals,
+whereas PATE-GAN distorts both categorical and continuous columns.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/marginals_0}
+\caption{Per-column marginal distributions, real versus all five
+generators (block 1 of 5).}
+\label{app:fig:marg0}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/marginals_1}
+\caption{Per-column marginal distributions, real versus all five
+generators (block 2 of 5).}
+\label{app:fig:marg1}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/marginals_2}
+\caption{Per-column marginal distributions, real versus all five
+generators (block 3 of 5).}
+\label{app:fig:marg2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/marginals_3}
+\caption{Per-column marginal distributions, real versus all five
+generators (block 4 of 5).}
+\label{app:fig:marg3}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/results/marginals_4}
+\caption{Per-column marginal distributions, real versus all five
+generators (block 5 of 5).}
+\label{app:fig:marg4}
+\end{figure}
+
+% --------------------------------------------------------------
+
+\chapter{Per-Generator Utility Diagnostics}
+\label{app:utility-diag}
+
+The main text reports the correlation-difference and survival diagnostics
+of Section~\ref{sec:results:rq2:utility} through a best/worst contrast.
+This appendix provides the full per-generator set for both.
+
+\section{Correlation-Difference Heatmaps}
+\label{app:corrheat}
+
+Figure~\ref{app:fig:corrheat} gives the correlation-difference heatmaps
+(real minus synthetic correlation matrix) for all five generators,
+extending the contrast of Figure~\ref{fig:rq2:corrheat}. Saturated cells
+denote large residual correlation; pale cells denote faithful
+reproduction of the pairwise dependency structure.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/corrheat_0}\caption{PATE-GAN}\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/corrheat_1}\caption{HealthGAN}\end{subfigure}
+
+\vspace{1ex}
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/corrheat_2}\caption{Pythia-70M}\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/corrheat_3}\caption{Pythia-1B}\end{subfigure}
+
+\vspace{1ex}
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/corrheat_4}\caption{Pythia-1B-DP}\end{subfigure}
+\caption{Correlation-difference heatmaps (real minus synthetic) for all
+five generators.}
+\label{app:fig:corrheat}
+\end{figure}
+
+\section{Cox Proportional-Hazards Estimates}
+\label{app:cox}
+
+Figure~\ref{app:fig:cox} gives the Cox hazard-ratio plots (real in black
+versus synthetic in colour, with shaded rows marking non-overlapping
+confidence intervals) for all five generators, extending the contrast of
+Figure~\ref{fig:rq2:cox}. The per-generator confidence-interval overlap
+counts are reported in Table~\ref{tab:rq2:cox}.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/cox_0}\caption{PATE-GAN (0/13)}\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/cox_1}\caption{HealthGAN (7/12)}\end{subfigure}
+
+\vspace{1ex}
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/cox_2}\caption{Pythia-70M (4/13)}\end{subfigure}\hfill
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/cox_3}\caption{Pythia-1B (7/13)}\end{subfigure}
+
+\vspace{1ex}
+\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/cox_4}\caption{Pythia-1B-DP (7/13)}\end{subfigure}
+\caption{Cox hazard-ratio estimates with $95\%$ confidence intervals for
+all five generators; subcaptions report the overlap count with the real
+intervals.}
+\label{app:fig:cox}
+\end{figure}
 
 % --------------------------------------------------------------
 
@@ -104,9 +211,74 @@
 \chapter{HealthGAN Variant Comparison}
 \label{app:hg-variants}
 
-% TODO: Optional appendix carrying the additional plots from notebook cells
-% 53–60 that are summarised in §4.2.5.
-%  - Mean KS table for samples_0, samples_3, samples_6.
-%  - Mean |corr diff| table.
-%  - Per-variant PCA overlay.
-%  - Per-variant marginal-distribution figures.
+This appendix provides the visual diagnostics supporting the sample-selection
+analysis of Section~\ref{sec:methods:healthgan:variants}, which compares the
+three retained HealthGAN draws (indexed $0$, $3$, and $6$) and carries draw
+$0$ forward as representative. The headline fidelity figures --- mean
+Kolmogorov--Smirnov statistic and mean correlation difference per draw ---
+are given in Table~\ref{tab:hg-variants}; the figures below show that the
+three draws are visually indistinguishable from one another and from the
+real data on every diagnostic, confirming that the choice of draw is
+immaterial.
+
+\section{Per-Column Marginal Distributions}
+\label{app:hg-variants:marginals}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/results/hg_marginals_0}
+\caption{Per-column marginal distributions, real versus the three HealthGAN
+draws (block 1 of 5).}
+\label{app:fig:hgmarg0}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/results/hg_marginals_1}
+\caption{Per-column marginal distributions, real versus the three HealthGAN
+draws (block 2 of 5).}
+\label{app:fig:hgmarg1}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/results/hg_marginals_2}
+\caption{Per-column marginal distributions, real versus the three HealthGAN
+draws (block 3 of 5).}
+\label{app:fig:hgmarg2}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/results/hg_marginals_3}
+\caption{Per-column marginal distributions, real versus the three HealthGAN
+draws (block 4 of 5).}
+\label{app:fig:hgmarg3}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/results/hg_marginals_4}
+\caption{Per-column marginal distributions, real versus the three HealthGAN
+draws (block 5 of 5).}
+\label{app:fig:hgmarg4}
+\end{figure}
+
+\section{Correlation Structure and Manifold Overlap}
+\label{app:hg-variants:corr-pca}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/results/hg_corrheat}
+\caption{Correlation-difference heatmaps (real minus synthetic) for the
+three HealthGAN draws.}
+\label{app:fig:hgcorr}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.7\textwidth]{images/results/hg_pca}
+\caption{Two-dimensional PCA projection of the real data and the three
+HealthGAN draws; the three draws overlap one another and the real cloud.}
+\label{app:fig:hgpca}
+\end{figure}

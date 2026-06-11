@@ -17,40 +17,117 @@ attacks~\cite{anonymization,Murtaza2023}. Synthetic data sidesteps direct
 release of real records but does not automatically resolve the trade-off:
 \textcite{stadler2022synthetic} show that non-DP synthetic data still leaks
 information about outliers, motivating the formal privacy machinery
-(§\ref{sec:bg:dp}) used by the DP generators in this thesis. Unlike image 
-or text data, which consist of uniform basic units amenable to a single modelling 
-paradigm, tabular data combines categorical and numerical columns with heterogeneous 
-statistical properties — a challenge that no single generative family solves cleanly, 
-and that drives the proliferation of distinct approaches surveyed in \cite{shi2025comprehensive}.
- Within each family, known failure modes (training instability and mode collapse in GANs,
- a tendency toward over-averaged outputs in VAEs, and hallucination in LLMs) have 
- motivated successive specialisations, including the diffusion-model and fine-tuned-LLM 
- branches that occupy the DP/non-DP axes evaluated in this thesis.
-
+(§\ref{sec:bg:dp}) used by the DP generators in this thesis. 
 \section{Synthetic Data Generation: A Taxonomy}
 \label{sec:bg:taxonomy}
 
 Synthetic tabular data generators fall broadly into statistical models (copulas,
 Bayesian networks, sequential trees), deep generative models (GAN- and
 VAE-based), and language-model-based approaches that treat rows as
-text~\cite{hernandez2022synthetic,Murtaza2023}. Each family admits a
-differentially-private variant, yielding the GAN/LLM $\times$ DP/non-DP axes
-along which the four generators evaluated in this thesis are positioned. The
+text~\cite{hernandez2022synthetic,Murtaza2023}. Alongside these data-driven
+families, \textcite{Murtaza2023} also describe a knowledge-driven approach that
+builds generators from hand-curated expert rules, and a hybrid approach that
+blends the two; both remain labour-intensive and predominantly knowledge-driven,
+and therefore fall outside the fully data-driven scope of this thesis. Each
+family admits a differentially-private variant, yielding the GAN/LLM $\times$ DP/non-DP axes
+along which the five generators evaluated in this thesis are positioned. The
 remainder of the chapter develops the two families used here
 (§\ref{sec:bg:gan}, §\ref{sec:bg:llm}) and the DP machinery they rely on
-(§\ref{sec:bg:dp}).
+(§\ref{sec:bg:dp}). Unlike image 
+or text data, which consist of uniform basic units amenable to a single modelling 
+paradigm, tabular data combines categorical and numerical columns with heterogeneous 
+statistical properties which is a challenge that no single generative family solves cleanly, 
+and that drives the proliferation of distinct approaches surveyed in \cite{shi2025comprehensive}.
+ Within each family, known failure modes (training instability and mode collapse in GANs,
+ a tendency toward over-averaged outputs in VAEs, and hallucination in LLMs) have
+ motivated successive specialisations, including the diffusion-model and fine-tuned-LLM
+ branches that occupy the DP/non-DP axes evaluated in this thesis.
+
 
 \section{GAN-based Approaches for Tabular Data}
 \label{sec:bg:gan}
 
+Generative adversarial networks constitute the dominant deep generative
+paradigm for tabular synthesis, yet inherit the training instability and
+mode-collapse pathologies first documented in the image
+domain~\cite{shi2025comprehensive}. The remainder of this section reviews
+the architectural progression from the original minimax formulation through
+the Wasserstein and gradient-penalty refinements that stabilise adversarial
+training (§\ref{sec:bg:gan:foundations}), and subsequently examines the two
+healthcare-oriented variants situated on the DP and non-DP axes evaluated
+in this thesis: HealthGAN (§\ref{sec:bg:gan:health}) and
+PATE-GAN (§\ref{sec:bg:gan:pategan}).
+
+
 \subsection{Foundations: GAN, WGAN, WGAN-GP}
 \label{sec:bg:gan:foundations}
 
-% TODO: Brief technical recap.
-%  - Original GAN minmax \cite{Goodfellow2014GAN}
-%  - WGAN: Wasserstein distance, weight clipping \cite{Arjovsky2017WGAN}
-%  - WGAN-GP: gradient penalty replaces weight clipping \cite{Gulrajani2017WGANGP}
-% This section anchors the HealthGAN method description in §4.2.
+Generative adversarial networks formulate data generation as a
+minimax game between a generator $G$, which maps noise samples into
+the data space, and a discriminator $D$, which estimates the
+probability that a given sample originates from the data distribution
+rather than from $G$~\cite{Goodfellow2014GAN}:
+\begin{equation}
+\label{eq:gan-minimax}
+\min_{G} \max_{D}\; V(D, G) =
+\mathbb{E}_{x \sim p_{\text{data}}}\!\left[\log D(x)\right]
++ \mathbb{E}_{z \sim p_z}\!\left[\log\bigl(1 - D(G(z))\bigr)\right].
+\end{equation}
+The global optimum is attained when the generator distribution
+matches the data distribution and the discriminator is everywhere
+indifferent. In practice, however, optimisation of this objective is
+fragile: the discriminator can saturate and starve the generator of
+gradient signal, the value function offers no monotonic indicator of
+convergence, and the generator is prone to mode collapse, in which
+it concentrates mass on a narrow subset of plausible samples.
+
+These pathologies have been attributed to the implicit
+Jensen--Shannon divergence underlying the original objective, which
+is discontinuous in the generator's parameters whenever the model
+and data distributions have disjoint or near-disjoint
+supports~\cite{Arjovsky2017WGAN}. Replacing it with the Wasserstein-1
+distance restores continuity throughout training and yields a
+gradient that remains informative even in this regime. Via the
+Kantorovich--Rubinstein duality, the Wasserstein-1 distance admits
+the variational form
+\begin{equation}
+\label{eq:wasserstein-dual}
+W(p_{\text{data}}, p_g)
+= \sup_{\|f\|_{L} \leq 1}\;
+\mathbb{E}_{x \sim p_{\text{data}}}\!\left[f(x)\right]
+- \mathbb{E}_{x \sim p_g}\!\left[f(x)\right],
+\end{equation}
+so that the discriminator is replaced by a 1-Lipschitz \emph{critic}
+whose scalar output approximates this supremum. The Lipschitz
+constraint is enforced in the original Wasserstein GAN by clipping
+the critic's weights to a fixed interval, a modification that
+produces markedly stabler training and a loss that correlates with
+sample quality.
+
+Weight clipping, however, was subsequently shown to be the source of
+its own pathologies, chief among them a sharp loss of critic
+capacity and gradient norms that either explode or vanish depending
+on the clipping threshold~\cite{Gulrajani2017WGANGP}. The improved
+formulation replaces clipping with a soft penalty on the critic's
+input-gradient norm,
+\begin{equation}
+\label{eq:wgan-gp}
+\mathcal{L}
+= \mathbb{E}_{\tilde{x} \sim p_g}\!\left[D(\tilde{x})\right]
+- \mathbb{E}_{x \sim p_{\text{data}}}\!\left[D(x)\right]
++ \lambda \,
+\mathbb{E}_{\hat{x}}\!\left[
+\bigl(\|\nabla_{\hat{x}} D(\hat{x})\|_{2} - 1\bigr)^{2}
+\right],
+\end{equation}
+where $\hat{x}$ is sampled uniformly along straight lines between
+paired real and generated samples. The penalty encourages the
+critic to satisfy the Lipschitz condition with unit norm along the
+region of the input space where the two distributions are being
+compared, rather than uniformly across its parameters. This
+Wasserstein-with-gradient-penalty formulation is the backbone on
+which HealthGAN (§4.2) and its differentially-private extension
+(§2.5) are built.
 
 \subsection{Healthcare-specific Variants: HealthGAN}
 \label{sec:bg:gan:health}
@@ -95,40 +172,143 @@ PATE-GAN offers a principled middle ground with controllable $\varepsilon$.
 \section{LLM-based Approaches for Tabular Data}
 \label{sec:bg:llm}
 
+Large language models offer a generative paradigm that is structurally
+distinct from the adversarial approach of \S\ref{sec:bg:gan}. Rather than
+learning an implicit sampler through a minimax game, a decoder-only
+transformer models the joint distribution of a record explicitly, as a
+product of autoregressive conditionals over a tokenised representation of
+that record. This formulation confers two properties that are attractive for
+heterogeneous clinical tables. First, mixed-type columns are handled without
+the mode-specific normalisation or one-hot expansion required by conditional
+tabular GANs, because every value, whether numeric or categorical, is
+rendered as text~\cite{Miletic2024}. Second, the self-attention mechanism
+models dependencies across all columns natively, which mitigates the
+difficulty GANs encounter as dimensionality grows~\cite{Miletic2024,shi2025comprehensive}.
+The remainder of this section describes the row-as-text serialisation that
+makes tabular data amenable to language modelling
+(\S\ref{sec:bg:llm:tabula}), the Pythia model family used as the synthesiser
+(\S\ref{sec:bg:llm:pythia}), the low-rank adaptation scheme used for
+parameter-efficient fine-tuning (\S\ref{sec:bg:llm:lora}), and the
+differentially private regime within which this thesis situates the
+Pythia-1B-DP variant (\S\ref{sec:bg:llm:dp}).
+
 \subsection{Tabula and the Row-as-Text Paradigm}
 \label{sec:bg:llm:tabula}
 
-\textcite{Miletic2024} use a framework called \emph{Tabula} that treats each
-row as text and shows that Pythia, a family of decoder-only language models,
-can match or surpass a strong tabular GAN (e.g., CTGAN~\cite{Xu2019CTGAN}) on
-TSTR utility, with gains increasing in model size. The study focuses on
-\emph{utility} rather than privacy --- a gap explicitly addressed by this
-thesis.
+The serialisation underlying language-model-based tabular synthesis was
+introduced by the GReaT framework, which encodes each record as a
+natural-language sentence~\cite{Borisov2023GReaT}. A row with features
+$f_1, \dots, f_m$ and corresponding values $v_1, \dots, v_m$ is rendered as a
+sequence of clauses of the form ``$f_i$ is $v_i$'', concatenated into a single
+token sequence $s = (w_1, \dots, w_T)$. During training a random permutation
+of the feature order is applied to each row, so that the model is not biased
+towards a fixed column ordering and can subsequently be conditioned on any
+subset of features at sampling time~\cite{Borisov2023GReaT}. The language
+model is then fit with the standard autoregressive objective, which
+factorises the sequence probability as
+\begin{equation}
+\label{eq:bg:llm:ar}
+p_\theta(s) = \prod_{t=1}^{T} p_\theta\!\left(w_t \mid w_1, \dots, w_{t-1}\right),
+\end{equation}
+and is trained by minimising the token-level negative log-likelihood
+$\mathcal{L}(\theta) = -\sum_{t=1}^{T} \log p_\theta(w_t \mid w_{<t})$. New
+records are generated by sampling from this distribution and parsing the
+emitted text back into typed feature values.
+
+Tabula extends GReaT with modifications that target the efficiency
+limitations of applying full natural-language models to tabular
+data~\cite{Zhao2023Tabula}. It compresses the token representation of feature
+names and categorical values to shorten sequences, applies a fixed padding
+strategy, and considers initialising the network from random weights rather
+than from a corpus-pretrained checkpoint, which removes the need for the model
+to unlearn natural-language priors that are irrelevant to tabular
+structure~\cite{Zhao2023Tabula}. Building on this framework,
+\textcite{Miletic2024} serialise rows with token-sequence compression and
+left padding, condition generation on the binary target variable as the
+leading token, and benchmark the Pythia models against CTGAN, a conditional
+tabular GAN that employs mode-specific normalisation~\cite{Xu2019CTGAN}. Using
+a train-on-synthetic, test-on-real protocol with a random-forest estimator,
+they report that the language models match or surpass the GAN baseline, with
+utility increasing in model size, while the comparison of randomly initialised
+against pretrained starting points was inconclusive. That study evaluates
+utility alone and reports no privacy assessment, a gap that motivates the
+present work.
 
 \subsection{The Pythia Model Family}
 \label{sec:bg:llm:pythia}
 
-% TODO: 1--2 paragraph technical overview of Pythia: \cite{Biderman2023Pythia}
-%  - Decoder-only transformer, sizes 70M to 12B
-%  - Designed for interpretability research
-%  - Why pythia-70m is a reasonable thesis-scale baseline (training cost)
+Pythia is a suite of decoder-only autoregressive transformers released to
+support controlled study of how language models behave across scale and
+training~\cite{Biderman2023Pythia}. The models span parameter counts from
+tens of millions to twelve billion, and share a common architecture and a
+single training corpus presented in an identical data order, so that
+differences in behaviour can be attributed to scale rather than to confounded
+data or optimisation choices~\cite{Biderman2023Pythia}. All checkpoints and
+intermediate training states are publicly released, which makes the suite a
+reproducible basis for fine-tuning experiments.
+
+This thesis uses two members of the suite as scale anchors. Pythia-70M serves
+as a compute-tractable baseline whose training and sampling costs are modest,
+whereas Pythia-1B is the largest configuration examined by
+\textcite{Miletic2024} and the scale at which the utility advantage of
+language-model synthesis over tabular GANs is most pronounced. Restricting the
+comparison to these two sizes isolates the effect of model capacity on the
+privacy-utility trade-off while keeping the experimental budget feasible.
 
 \subsection{LoRA Fine-tuning for Parameter-Efficient Adaptation}
 \label{sec:bg:llm:lora}
 
-% TODO: Describe LoRA \cite{Hu2022LoRA}: low-rank adapters, why they help DP-SGD
-% (drastically smaller trainable parameter count → smaller noise injection).
+Fine-tuning every parameter of a billion-parameter model is costly in memory
+and storage, and is especially burdensome under differentially private
+optimisation, which requires per-example gradient computation. Low-Rank
+Adaptation (LoRA) reduces this cost by freezing the pretrained weight matrices
+and learning a low-rank update in their place~\cite{Hu2022LoRA}. For a
+pretrained weight matrix $W_0 \in \mathbb{R}^{d \times k}$, LoRA parameterises
+the adapted layer as
+\begin{equation}
+\label{eq:bg:llm:lora}
+h = W_0 x + \Delta W x = W_0 x + \frac{\alpha}{r}\, B A\, x,
+\end{equation}
+where $B \in \mathbb{R}^{d \times r}$, $A \in \mathbb{R}^{r \times k}$, the
+rank $r \ll \min(d, k)$, and $\alpha$ is a fixed scaling constant. The matrix
+$A$ is initialised from a random Gaussian distribution and $B$ is initialised
+to zero, so that $\Delta W = 0$ at the start of training and the adapted model
+initially coincides with the pretrained one~\cite{Hu2022LoRA}. Only $A$ and
+$B$ are updated, which reduces the number of trainable parameters per layer
+from $dk$ to $r(d + k)$, typically by several orders of magnitude.
+
+This reduction is consequential for the differentially private fine-tuning
+discussed in \S\ref{sec:bg:dp:dpsgd}. Because the Gaussian noise that DP-SGD
+adds to enforce privacy is injected into every trainable coordinate,
+restricting training to the low-dimensional LoRA parameters concentrates a
+fixed privacy budget over far fewer dimensions and lowers the memory overhead
+of per-example gradient clipping. Parameter-efficient adapters have been shown
+to attain privacy-utility trade-offs competitive with, and often superior to,
+full-model private fine-tuning~\cite{Yu2022DPFT,Li2022LargeDP}.
 
 \subsection{DP-Augmented LLM Synthesis}
 \label{sec:bg:llm:dp}
 
-\textsc{SafeSynthDP} demonstrates that LLM-driven synthesis can be paired with
-differential privacy (e.g., Laplace and Gaussian mechanisms) to trace explicit
-$\varepsilon$--utility frontiers while maintaining competitive downstream
-accuracy and resisting membership inference~\cite{Nahid2024}. Hyperparameters
-are adjusted along the privacy and accuracy axes respectively. This work
-positions DP-augmented LLM synthesis --- the regime occupied by Pythia-DP in
-this thesis --- as an active and largely unexplored frontier.
+Language models are known to memorise and, under suitable prompting, to
+reproduce verbatim training records, which makes uncontrolled LLM synthesis a
+privacy hazard rather than a safeguard~\cite{Carlini2021Extracting}. Two
+routes to constraining this leakage appear in the literature. The first
+perturbs the generation process directly: SafeSynthDP pairs LLM-driven
+synthesis with calibrated Laplace and Gaussian noise and traces the resulting
+downstream accuracy against the privacy parameter $\varepsilon$, reporting
+competitive performance and resistance to membership inference on a
+text-classification benchmark~\cite{Nahid2024}. This output-side perturbation
+does not, however, furnish a formal end-to-end training guarantee. The second
+route enforces privacy during fine-tuning through DP-SGD
+(\S\ref{sec:bg:dp:dpsgd}): \textcite{Yu2022DPFT} combine parameter-efficient
+adapters with private optimisation to approach non-private utility on language
+tasks at single-digit $\varepsilon$, and \textcite{Li2022LargeDP} report that
+larger pretrained models act as stronger private learners, retaining more of
+their utility as the privacy constraint tightens. This thesis adopts the
+second route, fine-tuning Pythia-1B with DP-SGD via Opacus to instantiate the
+Pythia-1B-DP synthesiser, and positions it against the non-private Pythia
+variants and the GAN-based generators within a single privacy-utility
+evaluation.
 
 \section{Differential Privacy}
 \label{sec:bg:dp}
@@ -222,7 +402,7 @@ The Opacus library~\cite{Yousefpour2021Opacus} provides an implementation of
 DP-SGD for the PyTorch ecosystem, exposing per-example gradient computation,
 gradient clipping, noise injection, and privacy accounting as extensions to
 standard training pipelines. Opacus is adopted in this thesis to train the
-Pythia-DP generator, with method-specific configuration details such as the
+Pythia-1B-DP generator, with method-specific configuration details such as the
 chosen noise multiplier and target $(\varepsilon, \delta)$ deferred to
 Section~\ref{sec:method:generators}.
 

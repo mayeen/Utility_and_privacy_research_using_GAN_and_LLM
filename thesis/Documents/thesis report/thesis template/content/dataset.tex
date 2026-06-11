@@ -23,8 +23,8 @@ the positive class and ``no readmission'' as the negative class.
 
 \paragraph{Scope.} The proposal contemplated MIMIC-III as a secondary
 benchmark; the final thesis is restricted to the Diabetes 130-US Hospitals
-dataset to keep training budgets and evaluation runs manageable across four
-generators and seventeen metrics. Cross-dataset generalisation is discussed as
+dataset to keep training budgets and evaluation runs manageable across five
+generators and eleven single-number metrics. Cross-dataset generalisation is discussed as
 future work in Section~\ref{sec:conclusion:future}.
 
 \subsection{Exploratory Data Analysis}
@@ -120,7 +120,7 @@ observed features.
 \paragraph{Age encoding.}
 \label{sec:data:fe:age}%
 The decade-based age buckets are converted to ordered numeric values: 
-\texttt{[0-10)} maps to 1, \texttt{[10-20)}
+\path{[0-10)} maps to 1, \path{[10-20)}
 to 2, and so on through \texttt{[90-100)}, which maps to 10. The 1--10
 ordinal encoding preserves the natural ordering of age while avoiding a
 high-cardinality categorical representation. An earlier preprocessing
@@ -196,7 +196,7 @@ split. The split is created with \texttt{train\_test\_split},
 \texttt{test\_size = 0.2}, and \texttt{random\_state = 42}, with the
 target column passed as the stratification variable to preserve the
 binary readmission ratio across splits. Because
-\texttt{process\_multiple\_encounters} produces one row per
+\path{process_multiple_encounters} produces one row per
 \texttt{patient\_nbr}, the stratified split is inherently patient-disjoint
 and free of train--test leakage at the patient level.
 

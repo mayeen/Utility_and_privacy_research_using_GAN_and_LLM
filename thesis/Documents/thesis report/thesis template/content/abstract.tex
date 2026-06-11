@@ -8,7 +8,8 @@
     % TODO: Write the English abstract (200--300 words):
     %  - Problem: utility-privacy trade-off in medical synthetic data
     %  - Methodology: head-to-head comparison of HealthGAN, PATE-GAN,
-    %    Pythia, and Pythia-DP on the Diabetes 130-US Hospitals dataset
+    %    Pythia-70M, Pythia-1B, and Pythia-1B-DP on the Diabetes 130-US
+    %    Hospitals dataset
     %  - Evaluation across utility (statistical similarity + predictive
     %    performance) and privacy
     %  - Key findings (one or two sentences)
@@ -20,12 +21,13 @@
     generation offers a promising alternative, but the trade-off between
     data utility and privacy preservation remains poorly characterised
     --- particularly when comparing fundamentally different generative
-    paradigms. This thesis presents a unified empirical comparison of four
+    paradigms. This thesis presents a unified empirical comparison of five
     approaches on the \emph{UCI Diabetes 130-US Hospitals} dataset:
     HealthGAN (WGAN-GP, no formal differential privacy), PATE-GAN (GAN with
-    $(\varepsilon,\delta)$-DP), Pythia-LoRA (a large language model
-    fine-tuned on serialised tabular records, no formal DP), and Pythia-DP
-    (the same pipeline trained with DP-SGD via Opacus). Each generator is
+    $(\varepsilon,\delta)$-DP), Pythia-70M-LoRA and Pythia-1B-LoRA (large
+    language models fine-tuned on serialised tabular records, no formal
+    DP), and Pythia-1B-DP-LoRA (the same pipeline trained with DP-SGD via
+    Opacus). Each generator is
     evaluated under two pillars. The first is \emph{utility}, defined to
     encompass both \emph{statistical similarity} to the real data
     (per-column distributions, correlation difference,

@@ -10,37 +10,70 @@
 \subsection{Selection Rationale}
 \label{sec:methods:rationale}
 
-% Migrated from proposal §5.2 (selection rationale).
-The four generators evaluated in this thesis are chosen to provide a
-$2 \times 2$ coverage of the design space: $\{\text{GAN},\text{LLM}\}$ on the
-modelling axis, and $\{\text{non-DP},\text{DP}\}$ on the privacy axis. Within
-each axis the choice is grounded in prior work:
+The five generators evaluated in this thesis populate a comparative design
+space spanned by two axes: the generative paradigm --- contrasting
+generative adversarial networks (GANs) with large language models (LLMs)
+--- and the privacy regime, which contrasts models trained without a
+formal guarantee against models trained under differential privacy (DP).
+On the LLM side a third axis, model scale, is introduced via a small
+(Pythia-70M) and a large (Pythia-1B) non-DP baseline; the DP variant is
+applied at the larger scale, for reasons set out in
+\S\ref{sec:methods:pythia-dp:why-1b}. This arrangement permits the effect
+of formal privacy to be isolated within each paradigm, the two paradigms
+to be compared under a common privacy regime, and the LLM-side scale
+sensitivity to be characterised. The rationale for each generator is set
+out below.
 
 \begin{itemize}\itemsep0.25em
-  \item \textbf{HealthGAN (non-DP GAN baseline).} HealthGAN was designed
-        specifically for mixed-type EHR tables, comes with a complete
-        secure training-to-export workflow, and introduces nearest-neighbour
-        Adversarial Accuracy (AA) to co-measure resemblance and privacy
-        (TrainAA/TestAA and privacy loss), yielding competitive TSTR utility
-        while keeping a small footprint~\cite{healthgan,yale2020synthesizing,dash2020medical}.
-  \item \textbf{PATE-GAN (DP GAN).} PATE-GAN enforces formal
-        $(\varepsilon,\delta)$-DP by decoupling privacy from adversarial
-        training: multiple teacher discriminators are trained on disjoint
-        partitions, their votes are noisily aggregated, and a student
-        discriminator learns from these noisy labels so the generator inherits
-        DP by post-processing~\cite{pategan,Papernot2017PATE}.
-  \item \textbf{Pythia LLM (non-DP LLM baseline).} The benchmark study by
-        \textcite{Miletic2024} evaluates the Pythia family of decoder-only
-        LLMs for tabular health data and shows they can match or exceed
-        established tabular GANs. The authors introduce \emph{Tabula}, a
-        framework that treats each tabular row as a text sequence. Their
-        evaluation focuses on utility rather than privacy.
-  \item \textbf{Pythia-DP (DP LLM, scope extension).} Beyond the originally
-        proposed three models, this thesis adds a differentially private
-        variant of Pythia trained with DP-SGD via
-        Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}, enabling a
-        within-family DP-cost comparison parallel to the
-        HealthGAN $\to$ PATE-GAN comparison.
+  \item \textbf{HealthGAN (non-private GAN baseline).} HealthGAN couples the
+        medGAN design with the Wasserstein GAN with gradient penalty (WGAN-GP)
+        framework and a dedicated transformation pipeline for the mixed
+        continuous and categorical attributes characteristic of electronic
+        health records. It further introduces Nearest-Neighbour Adversarial
+        Accuracy, a metric suite that jointly quantifies resemblance and
+        privacy, and reports competitive utility and resemblance relative to
+        established baselines while supporting secure model
+        export~\cite{healthgan}. These properties make it a suitable
+        representative of the non-private GAN paradigm
+        (\S\ref{sec:bg:gan:health}).
+  \item \textbf{PATE-GAN (differentially private GAN).} PATE-GAN provides
+        formal $(\varepsilon,\delta)$-DP by adapting the Private Aggregation of
+        Teacher Ensembles framework~\cite{Papernot2017PATE} to generative
+        modelling: an ensemble of teacher discriminators is trained on disjoint
+        data partitions, their predictions are combined through a
+        differentially private noisy aggregation mechanism, and a student
+        discriminator is trained on the resulting labels, so that the generator
+        inherits the privacy guarantee by post-processing~\cite{pategan}. It
+        thus supplies a GAN-based generator whose privacy budget is explicitly
+        controllable and accountable (\S\ref{sec:bg:gan:pategan}).
+  \item \textbf{Pythia-70M (non-private LLM, small-scale baseline).} The
+        benchmark study of \textcite{Miletic2024} evaluates the Pythia
+        family of decoder-only language models for synthetic tabular health
+        data using the Tabula framework, in which each table row is
+        serialised as a text sequence, and reports that these models can
+        match or surpass a strong tabular GAN on train-on-synthetic,
+        test-on-real utility. Pythia-70M is included here as the
+        small-scale non-private LLM representative
+        (\S\ref{sec:bg:llm:tabula}), and, as discussed in
+        \S\ref{sec:methods:pythia-dp:why-1b}, also frames the model-scale
+        precondition that motivated migrating the LLM-side DP variant to
+        the 1B model.
+  \item \textbf{Pythia-1B (non-private LLM, scale anchor).} A larger
+        non-private LLM variant is added so that the LLM-side DP comparison
+        (Pythia-1B versus Pythia-1B-DP) isolates the cost of DP-SGD at a
+        fixed model size, rather than confounding it with the model-scale
+        change to 1B. Pythia-1B uses the same Tabula serialisation and the
+        same LoRA fine-tuning protocol as Pythia-70M, differing only in
+        the underlying decoder-only backbone.
+  \item \textbf{Pythia-1B-DP (differentially private LLM, scope extension).}
+        Beyond the generators specified in the original proposal, this
+        thesis introduces a differentially private variant of Pythia-1B
+        trained with differentially private stochastic gradient descent
+        (DP-SGD)~\cite{Abadi2016DPSGD}, as implemented in the Opacus
+        library~\cite{Yousefpour2021Opacus}. This addition completes the
+        design space and enables a within-paradigm assessment of the cost
+        of formal privacy for the LLM, paralleling the
+        HealthGAN-to-PATE-GAN comparison on the GAN side.
 \end{itemize}
 
 \subsection{HealthGAN: WGAN-GP Baseline}
@@ -50,53 +83,229 @@ each axis the choice is grounded in prior work:
 %   - SDV encoding/decoding: ../../healthgan/generators/sdv_converter.py
 %   - WGAN-GP training:      ../../healthgan/generators/wgan_for_mac.py
 
+HealthGAN realises the non-private GAN baseline as a Wasserstein GAN with
+gradient penalty (WGAN-GP) trained on a fully numeric encoding of the
+diabetes dataset~\cite{healthgan}. The raw mixed-type table is first mapped
+to a continuous representation bounded in $[0,1]$; a generator and a critic
+are then trained adversarially on that representation; and synthetic records
+are recovered by inverting the encoding. The subsubsections below describe,
+in turn, the encoding pipeline, the network architecture, the training
+objective, the training configuration, and the selection of the synthetic
+sample carried forward to the comparative evaluation.
+
 \subsubsection{SDV Encoding and Decoding}
 \label{sec:methods:healthgan:sdv}
 
-% TODO: Describe \texttt{encode}, \texttt{decode}, and the snap-to-nearest
-% post-processing in sdv_converter.py.
-%  - Categorical columns mapped via truncated normals (categorical())
-%  - Ordinal columns mapped via additive smoothing + truncated normals
-%  - Binary columns mapped via truncated beta (when --beta flag set)
-%  - Numeric columns min-max normalised to [0, 1]
-%  - Decoding inverts each, with a snap-to-nearest pass for low-cardinality
-%    numeric columns (e.g. age) that should not be reconstructed continuously.
-% Include the FORCE_ORDINAL set ({"age"}) and the rationale.
+The networks operate not on the raw table but on an encoded representation in
+which every column is mapped to the unit interval $[0,1]$, yielding a purely
+continuous and bounded input. The encoder dispatches each column to one of
+four transformations according to its data type.
+
+\begin{itemize}\itemsep0.25em
+  \item \textbf{Categorical columns.} Each category is allocated a
+        sub-interval of $[0,1]$ whose width equals the category's relative
+        frequency in the column. Every observed value is then replaced by a
+        draw from a truncated normal distribution supported on the
+        corresponding sub-interval, with mean at the interval midpoint and
+        standard deviation equal to one sixth of the interval width. The
+        ordered map from cumulative interval boundary to category is retained
+        as a decoding table.
+  \item \textbf{Ordinal columns.} Non-binary integer columns follow the same
+        interval-partition scheme, with two modifications that preserve order.
+        Integer levels absent from the observed range are reinserted with
+        zero count, and additive (Laplace) smoothing with $\alpha = 1$ is
+        applied to the level frequencies before the partition is formed, so
+        that an unobserved level still receives a non-degenerate
+        sub-interval.
+  \item \textbf{Binary columns.} By default these are treated as categorical;
+        under an optional configuration flag they are instead mapped through
+        truncated Beta distributions parameterised by the observed class
+        balance.
+  \item \textbf{Numeric columns.} Floating-point columns are min--max
+        normalised to $[0,1]$, and the per-column minimum and maximum are
+        stored for inversion.
+\end{itemize}
+
+A configurable set of columns is forced onto the ordinal path even when
+stored as floating point, so that low-cardinality coded variables (such as
+the binned age field) are not modelled as continuous quantities. Missing
+values are resolved before transformation: categorical columns receive a
+dedicated placeholder level, ordinal and binary columns are filled with the
+column mode, and numeric columns with the column median.
+
+Decoding inverts each transformation. A column with a stored interval map is
+decoded by locating the sub-interval that contains the generated value and
+emitting the associated category, whereas a min--max column is rescaled to
+its original range. Because the generator can emit values marginally outside
+$[0,1]$, decoded inputs are first clipped to that interval. A subsequent
+snap-to-nearest pass then reconciles any numeric column with the discrete
+value set of the real data: a column with at most fifty distinct observed
+values is snapped to its nearest valid value, and a high-cardinality
+identifier column is clipped to a non-negative integer. This guarantees that
+every value in the synthetic table is admissible under the original schema.
 
 \subsubsection{WGAN-GP Architecture}
 \label{sec:methods:healthgan:arch}
 
-% Architecture (from wgan_for_mac.py):
-%  Generator: input ~ N(0, I)^{100} → Dense(2F, ReLU) → Dense(1.5F, ReLU) → Dense(F, sigmoid)
-%  Critic:    input(F) → Dense(64, LeakyReLU) → Dense(128, LeakyReLU) → Dense(256, LeakyReLU) → Dense(1)
-%  F = 45 features after preprocessing.
+Both networks are fully connected feed-forward networks whose layer widths
+are defined relative to the encoded feature count $F$ and a base width $B$.
+For the encoded diabetes table $F = 45$, and the configuration used in this
+thesis sets $B = 64$.
 
-\subsubsection{Training Loss: Wasserstein + Gradient Penalty}
+The generator transforms a latent noise vector into a synthetic record. Its
+input is a $100$-dimensional vector drawn from a standard multivariate normal
+distribution, $z \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_{100})$, which is
+passed through three dense layers:
+\begin{equation}
+  100 \;\to\; 2F~(\mathrm{ReLU}) \;\to\;
+  \mathrm{round}(1.5F)~(\mathrm{ReLU}) \;\to\; F~(\mathrm{sigmoid}),
+\end{equation}
+that is, hidden widths of $90$ and $68$ units and an output of $45$ units.
+The terminal sigmoid constrains every output to $[0,1]$, matching the range
+of the encoded representation.
+
+The critic maps a record to an unbounded scalar score through four dense
+layers:
+\begin{equation}
+  F \;\to\; B~(\mathrm{LeakyReLU}) \;\to\; 2B~(\mathrm{LeakyReLU})
+  \;\to\; 4B~(\mathrm{LeakyReLU}) \;\to\; 1,
+\end{equation}
+with hidden widths of $64$, $128$, and $256$ units and a single linear output
+unit. Consistent with the Wasserstein formulation, the output is left
+unactivated: the critic estimates a real-valued distance rather than a
+classification probability.
+
+\subsubsection{Training Loss: Wasserstein with Gradient Penalty}
 \label{sec:methods:healthgan:loss}
 
-% TODO: WGAN loss + gradient penalty term \cite{Gulrajani2017WGANGP},
-% lambda = 10. Brief equation block.
+The networks are trained under the Wasserstein GAN objective with gradient
+penalty~\cite{Arjovsky2017WGAN, Gulrajani2017WGANGP}. Let $G$ denote the
+generator and $D$ the critic, and let $P_r$ and $P_g$ denote the real and
+generated data distributions, respectively. The critic and generator losses
+are
+\begin{align}
+  \mathcal{L}_D &= \mathbb{E}_{\tilde{x}\sim P_g}\!\left[D(\tilde{x})\right]
+    - \mathbb{E}_{x\sim P_r}\!\left[D(x)\right]
+    + \lambda\,\mathcal{L}_{\mathrm{GP}}, \\
+  \mathcal{L}_G &= -\,\mathbb{E}_{\tilde{x}\sim P_g}\!\left[D(\tilde{x})\right].
+\end{align}
+The first two terms of $\mathcal{L}_D$ estimate the Wasserstein-1 distance
+between the real and generated distributions. The gradient-penalty term
+enforces the $1$-Lipschitz constraint that the Wasserstein formulation
+requires of the critic, by penalising departures of the critic's
+input-gradient norm from unity at points interpolated between real and
+generated samples:
+\begin{equation}
+  \mathcal{L}_{\mathrm{GP}} =
+    \mathbb{E}_{\hat{x}\sim P_{\hat{x}}}\!\left[
+      \bigl(\lVert \nabla_{\hat{x}} D(\hat{x}) \rVert_2 - 1\bigr)^2
+    \right],
+  \qquad
+  \hat{x} = \epsilon\,x + (1-\epsilon)\,\tilde{x},
+  \quad \epsilon \sim U(0,1),
+\end{equation}
+where each interpolated point $\hat{x}$ is formed with an independent uniform
+coefficient $\epsilon$ drawn per sample. The penalty weight is fixed at
+$\lambda = 10$, the value recommended by \textcite{Gulrajani2017WGANGP}. This
+gradient-penalty mechanism replaces the weight clipping of the original
+Wasserstein GAN~\cite{Arjovsky2017WGAN}; its incompatibility with the
+per-example gradient clipping required by differentially private training is
+the architectural property examined in \S\ref{sec:methods:healthgan:nodp}.
 
 \subsubsection{Hyperparameters and Training Configuration}
 \label{sec:methods:healthgan:hp}
 
-% From wgan_for_mac.py params:
-%  - num_epochs = 100,000
-%  - critic_iters = 5
-%  - base_nodes = 64
-%  - samples_per_file = 57,214
-%  - Adam(lr=1e-4, beta1=0.5, beta2=0.9) for both G and D
+The training configuration follows the values fixed in the WGAN-GP
+implementation. Each training epoch performs $n_{\mathrm{critic}} = 5$ critic
+updates followed by a single generator update, so that the critic --- the
+only component that directly processes real records --- is exposed to the
+real data five times as often as the generator. Both networks are optimised
+with Adam ($\eta = 10^{-4}$, $\beta_1 = 0.5$, $\beta_2 = 0.9$). The mini-batch
+size is derived from the training-set size as
+$\lfloor N_{\mathrm{train}}/n_{\mathrm{critic}}\rfloor$, rounded down to the
+nearest multiple of $100$, which yields $11{,}400$ for the
+$N_{\mathrm{train}} = 57{,}214$ encoded training records; the large batch
+follows HealthGAN's design intent of reliably capturing rare clinical
+values~\cite{healthgan}. Training runs for $100{,}000$ epochs, and the critic
+loss on the held-out test partition ($N_{\mathrm{test}} = 14{,}304$ records)
+is logged every $1{,}000$ epochs as a convergence diagnostic. On completion,
+the trained generator is sampled to produce ten synthetic files, each
+containing $14{,}304$ records to match the size of the test partition.
+Table~\ref{tab:healthgan-hp} summarises the configuration.
 
-\subsubsection{Variant Selection: samples\_0 vs.\ samples\_3 vs.\ samples\_6}
+\begin{table}[h]
+\centering
+\small
+\caption{HealthGAN (WGAN-GP) architecture and training configuration, as
+fixed in \texttt{wgan\_for\_mac.py}.}
+\label{tab:healthgan-hp}
+\begin{tabular}{ll}
+\toprule
+Setting & Value \\
+\midrule
+Latent dimension & $100$ \\
+Encoded feature count $F$ & $45$ \\
+Base critic width $B$ & $64$ \\
+Generator hidden widths & $90,\ 68$ \\
+Critic hidden widths & $64,\ 128,\ 256$ \\
+Critic updates per generator update & $5$ \\
+Gradient-penalty weight $\lambda$ & $10$ \\
+Optimiser & Adam \\
+Learning rate $\eta$ & $1\times10^{-4}$ \\
+Adam $(\beta_1,\beta_2)$ & $(0.5,\ 0.9)$ \\
+Mini-batch size & $11{,}400$ \\
+Training epochs & $100{,}000$ \\
+Training / test records & $57{,}214 \,/\, 14{,}304$ \\
+Synthetic files generated & $10 \times 14{,}304$ records \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Selection of the Synthetic Sample}
 \label{sec:methods:healthgan:variants}
 
-% This subsubsection reports notebook cells 53–60: comparing the three decoded
-% samples by KS + correlation difference, justifying which variant feeds the
-% cross-method comparison in Chapter 6.
-% TODO:
-%  - Table: per-variant mean KS, mean |corr diff|, similarity rank.
-%  - Figure: PCA overlap (variant deep-dive cell 58).
-%  - State which variant was chosen and why.
+Sampling the trained generator is stochastic: a single training run yields
+three interchangeable synthetic files (indexed $0$, $3$, and $6$) drawn
+from the same fitted model. These files are not identical, as each is an
+independent draw and therefore exhibits sampling variation in its marginal
+and joint statistics. To base the cross-method comparison on a justified
+rather than an arbitrary sample, the candidates were evaluated against the
+real test partition along two complementary axes: marginal fidelity,
+quantified by the mean Kolmogorov--Smirnov statistic across columns, and
+dependency fidelity, quantified by the mean absolute difference between the
+synthetic and real pairwise correlation matrices, with a principal-component
+projection used as a visual cross-check of distributional overlap
+(Appendix~\ref{app:hg-variants}).
+
+Table~\ref{tab:hg-variants} reports the two fidelity measures for the three
+candidates. The spread is negligible: the mean KS statistic ranges over only
+$0.0477$--$0.0484$ (a span of $0.0007$) and the mean correlation difference
+over $0.0336$--$0.0342$ (a span of $0.0006$). Similarity to the real data is
+therefore carried near-identically across the independent draws, and no
+candidate is meaningfully better than the others. The combined fidelity rank
+places draws $0$ and $3$ jointly first (average rank $1.50$): draw $3$ has
+the marginally lower KS statistic, while draw $0$ has the lowest correlation
+difference. Given this tie and the negligible overall spread, draw $0$ was
+carried forward to the cross-method comparison as a representative sample;
+the choice has no material effect on any downstream result.
+
+\begin{table}[H]
+\centering
+\small
+\caption{Fidelity of the three retained HealthGAN synthetic draws against
+the real test partition (lower is better on both measures). The spread
+across draws is negligible; draw $0$ was selected as representative.}
+\label{tab:hg-variants}
+\begin{tabular}{lcccc}
+\toprule
+Draw & Mean KS $\downarrow$ & Mean $|$corr.\ diff.$|$ $\downarrow$ & Avg.\ rank & Selected \\
+\midrule
+HealthGAN-0 & 0.0480 & \textbf{0.0336} & 1.50 & $\checkmark$ \\
+HealthGAN-3 & \textbf{0.0477} & 0.0340 & 1.50 & \\
+HealthGAN-6 & 0.0484 & 0.0342 & 3.00 & \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsubsection{Rationale for Excluding a DP-Augmented HealthGAN Variant}
 \label{sec:methods:healthgan:nodp}
@@ -156,148 +365,618 @@ as the non-private GAN utility baseline.
 %   - Pategan/pate_gan.py
 %   - Pategan/generate_pategan_synthetic.py
 
+PATE-GAN realises the differentially private GAN baseline by combining a
+standard generator with a student discriminator whose only access to the
+real training data is mediated by an ensemble of teacher discriminators
+trained on disjoint partitions of that data~\cite{pategan,Papernot2017PATE}.
+Differential privacy is enforced exclusively at the teacher-to-student
+interface through Laplace-noised majority voting, so that all subsequent
+updates to the student and the generator are post-processing of a
+$(\varepsilon, \delta)$-DP signal and therefore inherit the same privacy
+guarantee. Unlike the SDV-encoded representation used by HealthGAN
+(\S\ref{sec:methods:healthgan:sdv}), PATE-GAN operates directly on the
+feature-engineered table: each of the $D = 45$ columns of the preprocessed
+training split is min--max scaled to $[0,1]$, the generator is trained on
+that representation, and synthetic outputs are inverted by undoing the
+min--max scaling, clipping to $[0,1]$, and rounding columns whose observed
+range consists of integer endpoints.
+
 \subsubsection{Teacher--Student Framework}
 \label{sec:methods:pategan:teacher}
 
-% TODO: Describe the k=10 teacher discriminators trained on disjoint shards;
-% the student discriminator trained on noisily aggregated teacher labels;
-% and the generator updated against the student.
+The training data is partitioned uniformly at random into $k = 10$ disjoint
+subsets of equal size $\lfloor N_{\mathrm{train}} / k \rfloor = 5{,}721$
+records each. At every outer training round the implementation refits, from
+scratch, one logistic-regression teacher per partition; that is, the
+teachers are linear logistic-regression classifiers rather than neural
+networks. Each teacher is trained on a balanced binary
+discrimination task in which its assigned real partition supplies the
+positive class and an equal-sized batch sampled from the current generator
+supplies the negative class. Because each real record is seen by exactly
+one teacher, the privacy cost of teacher training is bounded; the student,
+which is the only component that subsequently produces gradients for the
+generator, never observes the real data directly. The student is a small
+feed-forward network (architecture in \S\ref{sec:methods:pategan:arch})
+whose labels are obtained from the teacher ensemble through the noisy
+aggregation mechanism of \S\ref{sec:methods:pategan:laplace}, and the
+generator is updated against the student through a Wasserstein-style
+objective with weight clipping~\cite{Arjovsky2017WGAN}.
 
 \subsubsection{PATE Voting with the Laplace Mechanism}
 \label{sec:methods:pategan:laplace}
 
-% TODO: Equation for the noisy aggregation
-%   y_hat = argmax_c (\sum_t 1[T_t(x) = c] + Lap(0, \lambda))
-% with \lambda = 1.0 in the configuration used.
+For a generator-produced sample $\tilde{x}$, the implemented aggregation
+counts the binary votes of the $k$ teachers,
+\begin{equation}
+  n_0(\tilde{x}) \;=\; \sum_{t=1}^{k} \mathbf{1}\bigl[T_t(\tilde{x}) = 0\bigr],
+  \qquad
+  n_1(\tilde{x}) \;=\; \sum_{t=1}^{k} \mathbf{1}\bigl[T_t(\tilde{x}) = 1\bigr],
+\end{equation}
+draws an independent Laplace noise term $\eta \sim \mathrm{Lap}(0, \lambda)$
+per query, and assigns the supervised label
+\begin{equation}
+  \hat{y}(\tilde{x}) \;=\;
+  \mathbf{1}\!\left[\,
+    \frac{n_1(\tilde{x}) + \eta}{\,n_0(\tilde{x}) + n_1(\tilde{x})\,}
+    \;>\; \tfrac{1}{2}
+  \right].
+  \label{eq:pategan-aggregation}
+\end{equation}
+The Laplace scale $\lambda$ controls the noise injected at each query:
+larger $\lambda$ gives stronger per-query privacy but a noisier
+supervisory signal for the student. The implementation used in this
+thesis sets $\lambda = 1.0$. Equation~(\ref{eq:pategan-aggregation})
+differs slightly from the more familiar noisy-argmax formulation of the
+PATE framework~\cite{Papernot2017PATE}, in which independent Laplace
+noise is added to every class count; the codebase shipped with the
+original PATE-GAN study~\cite{pategan} adds noise only to the count of
+the positive class and thresholds the resulting noisy ratio, and this
+thesis preserves that behaviour without modification so that the privacy
+analysis of the original paper applies directly.
 
 \subsubsection{Privacy Accounting via the Moments Accountant}
 \label{sec:methods:pategan:accountant}
 
-% TODO: Brief summary of the moments accountant
-% \cite{Abadi2016DPSGD,Mironov2017RDP} as adapted by PATE-GAN \cite{pategan}.
+The privacy cost of each noisy aggregation is tracked through the moments
+accountant introduced by~\textcite{Abadi2016DPSGD} and adapted by
+PATE-GAN~\cite{pategan}, with $L = 20$ tracked moment orders. Let
+$|n_0 - n_1|$ denote the vote-margin of a single query and define
+\begin{equation}
+  q \;=\;
+  \frac{2 + \lambda\,|n_0 - n_1|}
+       {4\,\exp\!\bigl(\lambda\,|n_0 - n_1|\bigr)},
+\end{equation}
+which corresponds to the bound on the per-query Rényi divergence used in
+the data-dependent PATE accountant~\cite{pategan,Mironov2017RDP}. For each
+moment order $l \in \{0, \dots, L-1\}$ the accumulator $\alpha_l$ is
+updated by
+\begin{equation}
+  \alpha_l \;\leftarrow\; \alpha_l \;+\;
+    \min\!\Bigl(\, 2\,\lambda^{2}\,(l+1)(l+2),
+    \;\;
+    \log\!\bigl[
+      (1-q)\bigl(\tfrac{1-q}{1 - q\,\exp(2\lambda)}\bigr)^{\,l+1}
+      + q\,\exp\!\bigl(2\lambda(l+1)\bigr)
+    \bigr]
+    \Bigr),
+\end{equation}
+which selects, per order, the tighter of the data-independent and the
+data-dependent bound. After every outer round (one teacher refit, $n_s$
+student updates, and one generator update) the implementation converts the
+accumulated moments back into an $(\varepsilon, \delta)$ budget via
+\begin{equation}
+  \hat{\varepsilon} \;=\;
+  \min_{l \in \{0, \dots, L-1\}}
+    \frac{\alpha_l + \log\!\bigl(1/\delta\bigr)}{\,l+1\,}.
+  \label{eq:pategan-epshat}
+\end{equation}
+Training proceeds while $\hat{\varepsilon}$ remains below the target
+$\varepsilon$, and terminates as soon as the inequality is violated; the
+final synthetic dataset is drawn from the generator state at termination.
+The accountant therefore controls the number of training rounds adaptively
+rather than through a fixed epoch budget.
 
 \subsubsection{Architecture}
 \label{sec:methods:pategan:arch}
 
-% Generator: input(F) → Dense(4F, tanh) → Dense(4F, tanh) → Dense(F, sigmoid)
-% Student:   input(F) → Dense(F, ReLU) → Dense(1)
+Both the generator and the student are fully connected feed-forward
+networks whose widths scale with the feature dimension $D = 45$ of the
+preprocessed table. The latent input is drawn from the uniform
+distribution, $z \sim \mathcal{U}([-1, 1]^{D})$, and is passed through
+three dense layers with hidden width $4D = 180$:
+\begin{equation}
+  D \;\to\; 4D~(\mathrm{tanh}) \;\to\; 4D~(\mathrm{tanh})
+  \;\to\; D~(\mathrm{sigmoid}),
+\end{equation}
+so that the generator output is constrained to $[0,1]^{D}$ in line with
+the min--max scaled training representation. The student maps a record
+to an unbounded scalar score through two dense layers,
+\begin{equation}
+  D \;\to\; D~(\mathrm{ReLU}) \;\to\; 1,
+\end{equation}
+with a single linear output unit and no terminal activation, consistent
+with the Wasserstein critic formulation~\cite{Arjovsky2017WGAN}. All
+weights are initialised with Xavier scaling, and the teachers are
+linear logistic-regression models with default regularisation as
+described in \S\ref{sec:methods:pategan:teacher}.
 
 \subsubsection{Privacy Budget and Hyperparameters}
 \label{sec:methods:pategan:hp}
 
-% k = 10 teachers, n_s = 1, batch_size = 64, lambda = 1.0
-% Target privacy: epsilon = 5.0, delta = 1e-5.
-% RMSprop(lr=1e-4) for both student and generator.
-% Student weights clipped to [-0.01, 0.01].
+The student and generator are both optimised with RMSProp at learning
+rate $\eta = 10^{-4}$. The student is trained under the Wasserstein
+formulation with hard weight clipping: after every gradient step its
+parameters are projected back into the box $[-0.01, 0.01]$, which
+enforces the $1$-Lipschitz constraint required of the
+critic~\cite{Arjovsky2017WGAN}. The target privacy budget is
+$(\varepsilon, \delta) = (5.0,\,10^{-5})$, matched to the budget used
+for the Pythia-1B-DP run (\S\ref{sec:methods:pythia-dp:epsilon}) so that
+the GAN-side and LLM-side DP comparisons in
+\S\ref{sec:results:rq3:gan-toggle} and \S\ref{sec:results:rq3:llm-toggle}
+are reported at a common $\varepsilon$. Training runs until the
+moments-accountant estimate $\hat{\varepsilon}$ from
+Equation~(\ref{eq:pategan-epshat}) reaches this target. After
+termination, one synthetic batch of size $N_{\mathrm{train}} = 57{,}214$
+is drawn from the generator and inverted from the min--max
+representation to the original feature space. Table~\ref{tab:pategan-hp}
+summarises the configuration.
 
-\subsection{Pythia: Non-DP LLM-based Generation}
+\begin{table}[h]
+\centering
+\small
+\caption{PATE-GAN architecture, training, and privacy configuration used
+in this thesis.}
+\label{tab:pategan-hp}
+\begin{tabular}{ll}
+\toprule
+Setting & Value \\
+\midrule
+Feature count $D$ & $45$ \\
+Latent distribution & $\mathcal{U}([-1,1]^{D})$ \\
+Latent dimension $z_{\mathrm{dim}}$ & $45$ \\
+Generator hidden widths & $180,\ 180$ \\
+Student hidden width & $45$ \\
+Teacher classifier & Logistic regression (linear) \\
+Number of teachers $k$ & $10$ \\
+Records per teacher partition & $5{,}721$ \\
+Student updates per outer round $n_s$ & $1$ \\
+Mini-batch size & $64$ \\
+Laplace noise scale $\lambda$ & $1.0$ \\
+Moments-accountant orders $L$ & $20$ \\
+Optimiser & RMSProp \\
+Learning rate $\eta$ & $1\times 10^{-4}$ \\
+Student weight-clipping range & $[-0.01,\ 0.01]$ \\
+Target privacy budget $(\varepsilon,\delta)$ & $(5.0,\ 10^{-5})$ \\
+Training records & $57{,}214$ \\
+Synthetic records emitted & $57{,}214$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Pythia-70M: Non-DP LLM (Small-Scale Baseline)}
 \label{sec:methods:pythia}
 
 % Code references:
 %   - pythia/pythia_tabular.py
 %   - pythia/generate_pythia_synthetic.py
 
+Pythia-70M realises the non-private LLM baseline at the small end of the
+scale axis. The pipeline serialises each tabular row as a single text
+sequence with a class-label prefix, fine-tunes the base model on those
+sequences using low-rank adaptation, and recovers a synthetic table by
+prompting the trained model with the same class prefix and parsing the
+generated text back into typed values under the source schema. The
+subsubsections below describe the base model, the row-to-text
+serialisation, the column-level schema captured for postprocessing,
+the LoRA fine-tuning configuration, the class-conditioned generation
+procedure, and the schema-aware parsing and retry logic that converts
+free-form model output into a validated synthetic dataframe.
+
 \subsubsection{Base Model}
 \label{sec:methods:pythia:base}
 
-% EleutherAI/pythia-70m \cite{Biderman2023Pythia}. Justify the small size
-% choice (training cost / commodity GPU feasibility), referencing
-% \cite{Miletic2024} who report Pythia-70m as a viable starting point.
+The base model is Pythia-70M, a decoder-only transformer with $70$M
+parameters drawn from the open-weights Pythia
+suite~\cite{Biderman2023Pythia}. The choice of the smallest Pythia
+variant is dictated by training-cost considerations: a $70$M parameter
+model fine-tunes on commodity GPU hardware within minutes per epoch,
+making it a practical entry point for the LLM family.
+\textcite{Miletic2024} report that Pythia models can match or surpass
+strong tabular GAN baselines on train-on-synthetic, test-on-real utility
+when applied to electronic-health-record tables using row-as-text
+serialisation, which motivates including the smallest variant as a
+non-private baseline rather than excluding it on capacity grounds.
+Tokenisation uses the model's native byte-pair-encoded vocabulary; the
+end-of-sequence token is reused as the padding token when the
+pretrained tokeniser lacks an explicit one, and the padding side is set
+to the left to preserve the structure of generation prompts.
 
 \subsubsection{Tabular-to-Text Serialisation}
 \label{sec:methods:pythia:serialisation}
 
-% Format: "Class_{label} | col_name=value | col_name2=value2 | ..."
-% Each row is converted to a single text sequence with the class token first
-% so that conditional generation can prefix the class.
+Each row of the preprocessed training table is serialised into a single
+text sequence of the form
+\begin{equation*}
+  \mathrm{Class}\_\langle L\rangle ~|~ c_1 = v_1 ~|~ c_2 = v_2 ~|~ \dots ~|~ c_K = v_K,
+\end{equation*}
+where $\langle L \rangle$ is the integer class label drawn from the
+binary readmission target column, $c_i$ is the $i$-th column name in
+the original dataframe order, and $v_i$ is the textual representation
+of that column's value in the row. Scalar values are formatted
+deterministically: integers retain their textual decimal form,
+floating-point values are formatted with $15$ significant digits,
+booleans are mapped to $\{0, 1\}$, and missing values are emitted as
+the literal string ``NA''. The class prefix is fixed at the head of
+the sequence so that conditional generation can later be triggered by
+pinning that prefix to the desired label
+(\S\ref{sec:methods:pythia:generation}).
 
 \subsubsection{Schema Derivation}
 \label{sec:methods:pythia:schema}
 
-% Per-column schema captures dtype, numeric bounds, discrete support, and
-% category set (if applicable). Used downstream for parsing/coercion.
+Before training, a per-column schema is derived from the source
+dataframe and retained for use during parsing, coercion, validation, and
+postprocessing of generated outputs. For every column the schema
+records: the original pandas dtype; whether the column is numeric;
+the observed minimum and maximum (numeric columns only); whether all
+observed values are integer-valued (the \emph{integer-coded} flag);
+the full sorted list of distinct observed values when the column's
+cardinality is at most $25$ (the \emph{discrete numeric support},
+applied to ordinal-coded columns such as age decile, diagnosis
+groupings, and binary medication flags); the full list of distinct
+string categories for non-numeric columns; and the column mode used as
+a schema-safe fallback when a generated field cannot be parsed.
 
 \subsubsection{LoRA Fine-tuning}
 \label{sec:methods:pythia:lora}
 
-% LoRA \cite{Hu2022LoRA} with r=8, alpha=16, dropout=0.05. Only LoRA
-% parameters are trainable; the base Pythia model is frozen. Trainer:
-% HuggingFace Trainer with DataCollatorForLanguageModeling (CLM objective).
-%
-% Hyperparameters (defaults):
-%   epochs = 10
-%   batch_size = 8
-%   lr = 2e-5
-%   max_length = 512
+The base Pythia weights are kept frozen and adapted through low-rank
+adaptation (LoRA)~\cite{Hu2022LoRA}. The LoRA configuration uses rank
+$r = 8$, scaling factor $\alpha = 16$, dropout $0.05$, no bias
+adaptation, and the causal-language-modelling task type, so that only
+the injected low-rank matrices receive gradient updates. The corpus is
+tokenised without padding and dynamically padded per mini-batch to a
+multiple of eight by a standard causal-LM data collator (no masked-LM
+objective). Training runs for $10$ epochs at per-device batch size $8$,
+learning rate $\eta = 2 \times 10^{-5}$, and maximum sequence length
+$512$, with half-precision arithmetic on CUDA-capable devices. The
+mean training loss per epoch is recorded, the trainable parameters are
+snapshotted whenever an epoch achieves a new minimum loss, and the
+lowest-loss snapshot is restored at the end of training; sampling for
+generation is performed from this best-epoch state, so that transient
+over-fitting in the final epochs does not degrade synthetic output. The
+fine-tuned model is moved into evaluation mode before generation.
 
 \subsubsection{Class-Conditioned Generation}
 \label{sec:methods:pythia:generation}
 
-% Sampling: temperature = 0.8, top_p = 0.95, max_new_tokens = 512.
-% Prompt: "Class_{0|1} | col_name=" — let the model autoregressively complete
-% the row.
+Generation is performed class-by-class so that the synthetic table
+preserves the per-class row counts of the source split. For each
+target class $\ell \in \{0, 1\}$, the model is prompted with a class
+prefix of the form $\mathrm{Class}\_\ell ~|~ c_1 =$, where $c_1$ is
+the name of the first non-target column under the dataframe's column
+order, and is left to autoregressively complete the remainder of the
+row. Sampling uses nucleus sampling with temperature $0.8$ and
+top-$p = 0.95$, with $512$ maximum new tokens, a minimum-new-tokens
+floor of $64$ to discourage truncated rows, and the model's key--value
+cache enabled. The required class label is enforced after parsing
+rather than inferred from the generation, removing any dependence of
+the assigned label on the model's own output
+(\S\ref{sec:methods:pythia:parsing}).
 
 \subsubsection{Schema-Aware Parsing, Coercion, and Retry}
 \label{sec:methods:pythia:parsing}
 
-% TODO:
-%  - Regex extraction of key=value pairs.
-%  - Coercion: range clip for numeric, discrete snapping, category fallback.
-%  - Validation: ≥10 % of non-target columns must be present; otherwise retry.
-%  - Fallback: resample from accepted rows; last resort schema-valid random rows.
-%  - max_retries_per_row = 8.
+Each decoded text is normalised by stripping content preceding the
+class prefix and extracting key--value pairs with a regular expression
+that captures alphanumeric (and underscore- or hyphen-bearing) keys to
+the left of an ``='' sign and the corresponding free-form values to
+the right, terminated by the pipe separator or by a line break.
+Duplicate keys are resolved by retaining the first occurrence. A
+generated row is admitted to the coercion stage only if it supplies at
+least $\max\bigl(3,\,\lceil 0.1 \cdot K_{\mathrm{nt}} \rceil\bigr)$
+distinct non-target keys, where $K_{\mathrm{nt}}$ is the number of
+non-target columns in the schema. For the $44$ non-target columns of
+the preprocessed diabetes table this lower bound evaluates to four
+keys; rows that fall short are rejected as parse failures and the
+attempt is retried.
 
-\subsection{Pythia-DP: Differentially Private LLM}
+Coercion enforces schema compliance on a per-column basis. Numeric
+fields are cast to floating point, clipped to the column's
+$[\min, \max]$ envelope, snapped to the nearest value of the
+discrete support (when the column is low-cardinality), and rounded to
+the nearest integer within bounds (when the column is integer-coded).
+String fields are checked against the recorded category set; an
+unrecognised category is replaced with the column mode. Any column
+missing from the parsed output is filled with a schema-safe default:
+the column mode where defined, otherwise the first value of the
+discrete support, otherwise the midpoint of the numeric range. The
+target column is always overwritten with the externally enforced
+class label rather than the model's emitted value, guaranteeing a
+one-to-one match between prompt class and recorded class.
+
+Generation for one class proceeds in mini-batches of size equal to the
+training batch size until the required row count is reached or an
+attempt budget of $8 \cdot n_{\mathrm{rows}}$ generations is exhausted
+(an effective per-row retry budget of eight). If the budget is
+exhausted with the row count short of target, the shortfall is first
+filled by resampling, with replacement, from the rows already accepted
+for that class; only if no row at all was accepted is the synthetic
+table topped up with rows drawn uniformly from the schema-recorded
+support of each column (a last-resort path that was never reached on
+the diabetes runs reported here). The generated rows for both classes
+are concatenated, shuffled with a fixed seed, and pushed through a
+final dataframe-level cast: every column is re-clipped to its recorded
+range, snapped to its discrete support, rounded if integer-coded, and
+re-cast to its original type. A structural validator then rejects any
+output that does not have the correct column order, the correct row
+count, no missing values, a binary target column, and within-range
+values for all numeric columns before the synthetic table is written
+to disk together with a metadata sidecar covering parsing diagnostics
+and the per-class acceptance statistics.
+
+\subsection{Pythia-1B: Non-DP LLM (Scale Anchor)}
+\label{sec:methods:pythia-1b}
+
+% Code references:
+%   - pythia/pythia_tabular.py (run at --model_name EleutherAI/pythia-1b)
+%   - pythia/generate_pythia_synthetic.py
+
+A second non-private LLM variant is trained at a larger scale to serve as
+the non-DP anchor of the LLM-side DP toggle
+(\S\ref{sec:methods:pythia-dp}). Pythia-1B uses the identical Tabula
+serialisation (\S\ref{sec:methods:pythia:serialisation}), schema-derivation
+pipeline (\S\ref{sec:methods:pythia:schema}), LoRA fine-tuning configuration
+(\S\ref{sec:methods:pythia:lora}), class-conditioned generation procedure
+(\S\ref{sec:methods:pythia:generation}), and schema-aware parsing logic
+(\S\ref{sec:methods:pythia:parsing}) as the 70M variant; the only material
+difference is the underlying decoder-only backbone, scaled from the
+$70$M-parameter Pythia variant to the $1$B-parameter Pythia
+variant~\cite{Biderman2023Pythia}. Including Pythia-1B alongside the smaller 70M
+baseline serves two purposes. First, it isolates the cost of DP-SGD in the
+RQ3 within-family comparison (Pythia-1B versus Pythia-1B-DP) from the
+confounding effect of a simultaneous model-scale change. Second, it
+positions an LLM-side scale axis in the RQ2 landscape view, enabling a
+qualitative read of how the LLM family's privacy--utility profile shifts
+with model size at a matched preprocessing and fine-tuning configuration.
+
+\subsection{Pythia-1B-DP: Differentially Private LLM}
 \label{sec:methods:pythia-dp}
 
 % Code references:
 %   - pythia/pythia_tabular_dp.py
 %   - pythia/generate_pythia_synthetic_dp.py
 
+\subsubsection{Rationale for Operationalising DP-SGD at the 1B Scale}
+\label{sec:methods:pythia-dp:why-1b}
+
+An initial attempt to apply DP-SGD to Pythia-70M at $\varepsilon = 5.0$
+failed to train usefully: the per-example Gaussian noise injected by
+Opacus dominated the gradient signal, training loss did not descend below
+the random-token baseline, and the resulting samples failed schema-aware
+parsing at a rate that prevented an evaluable synthetic table from being
+assembled. Scaling the LLM-side DP variant to Pythia-1B, with all other
+hyperparameters held fixed, restored stable convergence under the same
+$(\varepsilon = 5.0, \delta = 10^{-5})$ budget. This outcome is consistent
+with the observation of \textcite{Li2022LargeDP}, who report that larger
+LLMs tolerate DP noise more gracefully, and motivates the asymmetric LLM
+lineup: the LLM-side DP toggle is operationalised at the 1B scale, while
+the 70M baseline is retained only as a non-DP small-scale reference in
+the RQ2 landscape view. The empirical failure itself is reported as a
+finding in \S\ref{sec:results:rq3:pythia-70m-failure}.
+
 \subsubsection{DP-SGD via Opacus}
 \label{sec:methods:pythia-dp:opacus}
 
-% PrivacyEngine() from Opacus \cite{Yousefpour2021Opacus} wraps the model,
-% optimizer, and dataloader. ModuleValidator.fix() is applied to make the
-% model Opacus-compatible.
+Differential privacy is enforced through differentially private
+stochastic gradient descent (DP-SGD)~\cite{Abadi2016DPSGD}, with the
+Opacus library~\cite{Yousefpour2021Opacus} supplying the per-sample
+gradient machinery, the noise calibration, and the privacy
+accountant. The pipeline follows the parameter-efficient framework of
+\textcite{Yu2022DPFT}: the base Pythia weights are frozen and
+differential privacy is applied exclusively to the LoRA adapter
+parameters, so that by the post-processing property of differential
+privacy the resulting generator is $(\varepsilon, \delta)$-DP with
+respect to the private training corpus. After the LoRA adapter is
+attached, the model is passed through a module-validation step that
+substitutes any sub-module incompatible with per-sample gradient
+computation (for example, certain normalisation layers) with an
+equivalent Opacus-supported layer. The base optimiser is the Adam-W
+algorithm restricted to the trainable adapter parameters; the
+optimiser, the model, and the data loader are then handed to
+Opacus's privacy engine, which (i) replaces the optimiser with a
+DP-SGD variant that injects Gaussian noise into clipped per-sample
+gradients, (ii) wraps the model so that per-sample gradients are
+materialised during the backward pass, and (iii) calibrates the
+Gaussian noise multiplier from the user-supplied
+$(\varepsilon, \delta, \text{epochs})$ triplet using its built-in
+accountant.
 
 \subsubsection{Per-Example Gradient Clipping}
 \label{sec:methods:pythia-dp:clipping}
 
-% max_grad_norm = 1.0 — Opacus computes per-sample gradients (rather than
-% per-batch) and clips each sample's gradient norm before averaging and
-% adding noise.
+The DP-SGD optimiser computes a per-sample gradient $g_i$ for every
+example $i$ in the logical batch and clips it to a fixed $\ell_2$ norm
+$C$, where the clipping bound is set to $C = 1.0$ in this thesis:
+\begin{equation}
+  \bar{g}_i \;=\; g_i \,\Big/\, \max\!\bigl(1, \lVert g_i \rVert_{2} / C\bigr).
+\end{equation}
+The clipped gradients are summed across the logical batch, a single
+Gaussian noise draw of standard deviation $\sigma\,C$ is added, and the
+result is divided by the logical batch size to form the noisy gradient
+estimate used by the AdamW update. The Gaussian noise multiplier
+$\sigma$ is selected automatically by Opacus from the target
+$(\varepsilon, \delta)$ budget and the planned number of epochs. To
+keep per-sample gradients well defined under Opacus, the LoRA dropout
+parameter is set to zero in the DP path (versus $0.05$ in the non-DP
+path of \S\ref{sec:methods:pythia:lora}); LoRA rank, scaling factor,
+target task type, and bias configuration are otherwise unchanged.
 
 \subsubsection{Effective Batch Size}
 \label{sec:methods:pythia-dp:batch}
 
-% per_device_batch_size = 32, gradient_accumulation_steps = 16 →
-% effective_batch_size = 512. The privacy accountant tracks the effective
-% batch size, not the per-device one.
+The privacy guarantee depends on the \emph{logical} batch size that
+the accountant sees, which is taken to be the effective batch size
+$B_{\mathrm{eff}} = B_{\mathrm{phys}} \times G$, where
+$B_{\mathrm{phys}}$ is the per-device physical batch size and $G$ is
+the gradient-accumulation factor. The values used in this thesis are
+$B_{\mathrm{phys}} = 32$ and $G = 16$, giving a logical batch size of
+$B_{\mathrm{eff}} = 512$. Logical batches are streamed through
+Opacus's memory-managed loader, which transparently splits each
+logical batch into physical micro-batches of size $B_{\mathrm{phys}}$
+so that per-sample gradient memory remains bounded; the privacy
+accountant is exposed only to the logical-batch sampling rate
+$q = B_{\mathrm{eff}} / N_{\mathrm{train}}$ used in its calibration of
+the noise multiplier.
 
 \subsubsection{Privacy Budget and Achieved Epsilon}
 \label{sec:methods:pythia-dp:epsilon}
 
-% target_epsilon = 5.0, target_delta = 1e-5. Opacus computes the noise
-% multiplier needed to reach target epsilon over the planned number of
-% training steps. Achieved epsilon is reported in run_metadata_dp.json after
-% training and should be cited verbatim in Chapter 6.
+The target privacy budget is $(\varepsilon, \delta) = (5.0,\,10^{-5})$
+across all DP-enabled Pythia runs, with $\delta$ chosen well below
+$1 / N_{\mathrm{train}}$ as standard practice~\cite{Abadi2016DPSGD}.
+Opacus calibrates the Gaussian noise multiplier $\sigma$ from this
+budget together with the number of training epochs and the sampling
+rate $q$ defined in \S\ref{sec:methods:pythia-dp:batch}. After
+training, the accountant is queried for the realised privacy cost at
+the chosen $\delta$ using Opacus's privacy-random-variable accountant;
+the realised $\varepsilon$, the noise multiplier $\sigma$, the
+per-epoch loss trajectory, the best-epoch index, and the recorded
+sampling rate are serialised into a metadata sidecar alongside the
+synthetic table and are reported verbatim in
+Chapter~\ref{ch:results}. The same matched budget anchors the GAN-side
+DP comparison through PATE-GAN (\S\ref{sec:methods:pategan:hp}), so
+that the GAN-family and LLM-family within-family DP toggles in
+\S\ref{sec:results:rq3:gan-toggle} and
+\S\ref{sec:results:rq3:llm-toggle} are read against a common
+$\varepsilon$.
 
 \subsubsection{Differences from the Non-DP Pipeline}
 \label{sec:methods:pythia-dp:diff}
 
-% TODO: Table or bulleted comparison highlighting:
-%  - Trainer (HF) → manual training loop with PrivacyEngine
-%  - Per-example gradients (memory cost)
-%  - Effective batch size 512 vs. 8 in non-DP run
-%  - Loss-curve dynamics typically shifted by noise injection
+The DP variant deliberately deviates from the non-DP pipeline of
+\S\ref{sec:methods:pythia} only where required by the DP-SGD
+machinery; all serialisation, schema-derivation, sampling, parsing,
+and validation logic is shared. The differences are:
+
+\begin{itemize}\itemsep0.25em
+  \item \textbf{Training loop.} The high-level training driver is
+        replaced by a manual epoch loop over an Opacus-wrapped data
+        loader, so that per-sample gradient materialisation, gradient
+        clipping, Gaussian noise injection, and privacy accounting
+        can be inserted at the right point in the update sequence.
+        Mean-loss aggregation and best-epoch snapshotting are
+        reimplemented to match the behaviour of the non-DP callback.
+  \item \textbf{LoRA dropout.} Set to $0.0$ in the DP path versus
+        $0.05$ in the non-DP path, because per-sample gradient
+        tracking under Opacus requires deterministic forward passes
+        through stochastic regularisers
+        (\S\ref{sec:methods:pythia-dp:clipping}).
+  \item \textbf{Batch sizing.} The non-DP path trains at per-device
+        batch size $8$ with no accumulation
+        (\S\ref{sec:methods:pythia:lora}); the DP path uses a
+        physical batch size of $32$ with gradient accumulation factor
+        $16$, yielding the logical batch size $512$ that the privacy
+        accountant operates on. The increased logical batch size is
+        load-bearing: smaller sampling rates would either require a
+        larger noise multiplier or fail to reach the target
+        $\varepsilon$ within the same number of epochs.
+  \item \textbf{Memory footprint.} Per-sample gradient tracking
+        multiplies the gradient-memory cost by the physical batch
+        size, which is the dominant runtime constraint on the DP
+        path; Opacus's memory-managed loader mitigates this by
+        running the physical micro-batches sequentially within each
+        logical batch.
+  \item \textbf{Inference unwrap.} Opacus wraps the model in a
+        per-sample-gradient module that intercepts the backward pass;
+        the underlying transformer is extracted from this wrapper
+        before sampling so that the standard generation routine
+        dispatches to the inference path rather than the per-sample
+        gradient path.
+\end{itemize}
 
 \subsection{Implementation Summary}
 \label{sec:methods:summary}
 
-% TODO: One synthesis table comparing all four generators along:
-%  - Architecture
-%  - Formal DP guarantee (yes/no, mechanism)
-%  - Library stack (TensorFlow 1.x / PyTorch + Opacus / HF Transformers + LoRA)
-%  - Training time on the available hardware
-%  - Output file path under thesis/data/<generator>/
+The five generators introduced in \S\S\ref{sec:methods:healthgan}--%
+\ref{sec:methods:pythia-dp} share a common preprocessing front end
+(\S\ref{sec:method:data}) and a common evaluation back end
+(\S\ref{sec:method:evaluation}), but differ along three orthogonal
+implementation axes: the generative paradigm, the privacy mechanism,
+and the software stack on which the generator is realised.
+Table~\ref{tab:methods-implementation-summary} consolidates the
+configuration of every generator along these axes for ease of
+cross-reference.
+
+\begin{table}[h]
+\centering
+\footnotesize
+\caption{Comparative summary of the five synthesisers. All generators
+are trained on the same $57{,}214$-record training partition of the
+Diabetes 130-US Hospitals benchmark and supply synthetic outputs whose
+sizes are matched to the partitions used in the downstream evaluation
+pipeline of Chapter~\ref{ch:results}. Privacy budgets are reported as
+target $(\varepsilon, \delta)$ values; the realised $\varepsilon$ for
+Pythia-1B-DP is reported in \S\ref{sec:results:rq3:llm-toggle}.}
+\label{tab:methods-implementation-summary}
+\begin{tabular}{lllll}
+\toprule
+Generator & Family & Privacy mechanism & $(\varepsilon, \delta)$ & Software stack \\
+\midrule
+HealthGAN
+  & GAN (WGAN-GP)
+  & None
+  & ---
+  & TensorFlow 1.x compatibility mode \\
+PATE-GAN
+  & GAN (PATE teacher ensemble + Wasserstein student)
+  & PATE Laplace aggregation
+  & $(5.0,\,10^{-5})$
+  & TensorFlow 1.x compatibility mode \\
+Pythia-70M-LoRA
+  & LLM (decoder-only)
+  & None
+  & ---
+  & PyTorch + Hugging Face Transformers + LoRA \\
+Pythia-1B-LoRA
+  & LLM (decoder-only)
+  & None
+  & ---
+  & PyTorch + Hugging Face Transformers + LoRA \\
+Pythia-1B-DP-LoRA
+  & LLM (decoder-only)
+  & DP-SGD on LoRA adapter
+  & $(5.0,\,10^{-5})$
+  & PyTorch + Hugging Face Transformers + LoRA + Opacus DP-SGD \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Several cross-cutting properties of the design space are worth
+re-stating explicitly. First, the privacy mechanism varies not only in
+its presence or absence but also in its locus: PATE-GAN injects
+calibrated Laplace noise at the teacher-to-student labelling
+interface~\cite{pategan,Papernot2017PATE}, whereas Pythia-1B-DP injects
+Gaussian noise into clipped per-sample gradients of the LoRA adapter
+under the DP-SGD framework~\cite{Abadi2016DPSGD} as specialised to
+parameter-efficient fine-tuning by~\textcite{Yu2022DPFT}. Both
+mechanisms are calibrated to a matched target privacy budget of
+$(\varepsilon, \delta) = (5.0,\,10^{-5})$, which is what makes the
+within-family DP toggles in \S\ref{sec:results:rq3:gan-toggle} and
+\S\ref{sec:results:rq3:llm-toggle} comparable across families. Second,
+the LLM-side generators share an identical row-to-text serialisation,
+schema-aware parsing pipeline, and LoRA configuration; the only
+material differences across the three Pythia variants are the
+underlying decoder-only backbone (70M vs.\ 1B parameters) and, for
+the DP variant, the gradient-clipping, noise-injection, and
+adapter-dropout adjustments demanded by the per-sample-gradient
+machinery (\S\ref{sec:methods:pythia-dp:diff}). Third, the GAN-side
+generators are realised on a TensorFlow~1.x compatibility stack
+inherited from the original
+HealthGAN~\cite{healthgan} and PATE-GAN~\cite{pategan} codebases,
+whereas the LLM-side generators run on a PyTorch + Hugging Face
+Transformers stack with LoRA~\cite{Hu2022LoRA} and, in the DP path,
+Opacus~\cite{Yousefpour2021Opacus}. This software-stack asymmetry has
+no bearing on the comparative privacy--utility analysis in
+Chapter~\ref{ch:results}, but it does inform the discussion of
+practical deployment cost in Chapter~\ref{ch:discussion}.
