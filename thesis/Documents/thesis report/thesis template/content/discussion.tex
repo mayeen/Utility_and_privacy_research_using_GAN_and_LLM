@@ -37,7 +37,10 @@ but an operating-point shift toward the minority class, and it illustrates
 why threshold-dependent and threshold-independent predictive metrics are
 both reported. \textcite{Miletic2024}, who document continued utility gains
 with language-model scale, predict that the LLM advantage on the predictive
-axis would widen at scales larger than those evaluated here.
+axis would widen at scales larger than those evaluated here. That high utility
+need not coincide with strong privacy is consistent with the independent
+benchmark of SynthEval, in which the highest-utility generators ranked among the
+worst on privacy~\cite{lautrup2025syntheval}.
 
 For RQ3, the asymmetry in how the two families absorb differential privacy
 follows from where the privacy mechanism acts. On the LLM side, DP-SGD
@@ -136,7 +139,11 @@ The evaluation framework assembled for this thesis, comprising two utility
 branches (statistical similarity and predictive performance) and a privacy
 pillar reported through eleven complementary single-number metrics, is
 offered as a step toward the reusable evaluation standard called for by
-\textcite{hernandez2022synthetic}. Its central design principle, that the
+\textcite{hernandez2022synthetic}. General-purpose frameworks such as SynthEval
+pursue this goal for arbitrary tabular data~\cite{lautrup2025syntheval}; the
+present framework instead specialises the same two-pillar structure to a
+clinical benchmark and to a controlled comparison across the GAN and LLM
+paradigms. Its central design principle, that the
 metrics are jointly necessary rather than individually sufficient,
 generalises directly: the PATE-GAN case shows that any framework reporting
 fewer dimensions risks rewarding degenerate generators. What would not
@@ -261,7 +268,11 @@ statistic, which is non-parametric and avoids the probability-mass binning
 that the former requires on continuous columns; and the pairwise correlation
 difference, originally specified as a single Frobenius norm, is reported both
 as the per-column difference heatmaps and as the scalar mean used for
-ranking. Within the predictive branch, the four-way train and test regime
+ranking. The correlation difference captures only linear inter-attribute
+dependence; non-linear dependencies between attributes are not assessed in this
+thesis, and are noted as future work
+(Section~\ref{sec:conclusion:future:nonlinear}). Within the predictive branch,
+the four-way train and test regime
 was narrowed to the two cells that bound utility (Train-on-Real and
 Train-on-Synthetic, both tested on real data), and the augmentation-based
 and dimension-wise prediction evaluations were not run. Within the privacy

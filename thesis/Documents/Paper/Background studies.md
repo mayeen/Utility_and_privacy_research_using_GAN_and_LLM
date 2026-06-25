@@ -454,6 +454,75 @@ Research questions: **RQ1** (which metrics suit utility/privacy evaluation), **R
 
 ---
 
+## 3F. Differential-privacy foundations (definitions, mechanisms, accounting)
+
+> These six were previously listed in §7.1 as "not in folder". They are now present and
+> were read in full and verified claim-by-claim against §2.5 of the background chapter
+> (review_log.md: §2.5 ✅, 18/18 claims correct). Entries below record the exact
+> definitions/equations the thesis relies on.
+
+### 3F.1 Calibrating Noise to Sensitivity in Private Data Analysis — Dwork, McSherry, Nissim, Smith (TCC 2006) ⭐⭐⭐
+
+`Dwork2006DP` · founding DP paper.
+
+- **Contribution.** Introduces the privacy mechanism that adds noise calibrated to the
+  **global sensitivity** of a query (the max change in $f$ over neighbouring datasets).
+  The **Laplace mechanism** adds $\mathrm{Lap}(\Delta f/\varepsilon)$ noise to satisfy
+  pure $\varepsilon$-DP.
+- **Used in thesis.** §2.5.1 — global-sensitivity definition and the Laplace mechanism
+  (noise ∝ sensitivity/ε). Formal basis of (ε,δ)-DP cited throughout RQ3.
+
+### 3F.2 The Algorithmic Foundations of Differential Privacy — Dwork & Roth (2014) ⭐⭐⭐
+
+`Dwork2014Foundations` · the DP textbook (281 pp.).
+
+- **(ε,δ)-DP definition (Def 2.4).** $\Pr[\mathcal{M}(D)\in S]\le e^{\varepsilon}\Pr[\mathcal{M}(D')\in S]+\delta$ — matches eq:bg:dp:def **verbatim**. δ=0 gives pure ε-DP.
+- **Basic composition (Cor 3.15).** $k$ mechanisms each (ε,0)-DP → (kε,0)-DP.
+- **Advanced composition (Cor 3.21).** $\varepsilon^*=\sqrt{2k\ln(1/\delta')}\,\varepsilon+k\varepsilon^2$, i.e. $O(\sqrt{k\log(1/\delta)}\,\varepsilon)$ dominant term.
+- **δ convention (§3.3).** δ "on the order of $1/\lVert x\rVert_1$" is "**very dangerous**". → 1/N is the *upper bound*, not a safe target. **Drove the one prose fix in §2.5.1** ("substantially smaller than" → "no larger than" the inverse dataset size).
+- **Used in thesis.** §2.5.1 definition, both composition theorems, Gaussian mechanism.
+
+### 3F.3 Deep Learning with Differential Privacy (DP-SGD) — Abadi et al. (CCS 2016) ⭐⭐⭐
+
+`Abadi2016DPSGD` · the mechanism behind **Pythia-1B-DP-LoRA**.
+
+- **Per-example clipping (Alg 1).** $\bar g_i = g_i/\max(1,\lVert g_i\rVert_2/C)$ — matches eq:bg:dp:clip **verbatim**.
+- **Noisy update.** sum clipped grads + $\mathcal{N}(0,\sigma^2C^2\mathbf{I})$, then average — matches eq:bg:dp:update. Clipping caps L2 sensitivity at $C$; noise σC suffices.
+- **Moments accountant.** Internal tool tracking privacy loss across many Gaussian-mechanism invocations on random subsets; much tighter than advanced composition for thousands of steps.
+- **Used in thesis.** §2.5.2 DP-SGD algorithm equations and sensitivity argument.
+
+### 3F.4 Semi-supervised Knowledge Transfer for Deep Learning from Private Training Data (PATE) — Papernot et al. (ICLR 2017) ⭐⭐⭐
+
+`Papernot2017PATE` · the framework **PATE-GAN** adapts.
+
+- **Noisy aggregation (Eq 1).** $\hat y(x)=\arg\max_j\{n_j(x)+\mathrm{Lap}(1/\gamma)\}$ — matches eq:bg:dp:pate **verbatim**. Teachers trained on **disjoint** partitions; vote counts $n_j$ change by ≤1 between adjacent datasets (sensitivity 1).
+- **Consensus → smaller budget.** Strong teacher agreement = less noise needed per query = lower privacy cost (stated explicitly).
+- **Student post-processing.** Student trained only on noisy teacher labels inherits the DP guarantee by post-processing.
+- **Used in thesis.** §2.5.3 PATE framework description.
+
+### 3F.5 Rényi Differential Privacy — Mironov (CSF 2017) ⭐⭐⭐
+
+`Mironov2017RDP` · the accounting Opacus uses.
+
+- **(α,ε̄)-RDP.** Bounds the Rényi divergence of order α between $\mathcal{M}(D)$ and $\mathcal{M}(D')$ — one moment at a time (less restrictive than (z)CDP, more accurate numerically).
+- **Linear composition (Table I).** $k$ mechanisms each (α,ε̄)-RDP → (α,kε̄)-RDP at **fixed α**.
+- **Conversion to (ε,δ) (Prop 3).** $\varepsilon=\bar\varepsilon+\log(1/\delta)/(\alpha-1)$ — matches eq:bg:dp:conv **verbatim**.
+- **Closed forms (Table II).** Gaussian mechanism: $\alpha/(2\sigma^2)$; Laplace also closed-form.
+- **Generalises moments accountant** (§II, explicit) — Abadi's accountant is a special case.
+- **Used in thesis.** §2.5.4 RDP definition, conversion formula, composition, closed-form bounds.
+
+### 3F.6 Opacus: User-Friendly Differential Privacy Library in PyTorch — Yousefpour et al. (Meta AI, 2021) ⭐⭐⭐
+
+`Yousefpour2021Opacus` · the **tool** training Pythia-1B-DP-LoRA. (Note: Ilya Mironov is a co-author.)
+
+- **API.** `PrivacyEngine.make_private()` wraps (model, optimizer, data_loader) → model gets `GradSampleModule` (per-sample grads), optimizer gets clipping+noise, loader gets **Poisson sampling**. As few as two added lines.
+- **Accounting.** Out-of-the-box **RDP accountant** [Mironov]; can target an (ε,δ) budget directly and back out the required noise multiplier σ.
+- **Speed.** Vectorized per-sample gradients vs slow "micro-batch" (size-1) approach; benchmarked vs JAX/TFP/BackPACK/PyVacy.
+- **Validation.** Rejects DP-incompatible layers (e.g. BatchNorm/GroupNorm that mix samples across a batch).
+- **Used in thesis.** §2.5.2 — all Opacus claims (per-example grads, clipping, noise injection, RDP accounting, PyTorch ecosystem) verified ✅.
+
+---
+
 ## 4. LLM-based synthesis
 
 ### 4.1 Large Language Models for Synthetic Tabular Health Data: A Benchmark Study — Miletic & Sariyar (2024) ⭐⭐⭐
@@ -638,12 +707,12 @@ short background paragraph even though no PDF is present. Sourcing them is recom
 | Xu et al.,*Modeling Tabular Data using Conditional GAN (CTGAN)*, NeurIPS 2019             | `Xu2019CTGAN`           | **CTGAN**                           | The GAN baseline in Miletic, Nik, Kaabachi; mode-specific norm | ❌ ✅cite |
 | Xie et al.,*Differentially Private GAN (DPGAN)*, arXiv 2018                               | `Xie2018DPGAN`          | DP via noisy discriminator gradients      | The baseline**PATE-GAN beats** at equal ε               | ❌ ✅cite |
 | Esteban et al.,*Real-valued (Medical) Time Series with RCGAN*, 2017                       | `Esteban2017TSTR`       | RCGAN + coined**TSTR**              | Origin of the train-on-synthetic/test-on-real protocol         | ❌ ✅cite |
-| Dwork et al.,*Calibrating Noise to Sensitivity*, TCC 2006                                 | `Dwork2006DP`           | Definition of differential privacy        | Formal basis of (ε,δ)-DP used throughout RQ3                 | ❌ ✅cite |
-| Dwork & Roth,*Algorithmic Foundations of DP*, 2014                                        | `Dwork2014Foundations`  | DP textbook                               | Composition theorems, mechanisms                               | ❌ ✅cite |
-| Abadi et al.,*Deep Learning with Differential Privacy (DP-SGD)*, CCS 2016                 | `Abadi2016DPSGD`        | **DP-SGD + moments accountant**     | The mechanism behind**Pythia-1B-DP** (via Opacus)        | ❌ ✅cite |
-| Mironov,*Rényi Differential Privacy*, CSF 2017                                           | `Mironov2017RDP`        | RDP accounting                            | Tighter ε composition used by Opacus                          | ❌ ✅cite |
-| Papernot et al.,*Semi-supervised Knowledge Transfer (PATE)*, ICLR 2017                    | `Papernot2017PATE`      | **PATE** teacher/student            | The framework**PATE-GAN** adapts                         | ❌ ✅cite |
-| Yousefpour et al.,*Opacus*, 2021                                                          | `Yousefpour2021Opacus`  | PyTorch DP-SGD library                    | The**tool** used to train Pythia-1B-DP-LoRA              | ❌ ✅cite |
+| Dwork et al.,*Calibrating Noise to Sensitivity*, TCC 2006                                 | `Dwork2006DP`           | Definition of differential privacy        | Formal basis of (ε,δ)-DP used throughout RQ3                 | ✅ in folder → §3F.1 |
+| Dwork & Roth,*Algorithmic Foundations of DP*, 2014                                        | `Dwork2014Foundations`  | DP textbook                               | Composition theorems, mechanisms                               | ✅ in folder → §3F.2 |
+| Abadi et al.,*Deep Learning with Differential Privacy (DP-SGD)*, CCS 2016                 | `Abadi2016DPSGD`        | **DP-SGD + moments accountant**     | The mechanism behind**Pythia-1B-DP** (via Opacus)        | ✅ in folder → §3F.3 |
+| Mironov,*Rényi Differential Privacy*, CSF 2017                                           | `Mironov2017RDP`        | RDP accounting                            | Tighter ε composition used by Opacus                          | ✅ in folder → §3F.5 |
+| Papernot et al.,*Semi-supervised Knowledge Transfer (PATE)*, ICLR 2017                    | `Papernot2017PATE`      | **PATE** teacher/student            | The framework**PATE-GAN** adapts                         | ✅ in folder → §3F.4 |
+| Yousefpour et al.,*Opacus*, 2021                                                          | `Yousefpour2021Opacus`  | PyTorch DP-SGD library                    | The**tool** used to train Pythia-1B-DP-LoRA              | ✅ in folder → §3F.6 |
 | Biderman et al.,*Pythia*, ICML 2023                                                       | `Biderman2023Pythia`    | **Pythia model suite (14M–1B)**    | The exact LLMs the thesis fine-tunes                           | ❌ ✅cite |
 | Hu et al.,*LoRA*, ICLR 2022                                                               | `Hu2022LoRA`            | **Low-Rank Adaptation**             | The PEFT method for all Pythia-LoRA variants                   | ❌ ✅cite |
 | Borisov et al.,*Language Models are Realistic Tabular Data Generators (GReaT)*, ICLR 2023 | `Borisov2023GReaT`      | **Row-as-text** serialization       | The paradigm (Tabula extends it) for the LLM arm               | ❌ ✅cite |

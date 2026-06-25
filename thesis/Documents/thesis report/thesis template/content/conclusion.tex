@@ -62,58 +62,174 @@ The four concrete contributions of this work are:
 \section{Direct Answers to the Research Questions}
 \label{sec:conclusion:rq-answers}
 
-% TODO: Carry forward the "Answer to RQx" paragraphs from §6.1.4, §6.2.5,
-% §6.3.5 here, possibly with slight rephrasing for the close.
+% Condensed restatement of the "Answer to RQx" paragraphs from
+% §\ref{sec:results:rq1:answer}, §\ref{sec:results:rq2:answer}, and
+% §\ref{sec:results:rq3:answer}; the full supporting analysis stays in
+% Chapter~\ref{ch:results}.
+The three research questions stated in Section~\ref{sec:intro:rqs} are
+answered directly below; the complete numerical evidence and figures
+that support each answer are reported in Chapter~\ref{ch:results}.
 
 \paragraph{RQ1 -- Evaluation Methods.}
-% TODO: 2--3 sentences. Reference the recommended minimal suite from
-% §\ref{sec:results:rq1:minimal-suite}.
+The evaluation question is answered by the two-pillar framework surveyed
+in Section~\ref{sec:bg:eval} and operationalised in
+Section~\ref{sec:method:evaluation}: utility is assessed through
+statistical similarity to the real data and predictive performance of
+downstream models, while privacy is assessed separately through
+instance-level distance metrics and explicit membership- and
+attribute-inference simulations. Instantiated as the eleven single-number
+metrics of Table~\ref{tab:rq1-coverage}, the suite is constructed so that
+each metric captures a distinct data-characteristic dimension and the
+branches are jointly necessary rather than individually sufficient, a
+property the empirical results confirm where PATE-GAN's degenerate
+distance scores coexist with its complete utility collapse. The recommended
+minimal subset of these metrics that still covers both pillars without
+redundancy is set out in Section~\ref{sec:results:rq1:minimal-suite}.
 
 \paragraph{RQ2 -- Privacy--Utility Trade-Offs Across Generative Families.}
-% TODO: 3--4 sentences. One short sentence per generator family
-% (GAN vs.\ LLM, DP vs.\ non-DP).
+On the privacy--utility plane neither family dominates outright, but each
+occupies a different region. Within the GAN family, HealthGAN is the
+strongest guarantee-free operating point, attaining the best marginal
+fidelity (mean KS $0.0480$), the best survival agreement (Cox
+confidence-interval overlap $0.583$), respectable predictive utility (TSTR AUC-ROC
+$0.631$), and the only usable distance ratio that clears the privacy
+threshold (NNDR $1.066$), whereas its differentially private member
+PATE-GAN collapses on both utility branches at $\varepsilon = 5.0$ and
+earns only the apparent privacy of off-manifold output. Within the LLM
+family, Pythia-1B lies closest to the real-data utility ceiling (AUC
+$0.682$ against $0.701$) with the best joint-dependency fidelity
+(correlation difference $0.0206$), Pythia-70M trails only slightly (AUC
+$0.663$) despite its far smaller scale, and the differentially private
+Pythia-1B-DP remains usable (AUC $0.583$) while removing its non-private
+counterpart's sole attribute-inference leak. The balance is therefore a
+genuine trade-off where no formal guarantee is required, but once
+$(\varepsilon = 5.0, \delta = 10^{-5})$-differential privacy is demanded it
+tips decisively toward the LLM family, whose private member preserves
+usable utility while the GAN family's does not
+(Section~\ref{sec:results:rq2:answer}).
 
 \paragraph{RQ3 -- Within-Family Cost of Differential-Privacy Enforcement.}
-% TODO: 3--4 sentences. State the conditional recommendation from
-% §\ref{sec:results:rq3:answer} clearly.
+At a matched budget of $(\varepsilon = 5.0, \delta = 10^{-5})$ the cost of
+enforcing differential privacy is strongly family-dependent. The
+LLM-family toggle (Pythia-1B $\to$ Pythia-1B-DP) is a clean test on a
+shared backbone, realised at an accounted $\varepsilon = 4.998$: it costs
+$0.0991$ in TSTR AUC-ROC while leaving statistical similarity essentially
+intact (mean KS $+0.0187$) and survival agreement unchanged ($7/13$
+confidence-interval overlaps before and after), and it converts that
+moderate cost into a genuine privacy gain by removing the one
+attribute-inference leak (maximum advantage $+0.0410 \to -0.0056$) and
+driving outlier linkability to zero. The GAN-family toggle (HealthGAN
+$\to$ PATE-GAN) instead loses $0.1204$ in AUC-ROC and collapses the rest
+of the utility pillar (mean KS $+0.4901$, Cox overlap $7/12 \to 0/13$),
+with no genuine privacy gain beyond the off-manifold distance artefact,
+and it must be read with the caveat that it conflates the DP mechanism
+with an architecture change between two distinct generators rather than
+isolating differential privacy
+(Section~\ref{sec:discussion:limit:gan-toggle-asymmetry}). The conditional
+recommendation is therefore clear: when a formal guarantee at
+$\varepsilon = 5.0$ is required on tabular medical data of this kind,
+differentially private LLM fine-tuning through DP-SGD yields a generator
+that remains in the usable region of the privacy--utility plane, whereas
+the differentially private GAN considered here does not.
 
 \section{Future Work}
 \label{sec:conclusion:future}
 
-% Enumerate concrete extensions that the thesis explicitly does not pursue
-% but flags as natural follow-ups. Pulled from proposal §7's reference to
-% "longitudinal records, multimodal data, and emerging DP-enhanced LLMs".
+% Concrete extensions the thesis does not pursue but flags as natural
+% follow-ups, each tied to a finding or limitation of the present study.
+The findings reported above suggest several concrete extensions that this
+thesis does not pursue but that follow naturally from its scope and
+limitations.
 
 \subsection{Larger Language Models}
 \label{sec:conclusion:future:llm}
 
-% TODO: Pythia-410M, Pythia-1.4B, or Llama-3-8B with parameter-efficient
-% fine-tuning. \textcite{Miletic2024} suggest gains scale with model size.
+The LLM results leave two openings that additional model scale could close.
+Pythia-1B attains the highest utility of any generator yet still trails the
+real-data ceiling (TSTR AUC-ROC $0.682$ against $0.701$), and DP-SGD failed
+to converge usefully at the Pythia-70M scale
+(Section~\ref{sec:results:rq3:pythia-70m-failure}), which forced the
+differentially private comparison up to the 1B backbone. Both observations
+motivate fine-tuning larger autoregressive models, such as Pythia-410M,
+Pythia-1.4B, or Llama-3-8B, under the same parameter-efficient low-rank
+adaptation used here. \textcite{Miletic2024} report that synthesis quality
+improves with model size, and the differential-privacy literature indicates
+that larger models absorb DP-SGD noise more
+gracefully~\cite{Li2022LargeDP}, so a larger backbone may simultaneously
+narrow the residual utility gap and reduce the differential-privacy cost
+quantified in Section~\ref{sec:results:rq3:llm-toggle}. The principal
+obstacle is the compute and memory overhead of per-sample-gradient DP-SGD
+at that scale.
 
 \subsection{Cross-Dataset Generalisation}
 \label{sec:conclusion:future:cross-data}
 
-% TODO: MIMIC-III/IV \cite{mimic}, eICU. Test whether the rankings observed
-% on Diabetes 130-US Hospitals transfer to richer ICU records.
+All results in this thesis are obtained on a single benchmark, the
+Diabetes 130-US Hospitals dataset~\cite{diabetes_db}, so the generator
+rankings reported here cannot be assumed to transfer to other clinical
+settings. A natural next step is to repeat the unified pipeline on richer
+electronic-health-record corpora such as MIMIC-III or MIMIC-IV~\cite{mimic}
+and eICU, which contain more continuous physiological variables, higher
+attribute cardinality, and explicit temporal structure. Re-running the same
+two-pillar evaluation on those datasets would establish whether the LLM
+family retains its utility advantage and whether the GAN-side
+differential-privacy collapse observed here is dataset-specific or
+systematic.
 
 \subsection{Privacy-Budget Ablation}
 \label{sec:conclusion:future:epsilon}
 
-% TODO: Run PATE-GAN and Pythia-DP at ε ∈ {1, 3, 5, 10} to trace the slope
-% of the utility–privacy trade-off explicitly, as suggested by
-% \cite{Nahid2024} for SafeSynthDP.
+The privacy comparison is conducted at a single matched budget of
+$(\varepsilon = 5.0, \delta = 10^{-5})$, which yields one point on each
+family's privacy--utility curve rather than its slope. Repeating the two
+differentially private generators, PATE-GAN and Pythia-1B-DP, across a
+range of budgets such as $\varepsilon \in \{1, 3, 5, 10\}$ would trace the
+trade-off explicitly, as suggested for differentially private synthesis by
+\textcite{Nahid2024}. Such an ablation would reveal whether the GAN-family
+collapse documented in Section~\ref{sec:results:rq3:gan-toggle} persists at
+looser budgets, and would locate the budget at which the LLM family's
+contained utility cost becomes prohibitive.
 
 \subsection{Stronger Privacy Adversaries}
 \label{sec:conclusion:future:adversaries}
 
-% TODO: Reconstruction attacks \cite{Carlini2021Extracting}, shadow-model MIA
-% \cite{Shokri2017MIA}, and white-box adversaries with model access.
+The privacy pillar in this thesis relies on a distance-based
+membership-inference adversary and a predictor-based attribute-inference
+attack, both of which are comparatively weak threat models. The uniformly
+negligible leakage they report (Section~\ref{sec:results:rq2:privacy})
+therefore establishes a lower bound on disclosure risk rather than a
+guarantee, consistent with the caution against similarity-based privacy
+evaluation raised in Section~\ref{sec:bg:eval:overreliance}. Stronger
+adversaries would test that bound: shadow-model membership
+inference~\cite{Shokri2017MIA}, training-data reconstruction and extraction
+attacks~\cite{Carlini2021Extracting}, and white-box adversaries with access
+to the generator's parameters. Evaluating the same generators under these
+attacks, and in particular comparing the differentially private variants
+against their non-private counterparts, would show whether the formal
+guarantee delivers protection that the present attacks are too weak to
+detect.
 
 \subsection{Longitudinal and Multimodal Records}
 \label{sec:conclusion:future:longitudinal}
 
-% TODO: Time-series synthesis (cf. \cite{dash2020medical,bhanot2022investigating})
-% and multimodal records (combining tabular EHR with imaging or notes).
+This study is restricted to a single cross-sectional tabular snapshot, in
+which each patient encounter is treated as one independent row. Many
+clinical questions instead depend on longitudinal trajectories and on data
+beyond the tabular modality. Extending the comparison to time-series
+synthesis, as explored for medical signals by \textcite{dash2020medical}
+and \textcite{bhanot2022investigating}, and to multimodal records that
+combine tabular fields with imaging or free-text notes, would test whether
+the privacy--utility conclusions of this thesis hold once temporal and
+cross-modal dependencies must also be preserved.
+
+\subsection{Non-Linear Dependency Metrics}
+\label{sec:conclusion:future:nonlinear}
+
+The statistical-similarity branch quantifies joint structure through the linear
+correlation difference. Extending it with a non-linear dependency measure, such
+as a mutual-information matrix difference~\cite{kaabachi2025scoping}, would
+capture attribute dependencies that linear correlation cannot, and is a natural
+direction for future work.
 
 \section{Closing Remarks}
 \label{sec:conclusion:closing}
