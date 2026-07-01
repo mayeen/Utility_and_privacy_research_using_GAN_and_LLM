@@ -3,6 +3,15 @@
 \section{Evaluation Framework}
 \label{sec:method:evaluation}
 
+This section operationalises the utility and privacy concepts introduced
+in Chapter~\ref{ch:background} into the concrete metrics used to compare
+the five synthetic-data generators. The aim is not to define new
+evaluation theory, but to fix a reproducible protocol: every generator is
+judged against the same real train/test partitions, the same downstream
+models, and the same privacy-audit procedures. The numerical results and
+the question of which metrics most clearly separate the generators are
+reported in Chapter~\ref{ch:results}.
+
 % Operationalisation of the metrics surveyed in Chapter~\ref{ch:background}
 % \S\ref{sec:bg:eval}. This section pins down how each metric is computed in
 % the experiments reported in Chapter~\ref{ch:results}; the empirical
@@ -12,59 +21,60 @@
 \subsection{Two Pillars: Utility and Privacy}
 \label{sec:eval:pillars}
 
-This thesis adopts the two-pillar evaluation structure recommended by
-the synthetic-data surveys of \textcite{hernandez2022synthetic} and
-\textcite{Murtaza2023}: every generator is assessed along a
-\emph{utility} axis and a \emph{privacy} axis, with the two reported
-separately so that trade-offs between them can be made explicit. The
-utility pillar is itself decomposed into two complementary branches.
-The first, \emph{statistical similarity}
-(\S\ref{sec:eval:utility:similarity}), asks whether the synthetic
-table reproduces the distributional shape of the real data --- both
-the per-column marginals and the joint structure across columns.
-The second, \emph{predictive performance}
-(\S\ref{sec:eval:utility:predictive}), asks whether the synthetic
-table behaves like the real one when used to train downstream
-predictive and survival models. The privacy pillar
-(\S\ref{sec:eval:privacy}) is operationalised through instance-level
-distance metrics and explicit inference-attack simulations.
-Section~\ref{sec:eval:aggregate} introduces the two aggregation views
-through which the pillars are combined into a single comparative
-picture for RQ2 and RQ3.
+Evaluation taxonomies differ in how they position resemblance. Some
+medical synthetic-data frameworks treat resemblance, utility, and
+privacy as three separate dimensions, whereas recent surveys group
+distributional fidelity and downstream usefulness under a broader
+utility or data-availability heading while retaining privacy as a
+separate concern~\cite{kaabachi2025scoping,shi2025comprehensive}. This
+thesis adopts the latter approach at the top level: every generator
+is assessed along a \emph{utility} pillar and a \emph{privacy} pillar,
+with the two reported separately so that trade-offs between them can be
+made explicit. To avoid hiding the distinction between resemblance and
+task usefulness, the utility pillar is then decomposed into two
+complementary branches. The first, \emph{statistical similarity}
+(\S\ref{sec:eval:utility:similarity}), asks whether the synthetic table
+reproduces the distributional shape of the real data, both the
+per-column marginals and the joint structure across columns. The
+second, \emph{predictive performance}
+(\S\ref{sec:eval:utility:predictive}), asks whether the synthetic table
+behaves like the real one when used to train downstream predictive and
+survival models. The privacy pillar (\S\ref{sec:eval:privacy}) is
+operationalised through instance-level distance metrics and explicit
+inference-attack simulations. Section~\ref{sec:eval:aggregate}
+introduces the two aggregation views through which the pillars are
+combined into a single comparative picture for RQ2 and RQ3.
 
 Two design principles govern the choice of metrics throughout this
 chapter. First, the metrics within each branch are deliberately
-chosen to be \emph{complementary} in what they measure --- a marginal
+chosen to be \emph{complementary} in what they measure: a marginal
 metric, a joint-structure metric, and a manifold-geometry metric are
 all reported in the similarity branch, for instance, because a
 generator that scores well on one need not score well on another and
 the empirical answer to RQ1 depends on this complementarity. Second,
 every metric is reported using the same numerical conventions across
-generators: the same train/test split, the same standardisation
-choices, the same downstream classifiers, and the same Laplace,
-clipping, and noise calibrations. This uniformity is what makes the
-cross-generator comparisons in Chapter~\ref{ch:results} sound. The
+generators: the same train/test split, the same preprocessing and
+standardisation choices where applicable, the same downstream
+classifiers, and fixed random seeds for stochastic evaluation
+components. For the differentially private generators, the target
+privacy budget is matched at $(\varepsilon,\delta)=(5.0,10^{-5})$.
+This uniformity is what makes the cross-generator comparisons in
+Chapter~\ref{ch:results} sound. The
 empirical question of which metrics actually \emph{discriminate}
-between the five generators on the Diabetes 130-US Hospitals benchmark
---- and which collapse to a single value --- is addressed in
-\S\ref{sec:results:rq1:diagnostic}. The metrics adopted here overlap
-substantially with those of established evaluation frameworks such as SynthEval,
-which likewise reports complementary utility and privacy metrics and ranks
-generators per metric rather than collapsing them into a single composite
-score~\cite{lautrup2025syntheval}; this convergence supports the selection used
-in this thesis.
+between the five generators on the Diabetes 130-US Hospitals benchmark,
+and which collapse to a single value, is addressed in
+\S\ref{sec:results:rq1:diagnostic}. This per-metric, non-composite
+reporting aligns with established frameworks such as
+SynthEval~\cite{lautrup2025syntheval}.
 
 \subsection{Utility Metrics}
 \label{sec:eval:utility}
 
-The utility pillar combines two complementary aspects. The first is
-whether the synthetic dataset \emph{looks like} the real one in a
-distributional sense; the second is whether it \emph{acts like} the
-real one when used as training data for downstream models. The same
-synthetic table is evaluated under both views, so that, for example, a
-generator that achieves close marginal fits but fails to support
-predictive learning can be diagnosed as preserving univariate but not
-conditional structure.
+The same synthetic table is evaluated under both the
+statistical-similarity and predictive views, so that a generator
+achieving close marginal fits but failing to support predictive
+learning can be diagnosed as preserving univariate but not conditional
+structure.
 
 \subsubsection{Statistical Similarity to the Real Data}
 \label{sec:eval:utility:similarity}
@@ -89,34 +99,38 @@ column level.
 
 \paragraph{Summary Statistics (Mean, Standard Deviation).}
 \label{sec:eval:utility:similarity:stats}
-The simplest single-number per-column summaries used here are the
-sample mean and sample standard deviation of every column, computed
-separately on the real and on each synthetic table. The pair
+The simplest single-number per-column summaries are the
+sample mean and sample standard deviation of each retained column, computed
+separately on the real and on each synthetic table. Moment-based and
+dimension-wise summary comparisons are common in synthetic health and
+tabular-data evaluation~\cite{hernandez2022synthetic,Murtaza2023,lautrup2025syntheval}.
+The pair
 $(\hat{\mu}_{\mathrm{real}}, \hat{\sigma}_{\mathrm{real}})$ versus
 $(\hat{\mu}_{\mathrm{synth}}, \hat{\sigma}_{\mathrm{synth}})$ is
 informative even though it ignores higher moments and the entire
 joint distribution: large discrepancies in either statistic indicate
 that the generator has placed mass on values that do not match the
 column's central tendency or spread, which is a much stronger failure
-than a per-shape mismatch that preserves the first two moments. This
-metric captures the \emph{first-moment fidelity} dimension of the
-similarity branch and is blind to all dependencies between columns and
-to any shape information beyond the first two moments. Columns whose
-real-data mean and standard deviation are both zero (degenerate
-columns introduced by the medication binarisation step in
-\S\ref{sec:data:fe}) are excluded from the comparison so
-that ratios remain defined.
+than a per-shape mismatch that preserves the first two moments. Together
+these two statistics summarise \emph{low-order marginal moment fidelity};
+they remain blind to all dependencies between columns and to any shape
+information beyond the first two moments. In the implementation, the
+medication-flag columns and \texttt{num\_procedures} are excluded before
+this diagnostic is computed; any remaining column whose real-data mean
+and standard deviation are both zero is then removed as degenerate.
 
 \paragraph{Pairwise Correlation Difference (PCD).}
 \label{sec:eval:utility:similarity:pcd}
 A single-number summary of the joint linear structure across columns
-is the Pairwise Correlation Difference introduced by
-\textcite{goncalves2020generation} for synthetic patient data. Let
-$C^{\mathrm{real}}$ and $C^{\mathrm{synth}}$ denote the Pearson
-correlation matrices of the real and synthetic tables computed over
-the same column set; the PCD is the mean absolute entry of their
-difference, restricted here to the strictly lower triangle to avoid
-double-counting symmetric pairs:
+is based on the Pairwise Correlation Difference proposed by
+\textcite{goncalves2020generation} for synthetic patient data. In that
+paper, PCD is defined as the Frobenius norm of the difference between
+the real and synthetic Pearson correlation matrices. The implementation
+used in this thesis reports a normalised variant: the mean absolute
+difference over unique off-diagonal column pairs. Let $C^{\mathrm{real}}$ and
+$C^{\mathrm{synth}}$ denote the Pearson correlation matrices of the real
+and synthetic tables computed over the same column set; the reported
+PCD is
 \begin{equation}
   \mathrm{PCD}(C^{\mathrm{real}}, C^{\mathrm{synth}})
   \;=\;
@@ -126,19 +140,18 @@ double-counting symmetric pairs:
   L = \{(i,j) : i > j\}.
   \label{eq:pcd}
 \end{equation}
-Smaller values indicate closer agreement of the joint linear
-structure. PCD is designed to capture \emph{joint linear dependency
-fidelity} --- the dimension of similarity that the per-column metrics
-above are blind to --- and is itself blind to non-linear dependency,
-to higher-order multivariate structure, and to univariate shape
-distortions that leave the linear-dependence pattern intact.
-Following \textcite{goncalves2020generation}, the per-pair entries of
-$|C^{\mathrm{real}} - C^{\mathrm{synth}}|$ are also reported as
-heatmaps, both because the heatmap localises which column pairs the
-generator failed to model and because the heatmap exposes the
-correlation-sign-flip failure mode (a generator that inverts the sign
-of a real correlation produces a large per-pair contribution that the
-scalar PCD averages away).
+Here, $L$ contains each unordered column pair exactly once. Smaller
+values indicate closer agreement of the joint linear structure. The
+metric represents \emph{joint linear dependency fidelity}: it tests
+whether the synthetic table preserves the pairwise correlation pattern
+among columns, while remaining blind to non-linear dependency,
+higher-order multivariate structure, and univariate shape distortions
+that leave the linear-dependence pattern intact.
+The signed per-pair entries of
+$C^{\mathrm{real}} - C^{\mathrm{synth}}$ are also reported as
+correlation-difference heatmaps, because the heatmaps localise which
+column pairs the generator failed to model and show whether each
+correlation is overestimated, underestimated, or sign-flipped.
 
 \paragraph{Kolmogorov--Smirnov Two-Sample Test.}
 \label{sec:eval:utility:similarity:ks}
@@ -155,32 +168,34 @@ CDFs $F^{\mathrm{real}}$ and $F^{\mathrm{synth}}$, the KS statistic is
 which takes values in $[0, 1]$ and equals zero when the two empirical
 distributions coincide. The two-sample KS statistic is reported
 per column and averaged across columns to summarise marginal fidelity
-in a single number. The mean KS captures \emph{worst-case marginal
-discrepancy} aggregated across columns and is more sensitive to
+in a single number. Averaged across columns, the mean KS reflects
+\emph{worst-case marginal discrepancy} and is more sensitive to
 distribution-shape errors than the moment-based summaries of the
-previous paragraph; it is, however, computed independently per column
-and therefore conveys no information about joint structure. The
+previous paragraph; computed independently per column, it nonetheless
+conveys no information about joint structure. The
 medication-flag columns are excluded from the aggregation because
 their values are concentrated on a single category, making the KS
 statistic numerically unstable. KS is the canonical univariate
-distance reported in the synthetic-medical-data surveys of
-\textcite{Murtaza2023} and \textcite{goncalves2020generation}.
+distance reported in the synthetic-medical-data survey of
+\textcite{Murtaza2023}.
 
 \paragraph{PCA-Based Manifold Overlap.}
 \label{sec:eval:utility:similarity:pca}
 A two-dimensional principal-component projection of the real and the
 synthetic tables onto a shared coordinate system is used as a visual
-diagnostic of overall manifold geometry. All columns are first
+diagnostic of overall manifold geometry, following the use of PCA-based
+visual plausibility checks in synthetic health and tabular-data
+evaluation~\cite{hernandez2022synthetic,Murtaza2023,lautrup2025syntheval}.
+All columns are first
 $z$-score standardised on the combined real-plus-synthetic table so
 that no single column dominates the variance decomposition; principal
 components are then estimated on the combined table, and every
-record --- real or synthetic --- is projected onto the first two
+record, whether real or synthetic, is projected onto the first two
 components and plotted with a generator-specific colour. To keep the
 scatter readable on a single page, both the real sample and each
 synthetic sample are subsampled to at most $5{,}000$ records before
-projection. This diagnostic captures the \emph{whole-distribution
-geometric overlap} dimension that the per-column and pairwise metrics
-do not address: a generator can score reasonably on KS and PCD while
+projection. This diagnostic exposes \emph{whole-distribution geometric overlap},
+a dimension that the per-column and pairwise metrics do not address: a generator can score reasonably on KS and PCD while
 nevertheless concentrating its mass in a region of the principal-axes
 plane that the real data does not occupy. Conversely, a wide overlap
 on the PCA plot is necessary but not sufficient for distributional
@@ -190,33 +205,33 @@ than as a primary summary statistic.
 \subsubsection{Predictive Performance of Downstream Models}
 \label{sec:eval:utility:predictive}
 
-\paragraph{Train--Test Regimes: TRTR and TSTR.}
+Predictive utility is evaluated through three complementary diagnostics:
+classifier-based downstream performance, feature-importance preservation,
+and Cox proportional-hazards agreement. The first diagnostic contains the
+train--test regimes, classifier suite, scalar metrics, and ROC analysis;
+the latter two check whether the learned signal and clinically
+interpretable associations are preserved.
+
+\paragraph{Classifier-Based Downstream Performance.}
 \label{sec:eval:utility:predictive:tstr}
-Predictive utility is operationalised through the Train-on-Synthetic,
-Test-on-Real (TSTR) protocol introduced by~\textcite{Esteban2017TSTR}
-and adopted as the standard utility measure in the tabular-synthetic
-survey of \textcite{hernandez2022synthetic}. The protocol fits a
-classifier on the synthetic table, evaluates it on the held-out real
-test split, and compares the resulting performance to a Train-on-Real,
-Test-on-Real (TRTR) baseline in which the same classifier is trained
-on the real training split and evaluated on the same real test split.
-The TRTR baseline is the upper bound that any generator can realistically
-hope to recover: a generator that supports downstream learning as well
-as the real data itself reaches the TRTR score, and the gap between
-TSTR and TRTR is the natural measure of utility loss attributable to
-synthesis. This protocol captures the \emph{transferability of
-conditional structure} from the synthetic table to a downstream task
---- precisely the dimension that a per-column statistical-similarity
-metric cannot expose --- and is the operational expression of the
-common claim that a synthetic dataset must \emph{act like} the real one
-rather than merely \emph{look like} it. The dual regimes TRTS (Train on
-Real, Test on Synthetic) and TSTS (Train on Synthetic, Test on
-Synthetic) are computed alongside TSTR for completeness; TRTS in
-particular is informative because a generator that produces synthetic
-test examples that the TRTR-fitted classifier handles well shows that
-synthetic and real distributions agree at the decision boundary, while
-the symmetric gap TSTR$-$TRTS exposes train-side versus test-side
-shifts in the synthetic distribution.
+Predictive utility is evaluated primarily with Train-on-Synthetic,
+Test-on-Real (TSTR), a model-based utility protocol introduced
+by~\textcite{Esteban2017TSTR} and catalogued in synthetic-data
+reviews and evaluation frameworks~\cite{hernandez2022synthetic,Murtaza2023,lautrup2025syntheval}.
+In TSTR, a classifier is trained on the synthetic table and evaluated
+on the held-out real test split. Its performance is compared with the
+Train-on-Real, Test-on-Real (TRTR) baseline, where the same classifier
+is trained on the real training split and evaluated on the same real
+test split. The gap between TSTR and TRTR therefore measures how much
+downstream predictive utility is lost through synthesis.
+
+TRTS (Train on Real, Test on Synthetic) and TSTS (Train on Synthetic,
+Test on Synthetic) are reported as complementary checks. TRTS asks
+whether synthetic test records are realistic enough for a real-trained
+classifier, while TSTS checks whether the synthetic train and synthetic
+test splits are internally consistent. In this thesis, all five active
+generators provide synthetic test splits, so TRTS and TSTS are computed
+alongside TSTR for each generator.
 
 \paragraph{Classifier Suite.}
 \label{sec:eval:utility:predictive:classifiers}
@@ -227,7 +242,7 @@ $1{,}000$ optimisation iterations; a random forest with $100$ trees
 under default split settings; and gradient boosting with $100$ boosting
 rounds. Reporting all three rather than a single ``best'' classifier
 limits the risk that a generator's utility ranking is an artefact of
-the particular inductive bias of one classifier --- a concern raised
+the particular inductive bias of one classifier, a concern raised
 in the synthetic-data survey of \textcite{Murtaza2023}. Before
 classifier fitting, missing values in any training source are imputed
 by per-column median imputation fit on the training partition and
@@ -239,17 +254,18 @@ not perturbed by run-to-run variance within a classifier.
 \paragraph{Performance Metrics.}
 \label{sec:eval:utility:predictive:metrics}
 For each (Train Source, Classifier) cell five metrics are reported:
-classification accuracy, macro-F1, the area under the
+classification accuracy, the binary F1 score of the positive
+(readmission) class, the area under the
 receiver-operating-characteristic curve (AUC-ROC), precision, and
 recall, with the positive class defined as the readmission indicator.
 The full five-metric set is retained because accuracy alone is
 misleading on the moderately imbalanced readmission target; F1 and
 the precision/recall pair expose threshold-dependent failure modes
-that AUC-ROC averages out, and AUC-ROC in turn captures
-threshold-independent ranking quality that F1 ignores. Accuracy
-captures \emph{aggregate calibration of the decision rule}; F1
-captures \emph{balance between false positives and false negatives at
-the chosen threshold}; AUC-ROC captures \emph{threshold-independent
+that AUC-ROC averages out, and AUC-ROC in turn reflects
+threshold-independent ranking quality that F1 ignores. In short,
+accuracy summarises \emph{aggregate correctness of the thresholded
+decision rule}, F1 the \emph{balance between false positives and false negatives at
+the chosen threshold}, and AUC-ROC the \emph{threshold-independent
 ranking quality}. A generator can score well on one of these and
 poorly on the others, so they are treated as complementary rather
 than as alternative scalarisations of the same underlying quantity.
@@ -263,62 +279,64 @@ is concentrated at a particular operating point along the curve or
 spread uniformly across thresholds, which is information that the
 scalar AUC-ROC of the previous paragraph collapses away.
 
-\paragraph{Feature Importance Preservation.}
+\paragraph{Feature-Importance Preservation.}
 \label{sec:eval:utility:predictive:fi}
 A complementary check on conditional structure is whether the
-random-forest variable-importance ranking obtained from a
-synthetic-trained classifier matches the ranking obtained from the
-real-trained classifier. The comparison is summarised by the Spearman
-rank correlation between the two importance vectors, on the principle
-that two classifiers trained on substantively different data
-distributions will assign substantively different rankings even when
-their aggregate predictive performance happens to coincide. This
-metric captures \emph{the locus of predictive signal} rather than its
-magnitude, and is therefore complementary to AUC-ROC: a high
-Spearman rank correlation indicates that synthetic and real data
-agree on which features are doing the predictive work, while a low
-rank correlation indicates that the synthetic data has shifted the
-signal onto a different feature set.
+random-forest variable-importance profile obtained from a
+synthetic-trained classifier matches the profile obtained from the
+real-trained classifier. The per-feature importances of the
+real-trained forest and of each synthetic-trained forest are compared
+visually, plotted side by side, on the principle that two classifiers
+trained on substantively different data distributions will assign
+substantively different importances even when their aggregate
+predictive performance happens to coincide. This comparison isolates
+\emph{the locus of predictive signal} rather than its magnitude, and is
+therefore complementary to AUC-ROC: close agreement of the importance
+profiles indicates that synthetic and real data agree on which features
+are doing the predictive work, while a divergent profile indicates that
+the synthetic data has shifted the signal onto a different feature set.
+Variable-importance agreement has similarly been used as a utility
+diagnostic in PATE-GAN and clinical synthetic-data
+evaluations~\cite{pategan,beaulieu2019privacy}.
 
-\paragraph{Cox Proportional Hazards Regression.}
+\paragraph{Cox Proportional-Hazards Agreement.}
 \label{sec:eval:utility:predictive:cox}
 Beyond binary classification, the readmission target is also
 modelled as a time-to-event outcome through a Cox proportional
 hazards regression~\cite{Cox1972PH}. The duration is the recorded
 length of stay (\emph{time in hospital}) and the event is the
 binary readmission indicator. The covariate set comprises thirteen
-clinically meaningful columns: patient age, gender, admission type,
-medication and laboratory counts, the number of inpatient,
-emergency, and outpatient visits, the diagnosis counts, the insulin
-prescription indicator, the diabetes-medication indicator, and the
-medication-change indicator. A small penaliser of $0.01$ is applied
+clinically meaningful columns and a small penaliser of $0.01$ is applied
 to the partial likelihood to ensure convergence on columns with low
 variance. The model is fitted separately on the real training table
 and on each synthetic training table, and the per-covariate hazard
-ratios with their $95\%$ confidence intervals are reported. This
-metric captures \emph{the survival-style temporal-association
+ratios with their $95\%$ confidence intervals are reported. These
+ratios express \emph{the survival-style temporal-association
 structure} between covariates and the readmission outcome, which is
 not directly tested by any classification metric and which is of
 direct clinical relevance for outcomes research on the Diabetes
 130-US benchmark. Covariates with zero observed variance on a given
-synthetic table --- a failure mode that occurs when a generator
-collapses an ordinal column onto a single value --- are excluded
+synthetic table, a failure mode that occurs when a generator
+collapses an ordinal column onto a single value, are excluded
 from that generator's fit and noted in the results chapter.
+Cox-based reproduction of clinical analyses has also been used in
+synthetic-health-data evaluations that compare real and synthetic
+hazard-ratio estimates~\cite{healthgan,yale2020synthesizing}.
 
 \paragraph{Cox Confidence-Interval Overlap.}
 \label{sec:eval:utility:predictive:cox-overlap}
-The seven Cox hazard ratios obtained per generator are summarised
-against the real-data Cox ratios by computing, for each covariate,
+The available Cox hazard ratios for each generator are summarised
+against the real-data Cox ratios by computing, for each shared covariate,
 the overlap between the real-fit $95\%$ confidence interval and the
 synthetic-fit $95\%$ confidence interval. The reported summary is
 the fraction of covariates for which the two intervals overlap; a
 generator that preserves the survival-style association structure
 will produce hazard ratios whose confidence intervals overlap those
 of the real fit, while a generator that distorts the structure will
-produce non-overlapping intervals on the affected covariates. The
-metric captures \emph{agreement at the level of clinically
-interpretable effect sizes} and is therefore the most directly
-clinically actionable summary in the predictive branch.
+produce non-overlapping intervals on the affected covariates. This
+overlap fraction expresses \emph{agreement at the level of clinically
+interpretable effect sizes} and is therefore a clinically interpretable
+summary in the predictive branch.
 
 \subsection{Privacy Metrics}
 \label{sec:eval:privacy}
@@ -333,7 +351,14 @@ that the other detects: a generator can produce records that are
 distant from any single real record yet still leak membership
 through aggregate distance statistics, and conversely a generator
 can resist a specific attack while leaving outliers vulnerable to
-nearest-neighbour linkage. Before any privacy metric is computed,
+nearest-neighbour linkage. These metrics are empirical: they quantify
+resistance to specific attacks and proximity patterns rather than
+providing a formal guarantee. For the differentially private
+generators, the $(\varepsilon,\delta)$ budget established in
+\S\ref{sec:bg:dp} and summarised in \S\ref{sec:methods:summary} is the
+privacy statement that these metrics corroborate; for the non-private
+generators, where no such guarantee exists, they are the only available
+privacy evidence. Before any privacy metric is computed,
 every numeric column is $z$-score standardised so that the privacy
 geometry is not dominated by columns with naturally large absolute
 ranges.
@@ -347,12 +372,10 @@ distance}, $d_{S\to R}$) and the symmetric distance from each real
 record to its nearest synthetic record (the \emph{real-to-synthetic
 distance}, $d_{R\to S}$). Median and fifth-percentile summaries of
 both distributions are reported. The fifth percentile is the more
-privacy-relevant of the two summaries because it isolates the
-\emph{tail} of synthetic records that are closest to the real data
---- the records most likely to constitute a re-identification
-hazard --- whereas the median characterises the bulk of the
-synthetic distribution and is dominated by typical records that
-carry little disclosure risk. This metric captures
+privacy-relevant summary because it isolates the \emph{tail} of
+synthetic records closest to the real data, the records most likely to
+pose a re-identification hazard, whereas the median reflects typical
+records of little disclosure risk. This summary reflects
 \emph{point-wise proximity}, a necessary precondition for several
 distance-based linkage attacks documented in the synthetic-data
 privacy literature~\cite{hernandez2022synthetic,goncalves2020generation,wang2019generating}.
@@ -363,22 +386,17 @@ read.
 
 \paragraph{Nearest-Neighbour Distance Ratio (NNDR).}
 \label{sec:eval:privacy:nndr}
-The Nearest-Neighbour Distance Ratio normalises synthetic-to-real
-proximity against the intrinsic packing density of the real
-distribution. Let $d^{(j)}_{S\to R}$ denote the synthetic-to-real
-distance for synthetic record $j$, and let $r_i$ denote the
-real-to-real nearest-neighbour distance for real record $i$
-(computed once over the real table, using the second-nearest
-neighbour to exclude self-matches). The implementation reported here
-pairs each synthetic record with a randomly drawn real-to-real
-reference distance and forms the ratio
-\begin{equation}
-  \mathrm{NNDR}^{(j)} \;=\; \frac{d^{(j)}_{S\to R}}{r_{\pi(j)} + \varepsilon},
-\end{equation}
-where $\pi$ is a uniform random pairing over the real records and
-$\varepsilon$ is a small constant to avoid division by zero on
-degenerate real records. Median and mean NNDR are reported per
-generator. Values $\mathrm{NNDR} \approx 1$ indicate that synthetic
+The Nearest-Neighbour Distance Ratio, used in tabular synthetic-data
+evaluation frameworks such as SynthEval~\cite{lautrup2025syntheval},
+normalises synthetic-to-real proximity against the intrinsic packing
+density of the real distribution. For each synthetic record, its
+synthetic-to-real distance $d_{S\to R}$ is divided by a real-to-real
+nearest-neighbour distance drawn uniformly at random from the real
+table (computed once, using the second-nearest neighbour to exclude
+self-matches), with a small constant added to the denominator to avoid
+division by zero on degenerate real records. The median of these
+per-record ratios is reported per generator.
+Values $\mathrm{NNDR} \approx 1$ indicate that synthetic
 records sit at distances commensurate with the intrinsic spacing of
 real records (the privacy-neutral regime), values
 $\mathrm{NNDR} < 1$ indicate that the synthetic distribution is
@@ -386,60 +404,55 @@ concentrated closer to real records than the real distribution is to
 itself (a memorisation signal), and values $\mathrm{NNDR} > 1$
 indicate that synthetic records are systematically further from real
 records than real records are from each other (the conservative
-privacy regime). This metric captures \emph{the scale-normalised
-proximity} dimension that the raw distance statistics of the
-previous paragraph alone cannot express, because a small absolute
-distance is privacy-meaningful only relative to the natural spread
-of the real data.
+privacy regime). As with $\mathrm{AA} > 0.5$ below, $\mathrm{NNDR} > 1$
+is not by itself evidence of good privacy: it can equally reflect a
+synthetic distribution that has drifted away from the real data, so it
+is read jointly with the utility metrics rather than in isolation. This
+ratio expresses \emph{scale-normalised proximity}, a dimension the raw
+distance statistics of the previous paragraph cannot capture.
 
 \paragraph{Nearest-Neighbour Adversarial Accuracy (NNAA).}
 \label{sec:eval:privacy:nnaa}
-\textcite{yale2020synthesizing} introduce the Nearest-Neighbour
-Adversarial Accuracy as a single-number summary that quantifies the
-indistinguishability of real and synthetic records by a
-nearest-neighbour adversary. Let $T$ and $S$ denote a real and a
-synthetic record set, respectively; the adversarial accuracy is
+The Nearest-Neighbour Adversarial Accuracy, introduced by \textcite{healthgan, yale2020synthesizing},
+is a single-number summary of how indistinguishable real and synthetic
+records are to a nearest-neighbour adversary. Let $T$ and $S$ denote a
+real and a synthetic record set, each of size $n$; the adversarial
+accuracy (abbreviated $\mathrm{AA}$) is
 \begin{equation}
-  \mathrm{AA}(T, S)
+  \mathrm{AA}_{TS}
   \;=\;
-  \tfrac{1}{2}\Bigl(
-    \Pr\bigl[d_{T \to S} > d_{T \to T}\bigr]
+  \frac{1}{2}\Biggl(
+    \frac{1}{n}\sum_{i=1}^{n} \mathbf{1}\bigl(d_{TS}(i) > d_{TT}(i)\bigr)
     \;+\;
-    \Pr\bigl[d_{S \to T} > d_{S \to S}\bigr]
-  \Bigr),
+    \frac{1}{n}\sum_{i=1}^{n} \mathbf{1}\bigl(d_{ST}(i) > d_{SS}(i)\bigr)
+  \Biggr),
+  \label{eq:nnaa}
 \end{equation}
-where $d_{T \to S}$ is the nearest-neighbour distance from a record
-of $T$ to the set $S$, $d_{T \to T}$ is the nearest-neighbour
-distance from a record of $T$ to the rest of $T$ (excluding the
-record itself), and analogously for $d_{S\to T}$ and $d_{S\to S}$.
-The target value is $\mathrm{AA} \approx 0.5$, at which a
-nearest-neighbour adversary cannot decide whether a query point came
-from the real or the synthetic distribution; values $\mathrm{AA} < 0.5$
-indicate that synthetic records are closer to real records than real
-records are to each other (a memorisation signal), and values
-$\mathrm{AA} > 0.5$ indicate that synthetic records cluster among
-themselves and away from real records (a distributional-shift
-signal). Following \textcite{yale2020synthesizing}, $\mathrm{AA}$ is
-reported on both a real training subsample and a real test subsample
-obtained from an $80/20$ split of the real data, and the difference
-$\mathrm{PrivacyLoss} = \mathrm{AA}_{\mathrm{test}} -
-\mathrm{AA}_{\mathrm{train}}$ is reported as a memorisation
-diagnostic: a generator that has memorised the training subsample
-will produce $\mathrm{AA}_{\mathrm{train}} < \mathrm{AA}_{\mathrm{test}}$
-because synthetic records are closer to the records they were trained
-on than to records they have never seen, giving a positive privacy
-loss. This metric captures \emph{the indistinguishability of synthetic
-records from real records under a nearest-neighbour adversary}, which
-is conceptually different from the raw distance statistics above
-because it is normalised against the real distribution's own
-nearest-neighbour structure on both sides of the comparison.
+where $\mathbf{1}(\cdot)$ is the indicator function, $d_{TS}(i)$ is the
+nearest-neighbour distance from the $i$-th record of $T$ to the set $S$,
+and $d_{TT}(i)$ is the distance from that record to its nearest
+\emph{other} record within $T$; $d_{ST}(i)$ and $d_{SS}(i)$ are
+symmetric for the $i$-th record of $S$. Each sum is thus the fraction
+of records lying farther from the opposite set than from their own
+nearest neighbour. The target is $\mathrm{AA} \approx 0.5$, at which the
+adversary cannot decide whether a query point is real or synthetic;
+$\mathrm{AA} < 0.5$ signals memorisation (synthetic records closer to
+real records than real records are to each other), while
+$\mathrm{AA} > 0.5$ signals a distributional shift (synthetic records
+clustering away from the real data). Following the train/test setup of
+\textcite{healthgan}, $\mathrm{AA}$ is computed against both a training
+and a test subsample from an $80/20$ split of the real data, and the
+memorisation gap
+$\mathrm{PrivacyLoss} = \mathrm{AA}_{\mathrm{test}} - \mathrm{AA}_{\mathrm{train}}$
+is positive when a generator sits closer to the records it was trained
+on than to unseen ones.
 
 \paragraph{Membership Inference Attack.}
 \label{sec:eval:privacy:mia}
 A membership inference adversary~\cite{Shokri2017MIA} attempts to
 decide, given a candidate record and access to the synthetic
 dataset, whether the candidate was in the generator's training set.
-The simulated adversary used here proceeds as follows. For each
+The simulated adversary proceeds as follows. For each
 candidate record, the distances to the first, third, and fifth
 nearest synthetic neighbours, together with their mean, are computed
 in the standardised feature space and stacked into a four-component
@@ -454,12 +467,11 @@ attacker's \emph{advantage} over a random guess,
 $\mathrm{Adv}_{\mathrm{MIA}} = \mathrm{AUC}_{\mathrm{MIA}} - 0.5$,
 which equals zero when the adversary cannot distinguish members from
 non-members and increases as the synthetic distribution leaks
-training-set information. The advantage thresholds
-$\{0.05, 0.10\}$ are used to bin the result into low, medium, and
-high privacy risk, following the conventions adopted by the
-synthetic-data privacy surveys of
-\textcite{Murtaza2023} and \textcite{hernandez2022synthetic}. This
-metric captures \emph{aggregate distance-pattern leakage} of the
+training-set information. Membership-inference risk is also catalogued
+in synthetic-data surveys~\cite{Murtaza2023,hernandez2022synthetic}.
+In this implementation, the advantage thresholds $\{0.05, 0.10\}$ are
+used as descriptive bins for low, medium, and high privacy risk. This
+attack measures \emph{aggregate distance-pattern leakage} of the
 training set into the synthetic distribution, and is complementary to
 the per-record proximity metrics above because it pools information
 across multiple synthetic neighbours and across all candidate records
@@ -471,8 +483,8 @@ An attribute inference adversary attempts to infer a sensitive
 attribute of a real record given the rest of that record and access
 to the synthetic dataset. The protocol simulated here follows the
 nearest-neighbour formulation discussed in the survey of
-\textcite{Murtaza2023}. For each of four sensitive attributes ---
-readmission status, gender, age, and primary diagnosis category ---
+\textcite{Murtaza2023}. For each of four sensitive attributes
+(readmission status, gender, age, and primary diagnosis category),
 the remaining columns are taken as known features, every real
 record is matched to its ten nearest synthetic neighbours in the
 standardised known-feature space, and the value of the sensitive
@@ -485,7 +497,7 @@ $\mathrm{Adv}_{\mathrm{AIA}} = \mathrm{Acc}_{\mathrm{AIA}}
 adversary does no better than always predicting the most common
 value and increases when the synthetic dataset encodes information
 about the sensitive attribute conditional on the other features.
-This metric captures \emph{conditional information leakage} on a
+This attack measures \emph{conditional information leakage} on a
 specific sensitive column, and is the privacy counterpart to the
 TSTR utility metric: TSTR rewards a generator for preserving the
 conditional distribution that makes the sensitive attribute
@@ -495,11 +507,11 @@ attribute from the rest of the record.
 
 \paragraph{Clustering Proximity and Outlier Linkability.}
 \label{sec:eval:privacy:linkability}
-Outliers --- patients whose feature vector sits far from the bulk
-of the real distribution --- are at disproportionate
+Outliers, patients whose feature vector sits far from the bulk
+of the real distribution, are at disproportionate
 re-identification risk in synthetic data, as emphasised by
 \textcite{stadler2022synthetic} and \textcite{wang2019generating}.
-The metric reported here isolates this regime as follows. In the
+The linkability metric isolates this regime as follows. In the
 standardised real feature space, the top five per cent of real
 records ranked by Euclidean distance from the real centroid are
 declared outliers, and an equal-sized random sample of non-outlier
@@ -512,7 +524,7 @@ fraction of outliers with at least one synthetic record within
 radius $\rho$ is computed (the \emph{outlier linkability}), together
 with the same fraction on the non-outlier contrast sample (the
 \emph{non-outlier linkability}); the gap between them is reported as
-a third single number. This metric captures \emph{differential
+a third single number. This gap exposes \emph{differential
 disclosure risk for outliers}, which the aggregate distance and
 inference metrics above can mask: a generator can score well on
 median NNDR and on aggregate MIA while still placing synthetic

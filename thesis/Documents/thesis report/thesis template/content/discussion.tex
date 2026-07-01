@@ -32,7 +32,7 @@ instead learn the conditional structure of the table autoregressively,
 which yields the strongest predictive transferability (Pythia-1B TSTR AUC
 $0.682$, nearest the real ceiling) and the best joint-dependency fidelity.
 The recurring F1 inversion, in which synthetic-trained classifiers exceed
-the real-trained baseline's macro-F1, reflects not superior discrimination
+the real-trained baseline's F1, reflects not superior discrimination
 but an operating-point shift toward the minority class, and it illustrates
 why threshold-dependent and threshold-independent predictive metrics are
 both reported. \textcite{Miletic2024}, who document continued utility gains
@@ -88,7 +88,7 @@ A practical asymmetry surfaced by the age-binning ablation
 synthesisers are more sensitive to upstream categorical-cardinality choices
 than GAN baselines. Collapsing the ten-decade \texttt{age} encoding into
 three coarse groups depressed the Gradient-Boosting TSTR AUC of Pythia by
-$\approx 0.065$ and its macro-F1 by $\approx 0.106$, while leaving HealthGAN
+$\approx 0.065$ and its F1 by $\approx 0.106$, while leaving HealthGAN
 and PATE-GAN approximately unchanged. The implication for healthcare data
 stewards is that, when an LLM-based generator is in scope, preprocessing
 decisions that flatten ordinal categorical variables for simplicity can

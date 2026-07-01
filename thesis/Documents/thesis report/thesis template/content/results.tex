@@ -342,6 +342,21 @@ reference. Three downstream classifiers are reported
 Boosting is taken as the headline model, with Logistic Regression and
 Random Forest included for robustness.
 
+\paragraph{Class-Balance Diagnostic.}
+Before interpreting the threshold-dependent classifier metrics, the
+positive-class prevalence of the binary readmission target was checked
+across real and synthetic train/test splits. The real train and test splits
+both have a readmission rate of approximately $0.340$. PATE-GAN
+substantially over-produces the positive class in both synthetic splits
+($0.498$ train, $0.507$ test), whereas HealthGAN remains close to the real
+prevalence and the Pythia variants match the real split proportions by
+construction through class-conditioned generation. This diagnostic is not a
+predictive-utility metric, but it helps interpret F1, precision, and recall,
+because target-prevalence shifts can change classifier operating behaviour
+independently of feature quality. The full class-balance table and
+TRTR/TSTR/TRTS/TSTS AUC-ROC matrix are reported in
+Appendix~\ref{app:class-balance}.
+
 \paragraph{TSTR Classifier Performance.}
 Table~\ref{tab:rq2:tstr} reports the full Train-Source $\times$ Classifier
 matrix. Read by threshold-independent ranking (AUC-ROC), the headline
@@ -352,7 +367,7 @@ $0.7008$. Pythia-1B thus recovers roughly $97\%$ of the real-data
 discriminative signal, while PATE-GAN sits almost on the chance diagonal.
 A notable inversion appears on the threshold-dependent F1 score: the three
 Pythia variants and HealthGAN all exceed the real-trained baseline's
-macro-F1 ($0.3668$), with both non-private Pythia models reaching
+F1 ($0.3668$), with both non-private Pythia models reaching
 $\approx 0.50$. This does not indicate better discrimination --- their AUC
 remains below the real ceiling --- but reflects an operating-point shift:
 the synthetic-trained models predict the minority (readmitted) class far
@@ -557,7 +572,7 @@ Pythia-70M  & F1      & 0.3944 & \textbf{0.5005} & $\mathbf{+0.1061}$ \\
 \paragraph{Pythia-70M: large gain under finer binning.}
 The token-based LLM generator benefits unambiguously from the ten-decade
 encoding: AUC-ROC rises by $+0.0653$ ($0.5981 \rightarrow 0.6634$) and
-macro-F1 by $+0.1061$ ($0.3944 \rightarrow 0.5005$), with the same
+F1 by $+0.1061$ ($0.3944 \rightarrow 0.5005$), with the same
 direction observed under Logistic Regression
 ($\Delta\text{AUC} = +0.0442$, $\Delta\text{F1} = +0.0992$) and Random
 Forest ($\Delta\text{AUC} = +0.0671$, $\Delta\text{F1} = +0.1123$).
@@ -1137,7 +1152,7 @@ The transition is destructive across the entire utility pillar. Marginal
 fidelity collapses (mean KS rises more than tenfold, $0.0480 \to 0.5381$),
 joint-dependency fidelity worsens by a factor of roughly three
 (correlation difference $0.0336 \to 0.1142$), and the predictive branch is
-effectively wiped out: AUC-ROC falls by $0.1204$ to near chance, macro-F1
+effectively wiped out: AUC-ROC falls by $0.1204$ to near chance, F1
 drops from $0.3824$ to $0.0093$, and the survival model loses every
 confidence-interval overlap it previously held ($7/12 \to 0/13$). The
 apparent privacy improvement --- NNDR rising from $1.066$ to $105.082$ ---
@@ -1193,7 +1208,7 @@ Outlier link.\ \% $\downarrow$  & 0.6 & 0.0 & $-0.6$ \\
 
 The cost is real but contained, and it falls almost entirely on the
 predictive branch: AUC-ROC drops by $0.0991$ (to $0.5827$, still well
-above chance) and macro-F1 by $0.2322$. The statistical-similarity branch
+above chance) and F1 by $0.2322$. The statistical-similarity branch
 is barely affected --- mean KS rises by only $0.0187$ and the correlation
 difference by $0.0260$, both leaving the private variant comfortably within
 the faithful regime --- and the survival model is untouched, with identical
