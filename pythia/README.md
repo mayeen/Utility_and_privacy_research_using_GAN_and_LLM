@@ -3,6 +3,7 @@
 This folder contains a generation-only synthetic data pipeline using pretrained `EleutherAI/pythia-70m` with LoRA fine-tuning.
 
 ## What it does
+
 - Trains on `thesis/data/diabetic_data_preprocessed_{split}.csv`
 - Uses class-conditioned prompts (`Class_0` / `Class_1`)
 - Generates synthetic rows per class to match real class ratio
@@ -10,16 +11,19 @@ This folder contains a generation-only synthetic data pipeline using pretrained 
 - Writes outputs to `thesis/data/pythia/`
 
 ## Install
+
 ```bash
 pip install -r pythia/requirements.txt
 ```
 
 ## Run (default train + test)
+
 ```bash
 python pythia/generate_pythia_synthetic.py
 ```
 
 ## Important arguments
+
 ```bash
 python pythia/generate_pythia_synthetic.py \
   --model-name EleutherAI/pythia-70m \
@@ -34,18 +38,25 @@ python pythia/generate_pythia_synthetic.py \
   --max-retries-per-row 8
 ```
 
-## With dp first iteration 
+## With dp first iteration
+
 - `--dp --target-epsilon 5.0 --target-delta 1e-5 --epochs 10 --max-length 128 --generation-batch-size 128 --max-retries-per-row 3 --splits train test 2>&1 | tee /tmp/pythia_dp_run.log`
 
-## With dp second iteration 
+## With dp second iteration
+
 - `--dp --target-epsilon 5.0 --target-delta 1e-5 --epochs 20 --max-length 128 --generation-batch-size 128 --max-retries-per-row 3 --splits train test 2>&1 | tee /tmp/pythia_dp_run.log`
 
+with non DP final run 
+
+--epoch 5 --batch-size 32 --lr 1e-4 --max length 512 --temparature 0.8 --top-p 0.95 --max-retries-per-row 8 --split test 2>&1
 
 ## Outputs
+
 - `thesis/data/pythia/diabetic_data_pythia_train_synthetic.csv`
 - `thesis/data/pythia/diabetic_data_pythia_test_synthetic.csv`
 - `thesis/data/pythia/run_metadata.json`
 
 ## Notes
+
 - This version does **not** implement formal differential privacy.
 - If generation under-fills valid rows after retries, the pipeline resamples accepted rows per class and logs this behavior.

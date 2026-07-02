@@ -284,17 +284,48 @@ scalar AUC-ROC of the previous paragraph collapses away.
 A complementary check on conditional structure is whether the
 random-forest variable-importance profile obtained from a
 synthetic-trained classifier matches the profile obtained from the
-real-trained classifier. The per-feature importances of the
-real-trained forest and of each synthetic-trained forest are compared
-visually, plotted side by side, on the principle that two classifiers
-trained on substantively different data distributions will assign
-substantively different importances even when their aggregate
-predictive performance happens to coincide. This comparison isolates
-\emph{the locus of predictive signal} rather than its magnitude, and is
-therefore complementary to AUC-ROC: close agreement of the importance
-profiles indicates that synthetic and real data agree on which features
-are doing the predictive work, while a divergent profile indicates that
-the synthetic data has shifted the signal onto a different feature set.
+real-trained classifier. The raw per-feature importances are first
+normalised to sum to one for each training source, so that the importance
+vector of each source is a probability distribution over the feature set
+and the comparison is unaffected by differences in the overall importance
+scale. The normalised profiles are inspected visually as side-by-side
+bars and are summarised by a single agreement score based on the $L_1$
+(total-variation) distance between the real and synthetic importance
+distributions. Let $p^{\mathrm{real}}$ and $p^{g}$ denote the normalised
+importance vectors of the real-trained reference and of generator $g$
+over the shared feature set $F$. The reported feature-importance
+agreement is
+\begin{equation}
+  \mathrm{FI}_g
+  \;=\;
+  1 - \frac{1}{2}\sum_{f\in F}\bigl| p^{g}_f - p^{\mathrm{real}}_f \bigr|,
+  \label{eq:fi-l1}
+\end{equation}
+which is one minus the total-variation distance between the two
+importance distributions. Because both vectors are normalised, the sum
+lies in $[0,2]$ and $\mathrm{FI}_g\in[0,1]$, with $\mathrm{FI}_g=1$ when
+the two profiles are identical and $\mathrm{FI}_g=0$ when they place
+importance on disjoint feature sets. A single distance-based score is
+used rather than a weighted combination of several agreement measures, so
+that the diagnostic remains a transparent, per-metric summary consistent
+with the non-composite reporting principle of
+Section~\ref{sec:eval:pillars}; the $L_1$/total-variation form is chosen
+because it is a proper distance between the two importance distributions
+and reflects both which predictors are credited and how much importance
+each receives. The resulting FI score is the feature-importance input
+used in the utility radar, comprehensive summary table, and
+utility--privacy heatmap, while the normalised profiles themselves are
+retained so that the source of any low score can be read off directly.
+This comparison isolates \emph{the locus of predictive signal} rather
+than only its aggregate accuracy, and is therefore complementary to
+AUC-ROC: agreement indicates that synthetic and real data support similar
+predictive explanations, whereas disagreement indicates that synthesis
+has shifted the signal onto a different feature set. Because the
+random-forest importances used here are mean-decrease-in-impurity (MDI)
+importances, they can be biased toward variables with more available
+split points and can vary with the fitted forest; the FI score is
+therefore interpreted as an interpretability-oriented utility diagnostic
+rather than as a stand-alone ranking of clinical importance.
 Variable-importance agreement has similarly been used as a utility
 diagnostic in PATE-GAN and clinical synthetic-data
 evaluations~\cite{pategan,beaulieu2019privacy}.
