@@ -603,10 +603,13 @@ diagnostics are summarised in Figure~\ref{fig:rq2:privacy}.
 \subsubsection{Nearest-Neighbour Distance and Distance Ratio}
 \label{sec:results:rq2:privacy:nn}
 
-Table~\ref{tab:rq2:nn} reports the median real-to-synthetic and
-synthetic-to-real nearest-neighbour distances and the
-nearest-neighbour distance ratio (NNDR) defined in
-Sections~\ref{sec:eval:privacy:nn} and~\ref{sec:eval:privacy:nndr}. An
+Table~\ref{tab:rq2:nn} reports, for each generator, the median and
+fifth-percentile real-to-synthetic and synthetic-to-real nearest-neighbour
+distances together with the nearest-neighbour distance ratio (NNDR) defined
+in Sections~\ref{sec:eval:privacy:nn} and~\ref{sec:eval:privacy:nndr}. The
+fifth percentile is the more privacy-relevant summary, since it isolates
+the tail of synthetic records lying closest to real records, whereas the
+median reflects typical records of little disclosure risk. An
 NNDR near or above unity indicates that, on the median distance scale,
 synthetic records are not closer to real records than real records are to
 one another. This is a proximity-risk diagnostic, not standalone evidence
@@ -615,11 +618,13 @@ of privacy.
 \begin{table}[H]
 \centering
 \small
-\caption{Median nearest-neighbour distances and distance ratio per
-generator. The real-to-real median nearest-neighbour distance is $2.019$
-for reference. Larger synthetic-to-real distances and $\text{NNDR} \geq 1$
-are consistent with lower median proximity risk only when the generator
-also remains close to the real-data support.}
+\caption{Median and fifth-percentile nearest-neighbour distances, with the
+median distance ratio, per generator. The fifth-percentile synthetic-to-real
+distance is the disclosure-relevant tail, that is, the closest synthetic
+records to the real data. The real-to-real median nearest-neighbour distance
+is $2.019$ for reference. Larger synthetic-to-real distances and
+$\text{NNDR} \geq 1$ are consistent with lower median proximity risk only
+when the generator also remains close to the real-data support.}
 \label{tab:rq2:nn}
 \input{images/results/tables/3a-nn_distances}
 \end{table}
@@ -642,6 +647,17 @@ useful privacy protection. This illustrates the blind spot of
 distance-based privacy metrics noted in Table~\ref{tab:rq1-coverage}: a
 generator that fails to reproduce the real-data support can appear highly
 private on proximity metrics alone.
+
+The fifth-percentile distances confirm that the median comparison is not
+concealing a close-proximity tail. For the four faithful generators the
+fifth-percentile synthetic-to-real distances lie between $0.727$ and
+$1.137$ in the standardised feature space, well above zero, so even the
+closest synthetic records do not coincide with real records; this is
+consistent with the absence of training-set memorisation reported in
+Sections~\ref{sec:results:rq2:privacy:nnaa}
+and~\ref{sec:results:rq2:privacy:mia}. PATE-GAN's fifth-percentile
+synthetic-to-real distance ($79.995$) is inflated by the same off-manifold
+drift as its median and does not indicate protection.
 
 \subsubsection{Nearest-Neighbour Adversarial Accuracy}
 \label{sec:results:rq2:privacy:nnaa}
@@ -1124,11 +1140,9 @@ LLM-family DP toggle is operationalised at the 1B scale, is discussed in
 \label{sec:results:rq3:gan-toggle}
 
 The GAN-family comparison contrasts the non-private HealthGAN with the
-differentially private PATE-GAN.
-
-Because PATE-GAN incorporates differential privacy by construction whereas
-HealthGAN does not, the contrast measures the cost of moving to a formally
-private generator within the GAN family.
+differentially private PATE-GAN. Because PATE-GAN incorporates differential
+privacy by construction whereas HealthGAN does not, the contrast measures
+the cost of moving to a formally private generator within the GAN family.
 Table~\ref{tab:rq3:gan-toggle} reports the change on each headline metric.
 
 \begin{table}[H]
@@ -1156,8 +1170,8 @@ Max.\ attr.\ adv.\ $\downarrow$ & $-0.0040$ & $-0.0266$ & $-0.0226$ \\
 The transition is destructive across the entire utility pillar. Marginal
 fidelity collapses (mean KS rises more than tenfold, $0.0480 \to 0.5381$),
 joint-dependency fidelity worsens by a factor of roughly three
-(correlation difference $0.0336 \to 0.1142$), and the predictive branch is
-effectively wiped out: AUC-ROC falls by $0.1204$ to near chance, F1
+(correlation difference $0.0336 \to 0.1142$), and the predictive branch
+collapses: AUC-ROC falls by $0.1204$ to near chance, F1
 drops from $0.3824$ to $0.0093$, and the survival model loses every
 confidence-interval overlap it previously held ($7/12 \to 0/13$). The
 apparent privacy improvement, namely NNDR rising from $1.063$ to $104.601$,
@@ -1175,12 +1189,11 @@ differential privacy alone
 \label{sec:results:rq3:llm-toggle}
 
 The LLM-family comparison contrasts the non-private Pythia-1B with the
-differentially private Pythia-1B-DP.
-
-Because both variants share the same Pythia-1B backbone, the same
-row-as-text serialisation, and the same low-rank fine-tuning
-configuration, this comparison is a clean differential-privacy toggle: the
-only material difference is the DP-SGD training procedure. The private
+differentially private Pythia-1B-DP. Because both variants share the same
+Pythia-1B backbone, the same row-as-text serialisation, and the same
+low-rank fine-tuning configuration, this comparison is a clean
+differential-privacy toggle: the only material difference is the DP-SGD
+training procedure. The private
 variant was trained under a privacy budget that the accounting reports as
 an achieved $\varepsilon = 4.998$ against a target of $5.0$ (with
 $\delta = 10^{-5}$, gradient-clipping norm $1.0$, noise multiplier
@@ -1211,9 +1224,10 @@ Outlier link.\ \% $\downarrow$  & 0.6 & 0.0 & $-0.6$ \\
 \end{tabular}
 \end{table}
 
-The cost is real but contained, and it falls almost entirely on the
-predictive branch: AUC-ROC drops by $0.0991$ (to $0.5827$, still well
-above chance) and F1 by $0.2322$. The statistical-similarity branch
+The cost is real and falls almost entirely on the predictive branch, where
+it is uneven: AUC-ROC drops by a moderate $0.0991$ (to $0.5827$, still well
+above chance), whereas F1 falls more steeply, from $0.5036$ to $0.2714$,
+close to a halving. The statistical-similarity branch
 is barely affected (mean KS rises by only $0.0187$ and the correlation
 difference by $0.0260$, both leaving the private variant comfortably within
 the faithful regime), and the survival model is untouched, with identical
@@ -1222,9 +1236,10 @@ the toggle produces a genuine, if small, benefit: the attribute-inference
 advantage on the primary diagnosis, the one structured leak exhibited by
 the non-private model, is removed (maximum advantage
 $+0.0410 \to -0.0056$), and outlier linkability falls to zero. Differential
-privacy on the LLM family therefore trades a moderate predictive-utility
-reduction for a measurable reduction in attribute disclosure, while
-preserving distributional fidelity and survival-model agreement.
+privacy on the LLM family therefore trades a predictive-utility reduction,
+moderate on AUC-ROC but larger on F1, for a measurable reduction in
+attribute disclosure, while preserving distributional fidelity and
+survival-model agreement.
 
 \subsection{Cross-Family Comparison of Differential-Privacy Cost}
 \label{sec:results:rq3:arrow-plot}
@@ -1252,10 +1267,10 @@ The two arrows differ sharply in length and meaning. The LLM arrow is
 short and almost horizontal: it moves left by $0.0991$ in utility and only
 slightly upward in NNDR, a controlled step that keeps the private variant
 within the usable region of the plane. The GAN arrow is long and steep,
-plunging the operating point from HealthGAN's usable position
-down-and-left to PATE-GAN's degenerate corner. As noted, however, its
-vertical extent is the distance artefact and its horizontal extent
-conflates architecture with mechanism. Read together, the figure shows
+moving the operating point from HealthGAN's usable position down and to the
+left to PATE-GAN's degenerate position. As noted, its vertical extent
+reflects the off-manifold distance artefact rather than a genuine privacy
+gain. Read together, the figure shows
 that the controlled, architecture-matched differential-privacy step (the
 LLM arrow) is far less destructive to utility than the GAN-side
 transition, and that the only differentially private generator to remain
@@ -1275,10 +1290,9 @@ two within-family pairs can be compared panel by panel.
 \subsection*{Answer to RQ3}
 \label{sec:results:rq3:answer}
 
-At a matched privacy budget of $\varepsilon = 5.0$, the cost of enforcing
-differential privacy differs sharply between the two families, and the LLM
-family's privacy--utility profile degrades far more gracefully. The
-LLM-family toggle (Pythia-1B $\to$ Pythia-1B-DP) loses $0.0991$ in TSTR
+At a matched privacy budget of $\varepsilon = 5.0$, the two families reach
+markedly different privacy--utility endpoints under differential privacy.
+The LLM-family toggle (Pythia-1B $\to$ Pythia-1B-DP) loses $0.0991$ in TSTR
 AUC-ROC while leaving statistical similarity essentially intact (mean KS
 $+0.0187$) and survival-model agreement unchanged ($7/13$ confidence-interval
 overlaps before and after), and it converts this moderate utility cost into

@@ -9,7 +9,7 @@
 \section{Interpretation of Results per Research Question}
 \label{sec:discussion:interpretation}
 
-The findings for RQ1 confirm that the eleven-metric, two-pillar framework
+The findings for RQ1 confirm that the twelve-metric, two-pillar framework
 is not redundant: each metric isolates a dimension of data quality that the
 others miss, and the clearest empirical demonstration is the behaviour of
 PATE-GAN. It attained apparently ideal scores on every distance-based
@@ -27,7 +27,8 @@ the privacy-utility plane, and the mechanistic reason lies in what each
 paradigm optimises. The WGAN-GP objective of HealthGAN matches the real
 distribution directly in a continuous latent space, which yields the lowest
 marginal discrepancy (mean KS $0.0480$) and the only usable operating point
-that clears the NNDR privacy threshold. The token-based Pythia models
+that sits at or above the NNDR unity reference on the median scale. The
+token-based Pythia models
 instead learn the conditional structure of the table autoregressively,
 which yields the strongest predictive transferability (Pythia-1B TSTR AUC
 $0.682$, nearest the real ceiling) and the best joint-dependency fidelity.
@@ -35,9 +36,9 @@ The recurring F1 inversion, in which synthetic-trained classifiers exceed
 the real-trained baseline's F1, reflects not superior discrimination
 but an operating-point shift toward the minority class, and it illustrates
 why threshold-dependent and threshold-independent predictive metrics are
-both reported. \textcite{Miletic2024}, who document continued utility gains
-with language-model scale, predict that the LLM advantage on the predictive
-axis would widen at scales larger than those evaluated here. That high utility
+both reported. \textcite{Miletic2024} document continued utility gains
+with language-model scale, which suggests that the LLM advantage on the
+predictive axis could widen at scales larger than those evaluated here. That high utility
 need not coincide with strong privacy is consistent with the independent
 benchmark of SynthEval, in which the highest-utility generators ranked among the
 worst on privacy~\cite{lautrup2025syntheval}.
@@ -67,15 +68,19 @@ complementary strengths that the results make concrete. The strength of the
 GAN family is distributional: HealthGAN matches the real marginals more
 tightly than any other generator and, once trained, samples cheaply. Its
 weaknesses are equally visible here: it enforces no schema-level
-constraints, and the only differentially private GAN evaluated collapses
-under the privacy budget, illustrating the brittleness of adversarial
-training once a noise mechanism is imposed. The strength of the LLM family
+constraints, and the only differentially private GAN evaluated does not
+produce usable data at the tested budget, although that outcome conflates
+the differential-privacy mechanism with an architecture change and cannot
+be attributed to differential privacy alone
+(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}). The strength of the LLM family
 is its native handling of mixed-type tabular data through a row-as-text
 representation: the same model ingests categorical, ordinal, and continuous
 fields without per-column encoders, learns their conditional structure, and,
 through schema-aware parsing, emits syntactically valid rows. This
-representational flexibility underlies both the predictive advantage of the
-LLM family and its graceful degradation under differential privacy. Its
+representational flexibility underlies the predictive advantage of the LLM
+family. Its graceful degradation under differential privacy has a distinct
+cause, namely that DP-SGD perturbs a small low-rank adapter at the $1$B
+scale, rather than following from the text representation itself. Its
 costs are a generation-time parsing-and-retry overhead, substantially longer
 training and inference, and a known susceptibility to verbatim memorisation
 of training text~\cite{Carlini2021Extracting}. Notably, however, the
@@ -83,18 +88,22 @@ membership-inference results reported here show no measurable memorisation by
 any generator at this scale (\S\ref{sec:results:rq2:privacy:mia}).
 
 \paragraph{Sensitivity to Categorical Granularity.}
-A practical asymmetry surfaced by the age-binning ablation
-(Section~\ref{sec:results:rq2:utility:age-binning}) is that token-based LLM
-synthesisers are more sensitive to upstream categorical-cardinality choices
-than GAN baselines. Collapsing the ten-decade \texttt{age} encoding into
-three coarse groups depressed the Gradient-Boosting TSTR AUC of Pythia by
-$\approx 0.065$ and its F1 by $\approx 0.106$, while leaving HealthGAN
-and PATE-GAN approximately unchanged. The implication for healthcare data
-stewards is that, when an LLM-based generator is in scope, preprocessing
-decisions that flatten ordinal categorical variables for simplicity can
-silently forfeit a substantial fraction of recoverable downstream utility,
-and should therefore be validated against the native encoding of the dataset
-before being committed to.
+The age-binning ablation
+(Section~\ref{sec:results:rq2:utility:age-binning}) shows that upstream
+categorical-cardinality choices can affect generators unequally, although
+the comparison is limited to the two GAN baselines and Pythia-70M, the only
+models for which matched three-bin and ten-bin runs exist. Restoring the
+native ten-decade \texttt{age} encoding raised the Gradient-Boosting TSTR
+AUC of Pythia-70M by $\approx 0.065$ and its F1 by $\approx 0.106$, the
+largest AUC gain among the compared generators. HealthGAN responded on a
+similar scale but in a mixed direction, gaining on F1 ($+0.118$) while
+losing slightly on AUC ($-0.029$), whereas PATE-GAN remained weak under
+both encodings. No single family is therefore uniformly more sensitive on
+this ablation. The practical implication for healthcare data stewards is
+that preprocessing decisions which flatten ordinal categorical variables
+can shift recoverable downstream utility for some generators, and should be
+validated against the native encoding of the dataset before being committed
+to.
 
 \section{Practical Recommendations for Healthcare Data Stewards}
 \label{sec:discussion:recommendations}
@@ -114,8 +123,8 @@ sufficient scale, since DP-SGD failed outright at the $70$M scale.
 \paragraph{When maximum utility is required without a formal guarantee.}
 Two options are defensible. Pythia-1B gives the highest predictive utility
 and the best joint-dependency fidelity, while HealthGAN gives the best
-marginal fidelity and the only non-private operating point that clears the
-NNDR privacy threshold, at a fraction of the computational cost of the LLM.
+marginal fidelity and the only non-private operating point at or above the
+NNDR unity reference, at a fraction of the computational cost of the LLM.
 The choice is the genuine trade-off identified in RQ2 rather than a clear
 winner.
 
@@ -137,7 +146,7 @@ directly, since this property is dataset-dependent.
 
 The evaluation framework assembled for this thesis, comprising two utility
 branches (statistical similarity and predictive performance) and a privacy
-pillar reported through eleven complementary single-number metrics, is
+pillar reported through twelve complementary single-number metrics, is
 offered as a step toward the reusable evaluation standard called for by
 \textcite{hernandez2022synthetic}. General-purpose frameworks such as SynthEval
 pursue this goal for arbitrary tabular data~\cite{lautrup2025syntheval}; the

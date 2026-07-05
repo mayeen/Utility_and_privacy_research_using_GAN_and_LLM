@@ -19,17 +19,17 @@ Pythia-1B-DP under a unified experimental framework on the
 establishes a transparent basis for analysing the privacy--utility trade-off
 across fundamentally different generative paradigms. The integration of
 aligned training conditions, consistent preprocessing, and an
-eleven-metric evaluation pipeline ensures that differences in performance
+twelve-metric evaluation pipeline ensures that differences in performance
 reflect model characteristics rather than experimental variability.
 
 The four concrete contributions of this work are:
 
 \begin{enumerate}\itemsep0.25em
   \item \textbf{Unified evaluation pipeline.} A reproducible two-pillar
-        framework --- \emph{utility} (split into statistical similarity to
-        the real data and predictive performance of downstream models) and
-        \emph{privacy} --- instantiated as eleven single-number metrics
-        applied identically to every generator under comparison. The pipeline
+        framework, comprising \emph{utility} (split into statistical
+        similarity to the real data and predictive performance of downstream
+        models) and \emph{privacy}, instantiated as twelve single-number
+        metrics applied identically to every generator under comparison. The pipeline
         is released as the
         \href{run:../../thesis/data_analysis.ipynb}{\texttt{data\_analysis.ipynb}}
         notebook with the supporting feature-engineering module
@@ -54,9 +54,10 @@ The four concrete contributions of this work are:
         a fixed model scale to isolate the DP-SGD effect from a
         confounding scale change.
   \item \textbf{Practical guidance.} A decision-oriented summary identifying
-        when a non-DP GAN suffices, when formal DP via PATE-GAN is warranted,
-        and where LLM-based synthesis remains competitive given privacy
-        budgets and governance constraints.
+        when a non-DP GAN suffices, which differentially private mechanism to
+        prefer when a formal guarantee is required, and where LLM-based
+        synthesis remains competitive given privacy budgets and governance
+        constraints.
 \end{enumerate}
 
 \section{Direct Answers to the Research Questions}
@@ -77,7 +78,7 @@ Section~\ref{sec:method:evaluation}: utility is assessed through
 statistical similarity to the real data and predictive performance of
 downstream models, while privacy is assessed separately through
 instance-level distance metrics and explicit membership- and
-attribute-inference simulations. Instantiated as the eleven single-number
+attribute-inference simulations. Instantiated as the twelve single-number
 metrics of Table~\ref{tab:rq1-coverage}, the suite is constructed so that
 each metric captures a distinct data-characteristic dimension and the
 branches are jointly necessary rather than individually sufficient, a
@@ -92,8 +93,8 @@ occupies a different region. Within the GAN family, HealthGAN is the
 strongest guarantee-free operating point, attaining the best marginal
 fidelity (mean KS $0.0480$), the best survival agreement (Cox
 confidence-interval overlap $0.583$), respectable predictive utility (TSTR AUC-ROC
-$0.631$), and the only usable distance ratio that clears the privacy
-threshold (NNDR $1.066$), whereas its differentially private member
+$0.631$), and the only usable distance ratio at or above the NNDR unity
+reference (NNDR $1.063$), whereas its differentially private member
 PATE-GAN collapses on both utility branches at $\varepsilon = 5.0$ and
 earns only the apparent privacy of off-manifold output. Within the LLM
 family, Pythia-1B lies closest to the real-data utility ceiling (AUC
@@ -235,11 +236,11 @@ direction for future work.
 \label{sec:conclusion:closing}
 
 % Migrated and lightly adjusted from proposal §7 closing paragraphs.
-Through a combined assessment of utility --- spanning both distributional
+Through a combined assessment of utility, spanning both distributional
 similarity to the real data and predictive performance of downstream
-models --- alongside instance-level privacy risks, this thesis aims to
-determine not only which models perform best, but under which conditions
-each class of models is most appropriate. This enables a nuanced interpretation of when non-DP synthesis is
+models, alongside instance-level privacy risks, this thesis determines not
+only which models perform best, but under which conditions each class of
+models is most appropriate. This enables a nuanced interpretation of when non-DP synthesis is
 sufficient, when formal differential privacy is necessary, and how LLM-based
 generators behave in terms of memorisation and disclosure risk in clinical
 settings. Beyond generating comparative insights, the thesis contributes a
