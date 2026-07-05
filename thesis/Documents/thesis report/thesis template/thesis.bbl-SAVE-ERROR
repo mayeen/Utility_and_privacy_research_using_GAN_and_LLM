@@ -2184,6 +2184,40 @@
       \field{pages}{3\bibrangedash 18}
       \range{pages}{16}
     \endentry
+    \entry{thees2025beyond}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=51365eb74fb15226fd679d679d0b391e}{%
+           family={Thees},
+           familyi={T\bibinitperiod},
+           given={Oscar},
+           giveni={O\bibinitperiod}}}%
+        {{hash=f45efc467970e86982c3b68a5b293e9b}{%
+           family={Müller},
+           familyi={M\bibinitperiod},
+           given={Roman},
+           giveni={R\bibinitperiod}}}%
+        {{hash=faaed83ab21bd48aa70346a9a1a0fa99}{%
+           family={Templ},
+           familyi={T\bibinitperiod},
+           given={Matthias},
+           giveni={M\bibinitperiod}}}%
+      }
+      \strng{namehash}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{fullhash}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{fullhashraw}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{bibnamehash}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{authorbibnamehash}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{authornamehash}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{authorfullhash}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \strng{authorfullhashraw}{e6f27d10629b3bae91bc2fe3fa574c1e}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{arXiv preprint arXiv:2510.23500}
+      \field{title}{Beyond the Trade-off Curve: Multivariate and Advanced Risk-Utility Maps for Evaluating Anonymized and Synthetic Data}
+      \field{year}{2025}
+    \endentry
     \entry{strack2014impact}{article}{}{}
       \name{author}{7}{}{%
         {{hash=103fd95765ed163826f2de56f85438a4}{%
@@ -2244,6 +2278,35 @@
       \field{year}{2014}
       \field{pages}{781670}
       \range{pages}{1}
+    \endentry
+    \entry{lee2021scaling}{article}{}{}
+      \name{author}{2}{}{%
+        {{hash=632bb42e28f7ec7ba4341d1cd90ffd88}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Jaewoo},
+           giveni={J\bibinitperiod}}}%
+        {{hash=f5e5f18611814172bad93825bf8c4bf0}{%
+           family={Kifer},
+           familyi={K\bibinitperiod},
+           given={Daniel},
+           giveni={D\bibinitperiod}}}%
+      }
+      \strng{namehash}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{fullhash}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{fullhashraw}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{bibnamehash}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{authorbibnamehash}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{authornamehash}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{authorfullhash}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \strng{authorfullhashraw}{ab6aed5aef455864e6b34c7e86c75cf4}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Proceedings on Privacy Enhancing Technologies}
+      \field{title}{Scaling up differentially private deep learning with fast per-example gradient clipping}
+      \field{year}{2021}
     \endentry
     \entry{Xie2018DPGAN}{article}{}{}
       \name{author}{5}{}{%

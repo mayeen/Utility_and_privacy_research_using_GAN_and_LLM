@@ -42,8 +42,8 @@ behaves like the real one when used to train downstream predictive and
 survival models. The privacy pillar (\S\ref{sec:eval:privacy}) is
 operationalised through instance-level distance metrics and explicit
 inference-attack simulations. Section~\ref{sec:eval:aggregate}
-introduces the two aggregation views through which the pillars are
-combined into a single comparative picture for RQ2 and RQ3.
+introduces the aggregation layer through which the per-metric values
+are visualised as a single comparative picture for RQ2 and RQ3.
 
 Two design principles govern the choice of metrics throughout this
 chapter. First, the metrics within each branch are deliberately
@@ -282,19 +282,20 @@ scalar AUC-ROC of the previous paragraph collapses away.
 \paragraph{Feature-Importance Preservation.}
 \label{sec:eval:utility:predictive:fi}
 A complementary check on conditional structure is whether the
-random-forest variable-importance profile obtained from a
-synthetic-trained classifier matches the profile obtained from the
-real-trained classifier. The raw per-feature importances are first
-normalised to sum to one for each training source, so that the importance
-vector of each source is a probability distribution over the feature set
-and the comparison is unaffected by differences in the overall importance
-scale. The normalised profiles are inspected visually as side-by-side
-bars and are summarised by a single agreement score based on the $L_1$
-(total-variation) distance between the real and synthetic importance
-distributions. Let $p^{\mathrm{real}}$ and $p^{g}$ denote the normalised
-importance vectors of the real-trained reference and of generator $g$
-over the shared feature set $F$. The reported feature-importance
-agreement is
+random-forest variable-importance profile obtained from a synthetic-trained
+classifier allocates predictive importance across the engineered features
+in the same way as the real-trained reference. Random forests are used for
+this diagnostic because they provide a direct model-based importance vector
+over the shared feature set while the gradient-boosting AUC remains the primary
+predictive-performance metric. The raw per-feature importances are
+normalised to sum to one for each training source, giving an
+importance-mass vector whose scale is comparable across sources. The
+normalised profiles are inspected visually as side-by-side bars and are
+summarised by a single agreement score based on the $L_1$
+(total-variation) distance. Let $p^{\mathrm{real}}$ and $p^{g}$ denote the
+normalised importance vectors of the real-trained reference and of
+generator $g$ over the shared feature set $F$. The reported
+feature-importance agreement is
 \begin{equation}
   \mathrm{FI}_g
   \;=\;
@@ -302,32 +303,17 @@ agreement is
   \label{eq:fi-l1}
 \end{equation}
 which is one minus the total-variation distance between the two
-importance distributions. Because both vectors are normalised, the sum
-lies in $[0,2]$ and $\mathrm{FI}_g\in[0,1]$, with $\mathrm{FI}_g=1$ when
-the two profiles are identical and $\mathrm{FI}_g=0$ when they place
-importance on disjoint feature sets. A single distance-based score is
-used rather than a weighted combination of several agreement measures, so
-that the diagnostic remains a transparent, per-metric summary consistent
-with the non-composite reporting principle of
-Section~\ref{sec:eval:pillars}; the $L_1$/total-variation form is chosen
-because it is a proper distance between the two importance distributions
-and reflects both which predictors are credited and how much importance
-each receives. The resulting FI score is the feature-importance input
-used in the utility radar, comprehensive summary table, and
-utility--privacy heatmap, while the normalised profiles themselves are
-retained so that the source of any low score can be read off directly.
-This comparison isolates \emph{the locus of predictive signal} rather
-than only its aggregate accuracy, and is therefore complementary to
-AUC-ROC: agreement indicates that synthetic and real data support similar
-predictive explanations, whereas disagreement indicates that synthesis
-has shifted the signal onto a different feature set. Because the
-random-forest importances used here are mean-decrease-in-impurity (MDI)
-importances, they can be biased toward variables with more available
-split points and can vary with the fitted forest; the FI score is
-therefore interpreted as an interpretability-oriented utility diagnostic
-rather than as a stand-alone ranking of clinical importance.
-Variable-importance agreement has similarly been used as a utility
-diagnostic in PATE-GAN and clinical synthetic-data
+importance-mass vectors. Because both vectors are normalised, the sum lies
+in $[0,2]$ and $\mathrm{FI}_g\in[0,1]$, with $\mathrm{FI}_g=1$ for
+identical allocations and $\mathrm{FI}_g=0$ when the profiles place
+importance on disjoint feature sets. The score therefore measures
+preservation of feature-importance mass, not exact rank agreement. Because the random-forest importances used here are
+mean-decrease-in-impurity (MDI) importances, they can be biased toward
+variables with more available split points and can vary with the fitted
+forest; the FI score is therefore interpreted as an interpretability-oriented
+utility diagnostic rather than as a stand-alone ranking of
+clinical importance. Variable-importance agreement has similarly been used
+as a utility diagnostic in PATE-GAN and clinical synthetic-data
 evaluations~\cite{pategan,beaulieu2019privacy}.
 
 \paragraph{Cox Proportional-Hazards Agreement.}
@@ -564,58 +550,99 @@ neighbours close to a small number of outlier real records.
 \subsection{Comparative Aggregation}
 \label{sec:eval:aggregate}
 
-Two aggregation views are used to combine the per-pillar metrics
-into a single comparative picture. The \emph{landscape view}
-positions every generator on a single privacy--utility plane and is
-the main figure of RQ2 (\S\ref{sec:results:rq2:landscape}); the
-\emph{within-family DP-toggle view} draws arrows between the
-non-private and the differentially private variant of each family on
-the same plane and is the main figure of RQ3
-(\S\ref{sec:results:rq3:arrow-plot}). The choice of axes follows
-directly from the metric design above: the utility axis uses the
-gradient-boosting TSTR AUC-ROC as a single-number representative of
-the predictive branch, and the privacy axis uses the median NNDR as
-a single-number representative of the instance-level privacy
-metrics. Both single-number axes are chosen for visual readability;
-the multi-metric perspectives below mitigate the loss of detail
-incurred by collapsing each pillar to one axis.
-
-\paragraph{Privacy--Utility Trade-off Scatter.}
-\label{sec:eval:aggregate:tradeoff}
-A scatter plot of median NNDR (privacy axis, larger is better)
-against gradient-boosting TSTR AUC-ROC (utility axis, larger is
-better) places every generator at a single point and adds the TRTR
-baseline as an upper-right reference; the resulting visualisation
-isolates the Pareto frontier and exposes any generator that is
-strictly dominated on both axes by another.
-
-\paragraph{Six-Dimension Radar Chart.}
-\label{sec:eval:aggregate:radar}
-The trade-off plot above collapses each pillar to one axis at the
-cost of suppressing within-pillar detail. A radar chart with six
-axes restores that detail: three utility axes (statistical
-similarity, predictive performance, Cox confidence-interval overlap)
-and three privacy axes (nearest-neighbour distance, membership
-inference, attribute inference). Each axis is rescaled to a
-$[0, 1]$ interval with higher always indicating better, so that the
-area enclosed by a generator's polygon can be read directly. The
-radar chart is intended for qualitative shape comparison rather
-than for ordering generators on a single scalar; it makes the
-trade-off geometry visible at a glance.
+The per-pillar metrics defined in \S\ref{sec:eval:utility} and
+\S\ref{sec:eval:privacy} are combined for RQ2 and RQ3 through a small
+set of aggregation views. These views are interpretive rather than
+decisive: the comparative claims remain grounded in the per-metric
+values, not in a single composite score, following the multi-axis
+reporting logic of SynthEval~\cite{lautrup2025syntheval}. The
+aggregation proceeds from raw to scaled views. A comprehensive table
+preserves the unscaled metric values; a privacy--utility landscape uses
+Gradient-Boosting TSTR AUC-ROC and median NNDR as representative utility
+and privacy axes; and scaled visual summaries expose within-pillar
+structure. Pareto dominance is assessed on the raw AUC-ROC/NNDR plane,
+so the main balance claim does not depend on an averaged score. This
+joint privacy--utility framing follows synthetic-data evaluation
+surveys~\cite{hernandez2022synthetic,Murtaza2023}, and the visual
+risk--utility presentation follows \textcite{thees2025beyond}.
 
 \paragraph{Comprehensive Summary Table.}
 \label{sec:eval:aggregate:table}
-The headline numerical summary is a single table with eleven rows
-(one per single-number metric defined in \S\ref{sec:eval:utility} and
-\S\ref{sec:eval:privacy}) and six columns (the real-data TRTR
+The headline numerical summary is a single table whose twelve rows are
+the headline single-number metrics defined in \S\ref{sec:eval:utility} and
+\S\ref{sec:eval:privacy}, with six columns (the real-data TRTR
 reference plus the five generators), grouped by pillar and branch
-for readability. The best-performing generator entry per row is
-highlighted, with the TRTR reference excluded from the highlighting.
-This table is the most information-dense view in the thesis and is
-the artefact most likely to be consulted by readers seeking the raw
-numbers behind the higher-level figures above; it also functions as
-the input for the empirical diagnostic-power analysis of RQ1
+for readability. The table preserves the raw metric values, preferred
+directions, and pillar grouping. It therefore serves as the numerical
+reference for the visual comparisons that follow, without introducing an
+additional aggregation or ranking rule. It also functions as the input
+for the empirical diagnostic-power analysis of RQ1
 (\S\ref{sec:results:rq1:diagnostic}), in which the spread of each
 metric across the generator columns is examined to decide which
 metrics actually separate the generators and which collapse to a
 narrow range.
+
+\paragraph{Privacy--Utility Landscape.}
+\label{sec:eval:aggregate:tradeoff}
+The landscape view plots the median NNDR on the privacy axis against the
+gradient-boosting TSTR AUC-ROC on the utility axis. It also places each generator
+at a single point and uses the TRTR baseline as a reference. This view
+identifies the Pareto frontier, i.e.\ the generators not strictly
+dominated on both axes, and provides the main two-dimensional comparison
+for RQ2 (\S\ref{sec:results:rq2:landscape}). The within-family
+differential-privacy transitions analysed for RQ3 are shown on the same
+plane as directional arrows (\S\ref{sec:results:rq3:arrow-plot}). Median
+NNDR is used as the privacy axis because it provides a scale-normalised
+instance-level distance measure with sufficient variation for an
+interpretable two-dimensional display. The attack-based privacy metrics,
+namely membership inference, attribute inference, and outlier linkability,
+remain reported in the comprehensive summary table so that the axis choice
+does not conceal residual leakage. The risk--utility map presentation
+follows \textcite{thees2025beyond}.
+
+
+\paragraph{Utility Radar.}
+\label{sec:eval:aggregate:radar}
+The radar chart provides a scaled profile of the utility pillar after the
+two-dimensional landscape has reduced utility to a single predictive axis.
+It displays statistical similarity, predictive performance, Cox
+confidence-interval overlap, and feature-importance agreement on a common
+$[0,1]$ scale, with larger values indicating better performance. The chart
+is restricted to utility metrics because these measures can be oriented in
+a shared favourable direction. A separate privacy radar is not used because 
+several privacy metrics have
+threshold or two-sided interpretations rather than a single monotonic
+``larger is better'' direction, which would make the radial profile
+misleading. Privacy metrics are instead handled in the
+separate heatmap, where their threshold-dependent interpretation can be
+shown more explicitly. The radar is used as a qualitative profile view
+rather than as a scalar ranking of generators. The use of bounded,
+directionally aligned axes for radar-style visualisation follows
+\textcite{thees2025beyond}.
+
+\paragraph{Utility--Privacy Heatmap.}
+\label{sec:eval:aggregate:heatmap}
+The heatmap provides the metric-level inspection view. Each metric is
+oriented and min--max scaled to $[0,1]$ across the generators before
+display. Utility metrics are oriented so that larger values indicate
+better performance. Privacy metrics are expressed as risk-oriented
+quantities, so that larger values indicate greater disclosure concern.
+For NNDR, the risk contribution is defined as
+$\max(0,\,1-\mathrm{NNDR})$. For nearest-neighbour adversarial accuracy
+and membership-inference AUC, only deviation on the leakage side of the
+$0.5$ reference value is counted, using
+$\max(0,\,1-2\,\mathrm{AA})$ and $\max(0,\,2\,\mathrm{AUC}-1)$,
+respectively. Attribute-inference advantage, outlier linkability, and
+positive privacy loss are already non-negative risk quantities.
+
+This one-sided orientation is a thesis-specific design choice: it treats
+near-record leakage as a privacy risk, while treating excessive distance
+from the real distribution as a utility or fidelity failure rather than
+as a privacy failure. This is appropriate for the present comparison
+because off-manifold behaviour is already captured by the utility metrics,
+but it also means that a collapsed generator can appear low-risk in the
+privacy block unless the heatmap is read together with the raw summary
+table and the privacy--utility landscape. The heatmap therefore shows the
+full metric pattern without collapsing the metrics into a composite mean.
+The general use of scaled heatmaps for multivariate risk--utility
+inspection follows \textcite{thees2025beyond}.

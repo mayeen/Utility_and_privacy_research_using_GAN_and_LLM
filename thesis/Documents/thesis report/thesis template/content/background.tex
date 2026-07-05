@@ -691,6 +691,37 @@ finds that a differentially private generator can still fail membership-inferenc
 and attribute-disclosure tests, so that a formal privacy parameter alone does
 not guarantee protection~\cite{lautrup2025syntheval}.
 
+\section{Aggregated Privacy--Utility Views}
+\label{sec:bg:aggregate-views}
+
+The metric families reviewed above are usually not interpreted in
+isolation. Synthetic-data evaluation increasingly uses aggregate
+privacy--utility views to show how several utility and disclosure-risk
+measures interact. SynthEval, for example, reports multiple utility and
+privacy metrics and uses internal ranking to support comparison without
+hiding the underlying metric values~\cite{lautrup2025syntheval}. More
+recent risk--utility visualisation work treats anonymisation and synthesis
+as a multivariate optimisation problem, where heatmaps, dot plots,
+composite scatterplots, radial profile charts, and Pareto annotations can
+make trade-offs between disclosure risk and utility visible
+simultaneously~\cite{thees2025beyond}.
+
+These aggregate views are useful because they prevent the evaluation from
+being dominated by a single metric. A generator may preserve downstream
+predictive performance while failing on record-level privacy, or may look
+safe under a distance-based privacy metric only because its records have
+moved away from the real distribution. Visual aggregation therefore helps
+identify trade-offs and dominated operating points while retaining access
+to the metric-level evidence.
+
+At the same time, aggregate views introduce their own risk of
+misinterpretation. Composite scores and scaled plots depend on orientation,
+normalisation, and metric selection; if these choices are not made
+explicit, they can obscure the reason why one generator appears preferable
+to another. For this reason, the present thesis uses aggregate views only
+as interpretive summaries. The raw per-metric values remain the primary
+basis for the comparison.
+
 \section{Research Gap and Positioning}
 \label{sec:bg:gap}
 
