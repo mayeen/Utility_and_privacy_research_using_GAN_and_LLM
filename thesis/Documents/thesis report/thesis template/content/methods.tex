@@ -36,57 +36,54 @@ to be compared under a common privacy regime, and the LLM-side scale
 sensitivity to be characterised. The rationale for each generator is set
 out below.
 
-\begin{itemize}\itemsep0.25em
-  \item \textbf{HealthGAN (non-private GAN baseline).} HealthGAN couples the
-        medGAN design with the Wasserstein GAN with gradient penalty (WGAN-GP)
-        framework and a dedicated transformation pipeline for the mixed
-        continuous and categorical attributes characteristic of electronic
-        health records. It further introduces Nearest-Neighbour Adversarial
-        Accuracy, a metric suite that jointly quantifies resemblance and
-        privacy, and reports competitive utility and resemblance relative to
-        established baselines while supporting secure model
-        export~\cite{healthgan}. These properties make it a suitable
-        representative of the non-private GAN paradigm
-        (\S\ref{sec:bg:gan:health}).
-  \item \textbf{PATE-GAN (differentially private GAN).} PATE-GAN provides
-        formal $(\varepsilon,\delta)$-DP by adapting the Private Aggregation of
-        Teacher Ensembles framework~\cite{Papernot2017PATE} to generative
-        modelling: an ensemble of teacher discriminators is trained on disjoint
-        data partitions, their predictions are combined through a
-        differentially private noisy aggregation mechanism, and a student
-        discriminator is trained on the resulting labels, so that the generator
-        inherits the privacy guarantee by post-processing~\cite{pategan}. It
-        thus supplies a GAN-based generator whose privacy budget is explicitly
-        controllable and accountable (\S\ref{sec:bg:gan:pategan}).
-  \item \textbf{Pythia-70M (non-private LLM, small-scale baseline).} The
-        benchmark study of \textcite{Miletic2024} evaluates the Pythia
-        family of decoder-only language models for synthetic tabular health
-        data using the Tabula framework, in which each table row is
-        serialised as a text sequence, and reports that these models results
-        are comparable to CTGAN on train-on-synthetic,
-        test-on-real utility. Pythia-70M is included here as the
-        small-scale non-private LLM representative
-        (\S\ref{sec:bg:llm:tabula}), and, as discussed in
-        \S\ref{sec:methods:pythia-dp:why-1b}, also frames the model-scale
-        precondition that motivated migrating the LLM-side DP variant to
-        the 1B model.
-  \item \textbf{Pythia-1B (non-private LLM, scale anchor).} A larger
-        non-private LLM variant is added so that the LLM-side DP comparison
-        (Pythia-1B versus Pythia-1B-DP) isolates the cost of DP-SGD at a
-        fixed model size, rather than confounding it with the model-scale
-        change to 1B. Pythia-1B uses the same Tabula serialisation and the
-        same LoRA fine-tuning protocol as Pythia-70M, differing only in
-        the underlying decoder-only backbone.
-  \item \textbf{Pythia-1B-DP (differentially private LLM, scope extension).}
-        Beyond the generators specified in the original proposal, this
-        thesis introduces a differentially private variant of Pythia-1B
-        trained with differentially private stochastic gradient descent
-        (DP-SGD)~\cite{Abadi2016DPSGD}, as implemented in the Opacus
-        library~\cite{Yousefpour2021Opacus}. This addition completes the
-        design space and enables a within-paradigm assessment of the cost
-        of formal privacy for the LLM, paralleling the
-        HealthGAN-to-PATE-GAN comparison on the GAN side.
-\end{itemize}
+\paragraph{HealthGAN:}
+HealthGAN couples the medGAN design with the Wasserstein GAN with gradient
+penalty (WGAN-GP) framework and a dedicated transformation pipeline for the
+mixed continuous and categorical attributes characteristic of electronic
+health records. It further introduces Nearest-Neighbour Adversarial Accuracy,
+a metric suite that jointly quantifies resemblance and privacy, and reports
+competitive utility and resemblance relative to established baselines while
+supporting secure model export~\cite{healthgan}. These properties make it a
+suitable representative of the non-private GAN paradigm
+(\S\ref{sec:bg:gan:health}).
+
+\paragraph{PATE-GAN:}
+PATE-GAN provides formal $(\varepsilon,\delta)$-DP by adapting the Private
+Aggregation of Teacher Ensembles framework~\cite{Papernot2017PATE} to
+generative modelling: an ensemble of teacher discriminators is trained on
+disjoint data partitions, their predictions are combined through a
+differentially private noisy aggregation mechanism, and a student
+discriminator is trained on the resulting labels, so that the generator
+inherits the privacy guarantee by post-processing~\cite{pategan}. It thus
+supplies a GAN-based generator whose privacy budget is explicitly controllable
+and accountable (\S\ref{sec:bg:gan:pategan}).
+
+\paragraph{Pythia-70M:}
+The benchmark study of \textcite{Miletic2024} evaluates the Pythia family of
+decoder-only language models for synthetic tabular health data using the
+Tabula framework, in which each table row is serialised as a text sequence,
+and reports that these models results are comparable to CTGAN on
+train-on-synthetic, test-on-real utility. Pythia-70M is included here as the
+small-scale non-private LLM representative (\S\ref{sec:bg:llm:tabula}), and,
+as discussed in \S\ref{sec:methods:pythia-dp:why-1b}, also frames the
+model-scale precondition that motivated migrating the LLM-side DP variant to
+the 1B model.
+
+\paragraph{Pythia-1B:}
+A larger non-private LLM variant is added so that the LLM-side DP comparison
+(Pythia-1B versus Pythia-1B-DP) isolates the cost of DP-SGD at a fixed model
+size, rather than confounding it with the model-scale change to 1B. Pythia-1B
+uses the same Tabula serialisation and the same LoRA fine-tuning protocol as
+Pythia-70M, differing only in the underlying decoder-only backbone.
+
+\paragraph{Pythia-1B-DP:}
+Beyond the generators specified in the original proposal, this thesis
+introduces a differentially private variant of Pythia-1B trained with
+differentially private stochastic gradient descent
+(DP-SGD)~\cite{Abadi2016DPSGD}, as implemented in the Opacus
+library~\cite{Yousefpour2021Opacus}. This addition completes the design space
+and enables a within-paradigm assessment of the cost of formal privacy for the
+LLM, paralleling the HealthGAN-to-PATE-GAN comparison on the GAN side.
 
 \subsection{HealthGAN: WGAN-GP Baseline}
 \label{sec:methods:healthgan}
@@ -113,36 +110,37 @@ which every column is mapped to the unit interval $[0,1]$, yielding a purely
 continuous and bounded input. The encoder dispatches each column to one of
 four transformations according to its data type.
 
-\begin{itemize}\itemsep0.25em
-  \item \textbf{Categorical columns.} Categorical variables are first ordered
-        by decreasing relative frequency, with category names used to break 
-        ties. Each category is then assigned a sub-interval of [0, 1], where
-         the width of the interval corresponds to that category’s relative 
-         frequency in the column. Each observed categorical value is replaced 
-         by a random draw from a truncated normal distribution within its 
-         assigned interval. The distribution is centered at the midpoint of 
-         the interval, and its standard deviation is set to one sixth of the 
-         interval width. For decoding, the cumulative interval boundaries and 
-         their corresponding categories are stored as a lookup table.
-  \item \textbf{Ordinal columns.} Non-binary integer columns are treated as 
-        ordinal variables and encoded using the same interval-partitioning scheme. 
-        Unlike nominal categorical variables, the intervals are ordered by the 
-        integer values rather than by category frequency. Any integer levels missing 
-        between the observed minimum and maximum are added with zero count. Additive 
-        smoothing with $\alpha = 1$ is then applied to the level frequencies before 
-        constructing the intervals, ensuring that even unobserved levels receive a 
-        non-zero interval width.
-\item \textbf{Binary columns.} Columns containing only 0 and 1 are treated as
-      categorical variables by default and are encoded using the same
-      interval-based transformation. If the optional \texttt{--beta} flag is
-      enabled, they are instead encoded using truncated Beta distributions
-      whose parameters are derived from the observed class balance.
+\paragraph{Categorical columns:}
+Categorical variables are first ordered by decreasing relative frequency, with
+category names used to break ties. Each category is then assigned a
+sub-interval of $[0,1]$, where the width of the interval corresponds to that
+category's relative frequency in the column. Each observed categorical value
+is replaced by a random draw from a truncated normal distribution within its
+assigned interval. The distribution is centered at the midpoint of the
+interval, and its standard deviation is set to one sixth of the interval
+width. For decoding, the cumulative interval boundaries and their
+corresponding categories are stored as a lookup table.
 
-\item \textbf{Numeric columns.} Floating-point columns are scaled to the
-      interval $[0,1]$ using min--max normalisation. The original minimum and
-      maximum of each column are stored so that the transformation can be
-      inverted during decoding.
-\end{itemize}
+\paragraph{Ordinal columns:}
+Non-binary integer columns are treated as ordinal variables and encoded using
+the same interval-partitioning scheme. Unlike nominal categorical variables,
+the intervals are ordered by the integer values rather than by category
+frequency. Any integer levels missing between the observed minimum and maximum
+are added with zero count. Additive smoothing with $\alpha = 1$ is then
+applied to the level frequencies before constructing the intervals, ensuring
+that even unobserved levels receive a non-zero interval width.
+
+\paragraph{Binary columns:}
+Columns containing only 0 and 1 are treated as categorical variables by
+default and are encoded using the same interval-based transformation. If the
+optional \texttt{--beta} flag is enabled, they are instead encoded using
+truncated Beta distributions whose parameters are derived from the observed
+class balance.
+
+\paragraph{Numeric columns:}
+Floating-point columns are scaled to the interval $[0,1]$ using min--max
+normalisation. The original minimum and maximum of each column are stored so
+that the transformation can be inverted during decoding.
 
 A configurable set of columns is forced onto the ordinal path even when
 stored as floating point, so that low-cardinality coded variables (such as
@@ -280,7 +278,8 @@ Adam $(\beta_1,\beta_2)$ & $(0.5,\ 0.9)$ \\
 Mini-batch size & $11{,}400$ \\
 Training iterations & $100{,}000$ \\
 Training / test records & $57{,}214 \,/\, 14{,}304$ \\
-Synthetic files evaluated & $3 \times 57{,}214$ records; plus $1 \times 14{,}304$ test-sized draw \\
+Synthetic files evaluated & $3 \times 57{,}214$ records; \\
+  & plus $1 \times 14{,}304$ test-sized draw \\
 \bottomrule
 \end{tabular}
 \end{table}

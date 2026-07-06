@@ -79,7 +79,7 @@ structure.
 \subsubsection{Statistical Similarity to the Real Data}
 \label{sec:eval:utility:similarity}
 
-\paragraph{Per-Column Distributional Match.}
+\paragraph{Per-Column Distributional Match:}
 \label{sec:eval:utility:similarity:dist}
 The first diagnostic is purely visual: for each column the empirical
 density of the real and the synthetic values is overlaid on the same
@@ -97,7 +97,7 @@ in an appendix gallery so that any anomaly visible in the
 single-number metrics that follow can be cross-checked at the
 column level.
 
-\paragraph{Summary Statistics (Mean, Standard Deviation).}
+\paragraph{Summary Statistics (Mean, Standard Deviation):}
 \label{sec:eval:utility:similarity:stats}
 The simplest single-number per-column summaries are the
 sample mean and sample standard deviation of each retained column, computed
@@ -115,11 +115,11 @@ than a per-shape mismatch that preserves the first two moments. Together
 these two statistics summarise \emph{low-order marginal moment fidelity};
 they remain blind to all dependencies between columns and to any shape
 information beyond the first two moments. In the implementation, the
-medication-flag columns and \texttt{num\_procedures} are excluded before
+medication-flag columns and \emph{num\_procedures} are excluded before
 this diagnostic is computed; any remaining column whose real-data mean
 and standard deviation are both zero is then removed as degenerate.
 
-\paragraph{Pairwise Correlation Difference (PCD).}
+\paragraph{Pairwise Correlation Difference (PCD):}
 \label{sec:eval:utility:similarity:pcd}
 A single-number summary of the joint linear structure across columns
 is based on the Pairwise Correlation Difference proposed by
@@ -153,7 +153,7 @@ correlation-difference heatmaps, because the heatmaps localise which
 column pairs the generator failed to model and show whether each
 correlation is overestimated, underestimated, or sign-flipped.
 
-\paragraph{Kolmogorov--Smirnov Two-Sample Test.}
+\paragraph{Kolmogorov--Smirnov Two-Sample Test:}
 \label{sec:eval:utility:similarity:ks}
 The Kolmogorov--Smirnov (KS) two-sample test is a non-parametric
 distance between the empirical cumulative distribution functions of
@@ -179,7 +179,7 @@ statistic numerically unstable. KS is the canonical univariate
 distance reported in the synthetic-medical-data survey of
 \textcite{Murtaza2023}.
 
-\paragraph{PCA-Based Manifold Overlap.}
+\paragraph{PCA-Based Manifold Overlap:}
 \label{sec:eval:utility:similarity:pca}
 A two-dimensional principal-component projection of the real and the
 synthetic tables onto a shared coordinate system is used as a visual
@@ -212,7 +212,7 @@ train--test regimes, classifier suite, scalar metrics, and ROC analysis;
 the latter two check whether the learned signal and clinically
 interpretable associations are preserved.
 
-\paragraph{Classifier-Based Downstream Performance.}
+\paragraph{Classifier-Based Downstream Performance:}
 \label{sec:eval:utility:predictive:tstr}
 Predictive utility is evaluated primarily with Train-on-Synthetic,
 Test-on-Real (TSTR), a model-based utility protocol introduced
@@ -233,7 +233,7 @@ test splits are internally consistent. In this thesis, all five active
 generators provide synthetic test splits, so TRTS and TSTS are computed
 alongside TSTR for each generator.
 
-\paragraph{Classifier Suite.}
+\paragraph{Classifier Suite:}
 \label{sec:eval:utility:predictive:classifiers}
 Three downstream classifiers are evaluated in parallel, chosen to
 span linear, ensemble-tree, and gradient-boosted regimes:
@@ -251,7 +251,7 @@ from test statistics into the imputation. All classifiers are seeded
 with a fixed random state so that the cross-generator comparison is
 not perturbed by run-to-run variance within a classifier.
 
-\paragraph{Performance Metrics.}
+\paragraph{Performance Metrics:}
 \label{sec:eval:utility:predictive:metrics}
 For each (Train Source, Classifier) cell five metrics are reported:
 classification accuracy, the binary F1 score of the positive
@@ -270,7 +270,7 @@ ranking quality}. A generator can score well on one of these and
 poorly on the others, so they are treated as complementary rather
 than as alternative scalarisations of the same underlying quantity.
 
-\paragraph{ROC Curve Analysis.}
+\paragraph{ROC Curve Analysis:}
 \label{sec:eval:utility:predictive:roc}
 The gradient-boosting classifier is additionally used to generate
 ROC-curve overlays for the TRTR baseline and each TSTR generator.
@@ -279,7 +279,7 @@ is concentrated at a particular operating point along the curve or
 spread uniformly across thresholds, which is information that the
 scalar AUC-ROC of the previous paragraph collapses away.
 
-\paragraph{Feature-Importance Preservation.}
+\paragraph{Feature-Importance Preservation:}
 \label{sec:eval:utility:predictive:fi}
 A complementary check on conditional structure is whether the
 random-forest variable-importance profile obtained from a synthetic-trained
@@ -316,7 +316,7 @@ clinical importance. Variable-importance agreement has similarly been used
 as a utility diagnostic in PATE-GAN and clinical synthetic-data
 evaluations~\cite{pategan,beaulieu2019privacy}.
 
-\paragraph{Cox Proportional-Hazards Agreement.}
+\paragraph{Cox Proportional-Hazards Agreement:}
 \label{sec:eval:utility:predictive:cox}
 Beyond binary classification, the readmission target is also
 modelled as a time-to-event outcome through a Cox proportional
@@ -340,7 +340,7 @@ Cox-based reproduction of clinical analyses has also been used in
 synthetic-health-data evaluations that compare real and synthetic
 hazard-ratio estimates~\cite{healthgan,yale2020synthesizing}.
 
-\paragraph{Cox Confidence-Interval Overlap.}
+\paragraph{Cox Confidence-Interval Overlap:}
 \label{sec:eval:utility:predictive:cox-overlap}
 The available Cox hazard ratios for each generator are summarised
 against the real-data Cox ratios by computing, for each shared covariate,
@@ -380,7 +380,7 @@ every numeric column is $z$-score standardised so that the privacy
 geometry is not dominated by columns with naturally large absolute
 ranges.
 
-\paragraph{Nearest-Neighbour Distance.}
+\paragraph{Nearest-Neighbour Distance:}
 \label{sec:eval:privacy:nn}
 The most direct instance-level distance metric is the Euclidean
 distance, in the standardised feature space, from each synthetic
@@ -401,7 +401,7 @@ neighbour to exclude self-matches) are computed once and form the
 reference scale against which the synthetic-to-real distances are
 read.
 
-\paragraph{Nearest-Neighbour Distance Ratio (NNDR).}
+\paragraph{Nearest-Neighbour Distance Ratio (NNDR):}
 \label{sec:eval:privacy:nndr}
 The Nearest-Neighbour Distance Ratio, used in tabular synthetic-data
 evaluation frameworks such as SynthEval~\cite{lautrup2025syntheval},
@@ -428,7 +428,7 @@ is read jointly with the utility metrics rather than in isolation. This
 ratio expresses \emph{scale-normalised proximity}, a dimension the raw
 distance statistics of the previous paragraph cannot capture.
 
-\paragraph{Nearest-Neighbour Adversarial Accuracy (NNAA).}
+\paragraph{Nearest-Neighbour Adversarial Accuracy (NNAA):}
 \label{sec:eval:privacy:nnaa}
 The Nearest-Neighbour Adversarial Accuracy, introduced by \textcite{healthgan, yale2020synthesizing},
 is a single-number summary of how indistinguishable real and synthetic
@@ -464,7 +464,7 @@ $\mathrm{PrivacyLoss} = \mathrm{AA}_{\mathrm{test}} - \mathrm{AA}_{\mathrm{train
 is positive when a generator sits closer to the records it was trained
 on than to unseen ones.
 
-\paragraph{Membership Inference Attack.}
+\paragraph{Membership Inference Attack:}
 \label{sec:eval:privacy:mia}
 A membership inference adversary~\cite{Shokri2017MIA} attempts to
 decide, given a candidate record and access to the synthetic
@@ -494,7 +494,7 @@ the per-record proximity metrics above because it pools information
 across multiple synthetic neighbours and across all candidate records
 rather than evaluating any single record's risk in isolation.
 
-\paragraph{Attribute Inference Attack.}
+\paragraph{Attribute Inference Attack:}
 \label{sec:eval:privacy:aia}
 An attribute inference adversary attempts to infer a sensitive
 attribute of a real record given the rest of that record and access
@@ -522,7 +522,7 @@ predictable, while attribute inference flags the same preservation
 as a disclosure risk if it permits a third party to reconstruct the
 attribute from the rest of the record.
 
-\paragraph{Clustering Proximity and Outlier Linkability.}
+\paragraph{Clustering Proximity and Outlier Linkability:}
 \label{sec:eval:privacy:linkability}
 Outliers, patients whose feature vector sits far from the bulk
 of the real distribution, are at disproportionate
@@ -566,7 +566,7 @@ joint privacy--utility framing follows synthetic-data evaluation
 surveys~\cite{hernandez2022synthetic,Murtaza2023}, and the visual
 risk--utility presentation follows \textcite{thees2025beyond}.
 
-\paragraph{Comprehensive Summary Table.}
+\paragraph{Comprehensive Summary Table:}
 \label{sec:eval:aggregate:table}
 The headline numerical summary is a single table whose twelve rows are
 the headline single-number metrics defined in \S\ref{sec:eval:utility} and
@@ -582,7 +582,7 @@ metric across the generator columns is examined to decide which
 metrics actually separate the generators and which collapse to a
 narrow range.
 
-\paragraph{Privacy--Utility Landscape.}
+\paragraph{Privacy--Utility Landscape:}
 \label{sec:eval:aggregate:tradeoff}
 The landscape view plots the median NNDR on the privacy axis against the
 gradient-boosting TSTR AUC-ROC on the utility axis. It also places each generator
@@ -601,7 +601,7 @@ does not conceal residual leakage. The risk--utility map presentation
 follows \textcite{thees2025beyond}.
 
 
-\paragraph{Utility Radar.}
+\paragraph{Utility Radar:}
 \label{sec:eval:aggregate:radar}
 The radar chart provides a scaled profile of the utility pillar after the
 two-dimensional landscape has reduced utility to a single predictive axis.
@@ -620,7 +620,7 @@ rather than as a scalar ranking of generators. The use of bounded,
 directionally aligned axes for radar-style visualisation follows
 \textcite{thees2025beyond}.
 
-\paragraph{Utility--Privacy Heatmap.}
+\paragraph{Utility--Privacy Heatmap:}
 \label{sec:eval:aggregate:heatmap}
 The heatmap provides the metric-level inspection view. Each metric is
 oriented and min--max scaled to $[0,1]$ across the generators before
