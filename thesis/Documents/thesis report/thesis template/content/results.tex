@@ -342,16 +342,17 @@ small residual. The corresponding heatmaps for the remaining three
 generators (HealthGAN, Pythia-70M, and Pythia-1B-DP), consistent with
 the PCD ordering of Table~\ref{tab:rq2:ks-pcd}, are collected in
 Appendix~\ref{app:corrheat}.
-
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.49\textwidth}
+\begin{subfigure}{0.85\textwidth}
 \centering
 \includegraphics[width=\textwidth]{images/results/1c-corr_diff_heatmap_1}
 \caption{PATE-GAN (PCD $0.1142$).}
 \end{subfigure}
-\hfill
-\begin{subfigure}{0.49\textwidth}
+
+\vspace{1em}
+
+\begin{subfigure}{0.85\textwidth}
 \centering
 \includegraphics[width=\textwidth]{images/results/1c-corr_diff_heatmap_4}
 \caption{Pythia-1B (PCD $0.0206$).}
@@ -362,6 +363,7 @@ denote large residual correlation; pale cells denote faithful
 reproduction.}
 \label{fig:rq2:corrheat}
 \end{figure}
+
 
 \paragraph{PCA-Based Manifold Overlap:}
 Figure~\ref{fig:rq2:pca} projects the real and synthetic records onto the
@@ -376,7 +378,7 @@ four generators populate it.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.7\textwidth]{images/results/1e-pca_projection}
+\includegraphics[width=0.85\textwidth]{images/results/1e-pca_projection}
 \caption{Two-dimensional PCA projection (onto the principal components of
 the real data) of real and synthetic records. Four generators overlap the
 real cloud; PATE-GAN is displaced into a disjoint region along the first
@@ -808,11 +810,11 @@ manifold altogether.
 \centering
 \includegraphics[width=\textwidth]{images/results/3e-privacy_evaluation}
 \caption{Consolidated privacy diagnostics across the five generators:
-synthetic-to-real nearest-neighbour distance on a log scale (top left),
-membership-inference AUC
-against the random-guess baseline (top right), attribute-inference
-advantage per attribute (bottom left), and outlier versus non-outlier
-linkability (bottom right).}
+(a)~synthetic-to-real nearest-neighbour distance on a log scale,
+(b)~membership-inference AUC
+against the random-guess baseline, (c)~attribute-inference
+advantage per attribute, and (d)~outlier versus non-outlier
+linkability.}
 \label{fig:rq2:privacy}
 \end{figure}
 
@@ -888,7 +890,7 @@ view.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{images/results/4a-privacy_utility_landscape}
+\includegraphics[width=0.85\textwidth]{images/results/4a-privacy_utility_landscape}
 \caption{Privacy--utility landscape across the five generators. Horizontal
 axis: predictive utility (Gradient-Boosting TSTR AUC-ROC); vertical axis:
 privacy (median NNDR, where values above $1.0$ indicate that the median

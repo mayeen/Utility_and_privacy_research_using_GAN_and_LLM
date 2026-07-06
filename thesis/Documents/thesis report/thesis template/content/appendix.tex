@@ -183,20 +183,29 @@ in Table~\ref{tab:rq2:cox}.
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_1}\caption{PATE-GAN (0/13)}\end{subfigure}\hfill
-\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_2}\caption{HealthGAN (7/12)}\end{subfigure}
+\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_1}\caption{PATE-GAN (0/13)}\end{subfigure}
 
 \vspace{1ex}
-\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_3}\caption{Pythia-70M (4/13)}\end{subfigure}\hfill
-\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_4}\caption{Pythia-1B (7/13)}\end{subfigure}
+\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_2}\caption{HealthGAN (7/12)}\end{subfigure}
+\end{figure}
+
+\begin{figure}[H]\ContinuedFloat
+\centering
+\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_3}\caption{Pythia-70M (4/13)}\end{subfigure}
 
 \vspace{1ex}
-\begin{subfigure}{0.48\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_5}\caption{Pythia-1B-DP (7/13)}\end{subfigure}
+\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_4}\caption{Pythia-1B (7/13)}\end{subfigure}
+\end{figure}
+
+\begin{figure}[H]\ContinuedFloat
+\centering
+\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_5}\caption{Pythia-1B-DP (7/13)}\end{subfigure}
 \caption{Cox hazard-ratio estimates with $95\%$ confidence intervals for
 all five generators; subcaptions report the overlap count with the real
 intervals.}
 \label{app:fig:cox}
 \end{figure}
+
 
 \chapter{HealthGAN Variant Comparison}
 \label{app:hg-variants}
@@ -334,10 +343,26 @@ readmitted & 0.474 & 0.467 & 0.468 & 0.467 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{images/results/5_3-hg_corr_diff_heatmap}
-\caption{Correlation-difference heatmaps (real minus synthetic) for the
-three HealthGAN draws.}
-\label{app:fig:hgcorr}
+\includegraphics[width=0.72\textwidth]{images/results/5_3-hg_corr_diff_heatmap_1}
+\caption{Correlation-difference heatmap (real minus synthetic) for the
+HealthGAN-0 draw.}
+\label{app:fig:hgcorr0}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{images/results/5_3-hg_corr_diff_heatmap_2}
+\caption{Correlation-difference heatmap (real minus synthetic) for the
+HealthGAN-3 draw.}
+\label{app:fig:hgcorr3}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{images/results/5_3-hg_corr_diff_heatmap_3}
+\caption{Correlation-difference heatmap (real minus synthetic) for the
+HealthGAN-6 draw.}
+\label{app:fig:hgcorr6}
 \end{figure}
 
 \begin{figure}[H]
