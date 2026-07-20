@@ -1,9 +1,11 @@
 % pass biblatex options to the instance loaded by the class
-\PassOptionsToPackage{backend=biber,style=authoryear,
-                      sorting=none,      % bibliography in citation order
-                      sortcites=false,
-                      defernumbers=true}
-{biblatex}
+\PassOptionsToPackage{
+  backend=biber,
+  style=ieee,
+  sorting=none,
+  sortcites=false,
+  maxbibnames=99
+}{biblatex}
 \PassOptionsToPackage{main=english}{babel}
 \documentclass[master,intern,palatino]{rgseThesis}
 
@@ -39,10 +41,10 @@
 
 \title{Balancing Data Utility and Privacy in Medical Synthetic Data Generation: A Comparative Study of GAN-based and Large Language Model Approaches}
 
-\supervisor{w}{Prof. Dr. Andreas Mauthe}
+\supervisor{m}{Prof. Dr. Andreas Mauthe}
 \supervisorInfo{Institut für Wirtschafts- und Verwaltungsinformatik, FG IT Security and Data Security}
 
-\secondSupervisor{w}{Christopher Latz}
+\secondSupervisor{m}{Christopher Latz}
 \secondSupervisorInfo{Institut für Wirtschafts- und Verwaltungsinformatik, FG IT Security and Data Security}
 
 % Bibliography database

@@ -16,7 +16,7 @@ GAN-based and LLM-based methods for privacy-preserving synthetic medical data
 generation. By evaluating HealthGAN, PATE-GAN, Pythia-70M, Pythia-1B, and
 Pythia-1B-DP under a unified experimental framework on the
 \emph{Diabetes 130-US Hospitals} dataset~\cite{diabetes_db}, the study
-establishes a transparent basis for analysing the privacy--utility trade-off
+establishes a transparent basis for analysing the privacy-utility trade-off
 across fundamentally different generative paradigms. The integration of aligned 
 training conditions, consistent preprocessing, and a twelve-metric evaluation 
 pipeline ensures comparability across models. It helps ensure that differences 
@@ -54,7 +54,7 @@ private mechanism to prefer when a formal guarantee is required.
 Finally, it shows where LLM-based synthesis remains competitive 
 under privacy budgets and governance constraints.
 
-\section{Answers the Research Questions}
+\section{Answers to the Research Questions}
 \label{sec:conclusion:rq-answers}
 
 % Condensed restatement of the "Answer to RQx" paragraphs from
@@ -77,19 +77,19 @@ illustrated by PATE-GAN's degenerate distance scores alongside its
 utility collapse. A recommended minimal subset covering both pillars without
 redundancy is given in Section~\ref{sec:results:rq1:minimal-suite}.
 
-For the second research question, the privacy--utility comparison shows that
+For the second research question, the privacy-utility comparison shows that
 neither family dominates outright, but each occupies a different region of the
 trade-off plane. Among the guarantee-free generators, the choice is a genuine 
 trade-off. HealthGAN gives the best marginal fidelity and the only distance 
 ratio at the NNDR unity reference. In contrast, the LLM generators, 
 especially Pythia-1B and then Pythia-70M, give the highest statistical 
 and predictive utility. Their performance is closest to the real-data ceiling, 
-with an AUC of $0.682$ against $0.701$. Once $(\varepsilon = 5.0, 
-\delta = 10^{-5})$-differential privacy is demanded, the balance 
-tips decisively toward the LLM family. Pythia-1B-DP remains usable 
-while removing its non-private counterpart's sole attribute-inference 
-leak. In contrast, the differentially private GAN, PATE-GAN, 
-collapses on both utility branches and earns only the apparent 
+with an AUC of $0.682$ against $0.701$. Once $(\varepsilon = 5.0,
+\delta = 10^{-5})$-differential privacy is demanded, the balance
+tips decisively toward the LLM family. Pythia-1B-DP remains usable
+while removing its non-private counterpart's observed attribute-inference
+leak. In contrast, the differentially private GAN as implemented here,
+PATE-GAN, collapses on both utility branches and earns only the apparent
 privacy of off-manifold output (Section~\ref{sec:results:rq2:answer}).
 
 For the third research question, the matched-budget comparison shows that the
@@ -98,8 +98,8 @@ $(\varepsilon = 5.0, \delta = 10^{-5})$ is strongly family-dependent.
 The LLM-family toggle from Pythia-1B to Pythia-1B-DP provides a clean test 
 on a shared backbone. It costs only $0.0991$ in TSTR AUC-ROC while leaving 
 statistical similarity and survival agreement essentially intact. It also 
-converts that moderate cost into a genuine privacy gain by removing the sole 
-attribute-inference leak and driving outlier linkability to zero.The
+converts that moderate cost into a genuine privacy gain by removing the
+observed attribute-inference leak and driving outlier linkability to zero. The
 GAN-family toggle (HealthGAN $\to$ PATE-GAN) instead collapses the utility
 pillar for no genuine privacy gain, and must be read with the caveat that it
 conflates the DP mechanism with an architecture change rather than isolating
@@ -151,8 +151,8 @@ dataset-specific or systematic.
 The privacy comparison is conducted at a 
 single matched budget of $(\varepsilon = 5.0, 
 \delta = 10^{-5})$. This gives one point on each 
-family's privacy--utility curve rather than its slope. Repeating PATE-GAN and 
-Pythia-1B-DP across a range of budgets, such as $\varepsilon \in {1, 3, 5, 10}$~\cite{Nahid2024}, 
+family's privacy-utility curve rather than its slope. Repeating PATE-GAN and 
+Pythia-1B-DP across a range of budgets, such as $\varepsilon \in \{1, 3, 5, 10\}$~\cite{Nahid2024},
 would reveal whether the GAN-family collapse persists at looser budgets. 
 It would also locate the budget at which the LLM family's utility cost becomes prohibitive.
 
@@ -175,7 +175,7 @@ delivers protection that the present attacks are too weak to detect.
 This study treats each encounter as one independent cross-sectional row. 
 Extending the comparison to time-series synthesis~\cite{dash2020medical,bhanot2022investigating} 
 and to multimodal records combining tabular fields with imaging or 
-free-text notes would test the generality of the findings. It would show whether the privacy--utility 
+free-text notes would test the generality of the findings. It would show whether the privacy-utility 
 conclusions hold once temporal and cross-modal dependencies must also be preserved.
 
 \subsection{Non-Linear Dependency Metrics}

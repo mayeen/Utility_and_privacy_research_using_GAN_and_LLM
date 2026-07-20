@@ -53,7 +53,7 @@ $1$B scale but not at $70$M is exactly the pattern predicted by
 \textcite{Li2022LargeDP}, who show that larger language models tolerate the
 noise injected by DP-SGD more gracefully. The convergence failure at the
 $70$M scale (\S\ref{sec:results:rq3:pythia-70m-failure}) is the negative
-confirmation. Although the GAN-side collapse under differential privacy, but it
+confirmation. The GAN-side collapse under differential privacy, by contrast,
 cannot be read as a pure DP effect, because HealthGAN and PATE-GAN differ in
 architecture as well as in privacy mechanism
 (\S\ref{sec:discussion:limit:gan-toggle-asymmetry}). The results suggest that,
@@ -113,12 +113,15 @@ for a data steward choosing a generator for tabular medical data.
 
 \paragraph{When a formal privacy guarantee is required:}
 The differentially private LLM (Pythia-1B-DP) is the recommended choice
-rather than the differentially private GAN. At $\varepsilon = 5.0$ the
-DP-LLM retained usable utility (TSTR AUC $0.583$) and reduced attribute
-disclosure, whereas PATE-GAN collapsed to near chance on every utility
-metric. This inverts the conventional default of reaching for the de-facto
-DP-GAN baseline, subject to the caveat that the DP-LLM must be operated at
-sufficient scale, since DP-SGD failed outright at the $70$M scale.
+rather than the differentially private GAN as implemented here. At
+$\varepsilon = 5.0$ the DP-LLM retained usable utility (TSTR AUC $0.583$)
+and reduced attribute disclosure, whereas the PATE-GAN implementation
+evaluated in this thesis collapsed to near chance on every utility metric.
+This inverts the conventional default of reaching for the de-facto DP-GAN
+baseline, subject to two caveats: the DP-LLM must be operated at sufficient
+scale, since DP-SGD failed outright at the $70$M scale, and the GAN-side
+evidence is specific to the PATE-GAN configuration evaluated here
+(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}).
 
 \paragraph{When maximum utility is required without a formal guarantee:}
 Two options are defensible. Pythia-1B gives the highest predictive utility
@@ -214,7 +217,15 @@ obstacles to retrofitting DP-SGD onto WGAN-GP discussed in
 when interpreting cross-family differences in the cost of DP enforcement,
 because part of the GAN-side utility delta in
 \S\ref{sec:results:rq3:gan-toggle} is attributable to architecture rather
-than to differential privacy alone.
+than to differential privacy alone. A further caveat concerns the PATE-GAN
+implementation itself: the original PATE-GAN evaluation reports usable
+synthetic utility at privacy budgets tighter than the one used
+here~\cite{pategan}, whereas the instance evaluated in this thesis, which
+uses linear logistic-regression teachers refitted at every round and a
+weight-clipped Wasserstein student (\S\ref{sec:methods:pategan:teacher}),
+collapsed on this benchmark. The observed collapse should therefore be read
+as a property of this implementation, dataset, and budget, not as evidence
+that differentially private GANs fail in general.
 
 \subsection{Dual Role of PATE-GAN in the Landscape Comparison}
 \label{sec:discussion:limit:pategan-dual-role}

@@ -1,28 +1,65 @@
 % !TEX root = ../thesis.tex
 
-% Abstract --- English only
+% Abstract -- German (Zusammenfassung) + English
+
+\begin{otherlanguage}{ngerman}
+    \section*{Zusammenfassung}
+
+    Die Freigabe medizinischer Daten f\"ur die Forschung wird durch
+    Datenschutzregelungen wie HIPAA und DSGVO eingeschr\"ankt, w\"ahrend sich
+    klassische Anonymisierungsverfahren gegen\"uber Verkn\"upfungs- und
+    Re-Identifikationsangriffen wiederholt als unzureichend erwiesen haben.
+    Die Erzeugung synthetischer Daten bietet eine Alternative, doch der
+    Zielkonflikt zwischen Nutzbarkeit und Privatsph\"are ist \"uber
+    grundlegend verschiedene generative Paradigmen hinweg bislang nur
+    unzureichend charakterisiert. Diese Arbeit pr\"asentiert einen
+    einheitlichen empirischen Vergleich von f\"unf Generatoren auf dem
+    Datensatz \emph{Diabetes 130-US Hospitals}, der die GAN- und die
+    LLM-Familie jeweils mit und ohne formale Differential Privacy abdeckt:
+    HealthGAN, PATE-GAN, Pythia-70M-LoRA, Pythia-1B-LoRA und
+    Pythia-1B-DP-LoRA. Jeder Generator wird anhand skalarer Metriken entlang
+    zweier S\"aulen bewertet: \emph{Utility}, die statistische \"Ahnlichkeit
+    zu den realen Daten mit der pr\"adiktiven Leistung nachgelagerter, auf
+    synthetischen Datens\"atzen trainierter Modelle verbindet, und
+    \emph{Privacy}, die instanzbasierte Distanzma{\ss}e sowie Membership- und
+    Attribute-Inference-Risiken umfasst.
+
+    Keine der beiden Familien dominiert durchg\"angig. Ohne formale Garantie
+    bleibt die Wahl ein echter Zielkonflikt: HealthGAN erreicht die beste
+    marginale Fidelit\"at und als einziger nutzbarer Generator ein
+    N\"achste-Nachbarn-Distanzverh\"altnis an der Einheitsreferenz. Die
+    Sprachmodelle erzielen die h\"ochste pr\"adiktive Utility, wobei
+    Pythia-1B der realen Referenz am n\"achsten kommt (AUC $0.682$
+    gegen\"uber $0.701$). Unter einem angeglichenen Budget
+    ($\varepsilon = 5.0$) verschiebt sich die Balance zugunsten der
+    LLM-Familie: Pythia-1B-DP bleibt f\"ur einen R\"uckgang von etwa $0.10$
+    im TSTR-AUC-ROC nutzbar, beseitigt zugleich das beim nicht-privaten
+    Gegenst\"uck beobachtete Attribute-Inference-Leck und senkt die
+    Outlier-Linkability auf null. Das hier evaluierte differentiell private
+    GAN bricht dagegen auf beiden Utility-Zweigen ein und erzielt lediglich
+    die scheinbare Privatheit einer von der realen Datenverteilung
+    entfernten Ausgabe. Die Kosten der Differential Privacy sind somit stark
+    familienabh\"angig. Die Arbeit liefert eine reproduzierbare
+    Evaluationspipeline, einen direkten Benchmark entlang der GAN-LLM- und
+    der DP-nicht-DP-Achse sowie quantitative Evidenz zu den Grenzkosten
+    formaler Differential Privacy innerhalb jeder Generatorfamilie.
+\end{otherlanguage}
+\cleardoublepage
 
 \begin{otherlanguage}{english}
     \section*{Abstract}
 
-    % TODO: Write the English abstract (200--300 words):
-    %  - Problem: utility-privacy trade-off in medical synthetic data
-    %  - Methodology: head-to-head comparison of HealthGAN, PATE-GAN,
-    %    Pythia-70M, Pythia-1B, and Pythia-1B-DP on the Diabetes 130-US
-    %    Hospitals dataset
-    %  - Evaluation across utility (statistical similarity + predictive
-    %    performance) and privacy
-    %  - Key findings (one or two sentences)
-    %  - Contributions
-
-    The release of medical data for research is constrained by privacy
-    regulations such as HIPAA and GDPR, while classical anonymisation has
+    Privacy regulations such as Health Insurance Portability and Accountability Act 
+    (HIPAA) and General Data Protection Regulation (GDPR) provide the governance 
+    framework within which medical data can be shared and reused responsibly 
+    for research., while classical anonymisation has
     proven insufficient under linkage and re-identification attacks. Synthetic
     data generation offers an alternative, yet the trade-off between utility and
     privacy remains poorly characterised across fundamentally different
     generative paradigms. This thesis presents a unified empirical comparison of
     five generators on the \emph{Diabetes 130-US Hospitals} dataset, spanning
-    the GAN and LLM families both with and without formal differential privacy:
+    the Generative Adversarial Network (GAN) and Large Language Model (LLM) 
+    families both with and without formal differential privacy:
     HealthGAN, PATE-GAN, Pythia-70M-LoRA, Pythia-1B-LoRA, and Pythia-1B-DP-LoRA.
     Every generator is assessed with single-number metrics across two pillars:
     \emph{utility}, combining statistical similarity to the real data with the
@@ -30,19 +67,19 @@
     records, and \emph{privacy}, covering instance-level distance and
     membership- and attribute-inference risk.
 
-    No family dominates outright. Without a formal guarantee the choice is a
+    Without a formal guarantee the choice is a
     genuine trade-off: HealthGAN attains the best marginal fidelity and the only
     distance ratio at the nearest-neighbour unity reference. The language models
     reach the highest predictive utility, with Pythia-1B closest to the
     real-data ceiling (AUC $0.682$ against $0.701$). Under a matched
     $(\varepsilon = 5.0)$ budget the balance tips toward the LLM family:
     Pythia-1B-DP stays usable for roughly a $0.10$ drop in TSTR AUC-ROC while
-    removing its non-private counterpart's sole attribute-inference leak and
-    driving outlier linkability to zero. The differentially private GAN, by
-    contrast, collapses on both utility branches and earns only the apparent
-    privacy of off-manifold output. The cost of differential privacy is thus
+    removing its non-private counterpart's observed attribute-inference leak
+    and driving outlier linkability to zero. The differentially private GAN
+    evaluated here, by contrast, collapses on both utility branches and earns
+    only the apparent privacy of off-manifold output. The cost of differential privacy is thus
     strongly family-dependent. The thesis contributes a reproducible evaluation
-    pipeline, a head-to-head benchmark spanning the GAN--LLM and DP--non-DP axes,
+    pipeline, a head-to-head benchmark spanning the GAN-LLM and DP-non-DP axes,
     and quantitative evidence on the marginal cost of formal differential
     privacy within each generative family.
 \end{otherlanguage}

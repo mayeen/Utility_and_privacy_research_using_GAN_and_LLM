@@ -287,7 +287,9 @@ Hiermit best{\"a}tige ich, dass die vorliegende Arbeit von mir selbst{\"a}ndig v
 
 \usepackage[
 backend=biber,
-style=numeric
+style=ieee,
+style=numeric,
+maxbibnames=99
 ]{biblatex}
 
 %Entrytype definition and driver for standards (ISO, ECSS, W3C ...)

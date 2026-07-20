@@ -7,70 +7,70 @@
 \label{sec:intro:motivation}
 
 % Migrated and lightly edited from proposal §1 (Introduction) + §2 (Motivation).
-The sustained growth of digital health records, together with rapid advances
-in artificial intelligence (AI), offers significant potential to transform
-healthcare delivery. At the same time, robust regulatory frameworks such as the
-General Data Protection Regulation (GDPR) and the Health Insurance Portability
-and Accountability Act (HIPAA) play a crucial role in safeguarding patient
-confidentiality and ensuring responsible data use. These protections are
-essential for maintaining public trust in digital health systems. They also
-require researchers to explore innovative methods that enable data-driven
+The growth of digital health records, in together with rapid advances
+in artificial intelligence (AI), has significant potential to transform
+healthcare delivery. At the same time, regulatory frameworks such as the
+GDPR and HIPAA play a crucial role in safeguarding patient's 
+confidential data and ensuring responsible data use. These protections are
+important for maintaining public trust in digital health systems. They also
+drive researchers to explore innovative methods that enable data-driven
 innovation while upholding proper privacy standards. Conventional anonymisation
 methods have repeatedly proven insufficient to guarantee privacy in
 high-dimensional health data, as re-identification and linkage attacks remain
 viable~\cite{Murtaza2023,stadler2022synthetic}.
 
-Synthetic data generation (SDG) has emerged as a promising alternative,
-enabling the creation of artificial datasets that retain the statistical
-properties of the original while mitigating privacy risks. Among the most
-prominent approaches are \emph{Generative Adversarial Networks} (GANs) and
+Synthetic data generation (SDG) has emerged as a promising alternative.
+It enables the creation of artificial datasets that retain the statistical
+properties of the original while mitigating privacy risks. Among different methods, the most
+prominent are \emph{Generative Adversarial Networks} (GANs) and
 \emph{Large Language Models} (LLMs). GANs have demonstrated success in
-structured medical records~\cite{Choi2017MedGAN,Xu2019CTGAN},
-and imaging data, while transformer-based LLMs
-offer advantages in modelling heterogeneous and unstructured
+structured medical records~\cite{Choi2017MedGAN,Xu2019CTGAN}, while transformer-based LLMs
+offer advantages in modelling heterogeneous
 records~\cite{Miletic2024}. GANs work by training
-two neural networks: a generator that creates synthetic samples and a
+two neural networks. It has a generator that creates synthetic samples and a
 discriminator that tries to distinguish them from real data until the
 generator learns to produce highly realistic outputs. LLMs
 operate using transformer architectures that leverage self-attention to learn
-long-range patterns in sequences, allowing them to generate coherent text or
+long-range patterns in sequences. This method allows them to generate coherent text or
 structured records. While GANs focus on matching data distributions through
 adversarial learning, LLMs generate data by predicting the next most probable
 token based on context.
 
 The need for privacy-preserving data generation in healthcare is not only a
-technical challenge but a foundational concern of medical research. The
-scarcity of openly accessible, high-quality clinical data constrains
+technical challenge but also a foundational concern of medical research. The
+scarcity of openly accessible, high-quality clinical data hinders
 innovation in diagnosis, treatment planning, and epidemiological modelling.
-Regulatory restrictions and ethical imperatives make direct sharing of
-identifiable records infeasible. Synthetic data presents a pathway to alleviate
+Responsible data sharing in healthcare requires strong safeguards for patient
+privacy and ethical use of sensitive records. Synthetic data presents a path to mitigate
 this bottleneck by allowing the distribution of data without direct disclosure
-of personal identifiers, thus accelerating AI model development and
+of personal identifiers. This enables accelerating AI model development and
 validation.
 
-\section{Problem Statement: The Utility--Privacy Tension}
+\section{Problem Statement: The Utility-Privacy Tension}
 \label{sec:intro:problem}
 
 The adoption of synthetic data in healthcare depends on two interdependent
-requirements: utility and privacy. Synthetic data is valuable only if it remains
-analytically useful, and defensible only if it reduces the risk of exposing
-information about real patients. The core problem is therefore not to optimise
-either criterion in isolation, but to understand the trade-off between them.
+requirements: utility and privacy~\cite{kaabachi2025scoping}. Synthetic data is
+valuable only if it remains analytically useful, and defensible only if it
+reduces the risk of exposing information about real patients. The core problem
+is therefore not to optimise either criterion in isolation, but to understand
+the trade-off between them, which prior work has shown to be difficult to
+predict~\cite{stadler2022synthetic}.
 
 \begin{enumerate}\itemsep0.25em
-  \item \textbf{Utility:} the dataset must preserve the statistical,
+    \item \textbf{Utility:} the dataset must preserve the statistical,
         structural, and predictive characteristics needed for downstream
-        analysis, including marginal feature distributions, variable
-        dependencies, target class balance, and model generalisation to real
-        held-out data.
+        analysis~\cite{kaabachi2025scoping}, including marginal feature
+        distributions, variable dependencies, target class balance, and model
+        generalisation to real held-out data.
   \item \textbf{Privacy:} the dataset must provide resistance to adversarial
         attacks, such as membership inference, attribute disclosure, and
-        record-level linkage, especially when rare diagnoses, unusual treatment
-        patterns, or repeated encounters make patients identifiable even after
-        direct identifiers have been removed.
+        record-level linkage~\cite{kaabachi2025scoping}, especially when rare
+        diagnoses, unusual treatment patterns, or repeated encounters make
+        patients identifiable even after direct identifiers have been removed.
 \end{enumerate}
 While GANs and LLMs each offer unique strengths, there is limited comparative
-work evaluating their effectiveness under a unified privacy--utility framework,
+work evaluating their effectiveness under a unified privacy-utility framework,
 particularly for heterogeneous healthcare datasets.
 
 \section{Research Questions}
@@ -84,17 +84,58 @@ utility (statistical resemblance and predictive performance) and privacy risk
 of synthetic tabular medical data, and what distinct dimension of data
 characteristics does each capture?
 
+No single metric can summarise the quality of a synthetic dataset. A
+generator may reproduce marginal feature distributions faithfully yet distort
+the dependencies between variables. Similarly, it may support accurate
+downstream prediction while memorising individual patient records. RQ1
+therefore asks which established measures are needed to expose such failures.
+In this thesis, a set of metrics is considered \emph{suitable} if it meets
+two criteria. First, it must cover the failure modes documented in the
+literature: distributional distortion, loss of variable dependencies,
+degraded predictive performance, memorisation, and vulnerability to
+membership-inference, attribute-inference, and linkage attacks. Second, each
+metric must capture a distinct dimension of data quality, such that no metric
+is redundant with the others. The second criterion is also examined
+empirically. The metrics that rank the generators differently cannot be measuring
+the same property. The answer to RQ1 takes the form of the unified two-pillar
+evaluation framework defined in Chapter~\ref{ch:methodology}, which provides
+the instruments used to answer the remaining two questions.
+
 \paragraph{RQ2:}
 \label{rq:rq2} How do GAN-based and LLM-based synthesisers compare on the
-privacy--utility trade-off when applied to tabular medical data, and which
+privacy-utility trade-off when applied to tabular medical data, and which
 achieves a more effective balance?
 
+GANs and LLMs generate data through fundamentally different mechanisms.
+GANs match the data distribution through adversarial training, whereas LLMs
+predict records token by token. There is thus no reason to expect the two
+families to share the same strengths or the same failure modes. RQ2 applies
+the framework from RQ1 to compare both families directly on the
+\emph{Diabetes 130-US Hospitals} dataset. Here, a more effective balance
+means retaining analytical utility without a correspondingly higher privacy
+risk. A generator that excels on one criterion at the expense of the other
+does not satisfy this standard. The comparison is reported in
+Chapter~\ref{ch:results}.
+
 \paragraph{RQ3:}
-\label{rq:rq3} At a matched privacy budget ($\varepsilon = 5.0$), how does
-enforcing differential privacy using mechanisms appropriate to each family
-affect utility, and how do the resulting privacy--utility profiles differ
-between GAN-based (PATE-GAN vs.\ HealthGAN) and LLM-based (Pythia-1B-DP vs.\
-Pythia-1B) synthesisers of tabular medical data?
+\label{rq:rq3} At a matched privacy budget ($\varepsilon = 5.0$), how does enforcing
+differential privacy using family-appropriate mechanisms affect utility, and
+how do the resulting privacy-utility profiles differ between GAN-based
+synthesisers (PATE-GAN compared with HealthGAN) and LLM-based synthesisers
+(Pythia-1B-DP compared with Pythia-1B) for tabular medical data?
+
+Whereas RQ2 compares the two generator families in general, RQ3 isolates the
+effect of a formal differential-privacy guarantee. The two model families support 
+different mechanisms for enforcing differential
+privacy. In this thesis, PATE is used in the GAN-based setting, whereas DP-SGD is used in the
+LLM-based setting. The comparison therefore fixes the privacy budget at
+$\varepsilon = 5.0$, so that both families operate under an equivalent formal
+guarantee. Each differentially private model is then compared with its
+non-DP counterpart. For GAN-based synthesisers, this means comparing 
+PATE-GAN against HealthGAN, and for LLM-based synthesisers, 
+we are comparing Pythia-1B-DP against Pythia-1B. This within-family contrast quantifies the utility cost of
+differential privacy. The cross-family contrast shows which mechanism incurs
+the smaller utility loss at the same budget.
 
 \section{Contributions}
 \label{sec:intro:contributions}
@@ -104,29 +145,32 @@ privacy-preserving synthetic tabular health data.
 
 First, it develops a reproducible evaluation pipeline for synthetic medical
 tabular data. The pipeline is organised around two complementary dimensions:
-\emph{utility}, comprising both statistical similarity to the real data and the
-predictive performance of downstream models, and \emph{privacy}, covering
+\emph{utility} and \emph{privacy}. The \emph{utility} dimension comprises
+ both statistical similarity to the real data and the
+predictive performance of downstream models, while the \emph{privacy} dimension covers
 proximity-based memorisation indicators, membership-inference risk,
 attribute-inference risk, and outlier linkability.
 
 Second, it provides a head-to-head empirical comparison of five generators on
-the \emph{Diabetes 130-US Hospitals} dataset~\cite{diabetes_db}: HealthGAN
-(WGAN-GP)~\cite{healthgan}, PATE-GAN
-($(\varepsilon,\delta)$-DP)~\cite{pategan}, Pythia-70M-LoRA and
-Pythia-1B-LoRA~\cite{Biderman2023Pythia,Hu2022LoRA,Miletic2024}, and
+the \emph{Diabetes 130-US Hospitals} dataset: HealthGAN
+(WGAN-GP), PATE-GAN
+($(\varepsilon,\delta)$-DP), Pythia-70M-LoRA and
+Pythia-1B-LoRA, and
 Pythia-1B-DP-LoRA using DP-SGD via
-Opacus~\cite{Yousefpour2021Opacus,Abadi2016DPSGD}.
+Opacus.
 
 Third, it quantifies the marginal cost of formal differential privacy within
-both model families: non-DP HealthGAN versus PATE-GAN at $\varepsilon=5.0$ in
-the GAN setting, and non-DP Pythia-1B versus Pythia-1B-DP at
+both model families. The comparison of non-DP HealthGAN and dp enforced PATE-GAN at $\varepsilon=5.0$ in
+the GAN setting, while non-DP Pythia-1B and dp enforced Pythia-1B-DP at
 $\varepsilon=5.0$ in the LLM setting. The inclusion of the non-DP Pythia-1B
 scale anchor and the Pythia-1B-DP variant constitutes a scope extension beyond
 the originally submitted proposal, motivated by the finding that DP-SGD applied
 to Pythia-70M does not converge usefully at this privacy budget
 (\S\ref{sec:results:rq3:pythia-70m-failure}).
 
-Fourth, it derives practical recommendations for medical data stewards. These
+Fourth, based on the evaluated dataset, model configurations, privacy budgets, 
+and selected utility and privacy metrics, it derives practical recommendations 
+for medical data stewards. These
 recommendations identify when a non-DP GAN may be sufficient, which
 differentially private mechanism is preferable when a formal guarantee is
 required, and under which privacy-budget and governance constraints LLM-based
@@ -154,7 +198,7 @@ around the three research questions.
 \textbf{Chapter~\ref{ch:discussion}} interprets the results, discusses
 strengths and weaknesses of each generator, and acknowledges threats to
 validity. Finally, \textbf{Chapter~\ref{ch:conclusion}} summarises the
-contributions, returns directly to RQ1--RQ3, and outlines avenues for future
-work.
+contributions, returns directly to RQ1-RQ3, and outlines possible extensions
+for future work.
 
 \cleardoublepage

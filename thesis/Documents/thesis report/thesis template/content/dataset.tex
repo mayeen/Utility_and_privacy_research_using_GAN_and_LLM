@@ -6,26 +6,35 @@
 \subsection{The Diabetes 130-US Hospitals Dataset}
 \label{sec:data:dataset}
 
-The benchmark used throughout this thesis is the \emph{UCI Diabetes 130-US
+The dataset used throughout this thesis is the \emph{UCI Diabetes 130-US
 Hospitals} dataset~\cite{diabetes_db,strack2014impact}. It contains 101{,}766
 inpatient encounters from diabetic patients treated across 130 U.S.\ hospitals
-between 1999 and 2008. Each record describes a hospital admission of 1--14
+between 1999 and 2008. Each record describes a hospital admission of 1-14
 days and includes 50 columns: mixed-type features covering demographics (age,
 gender, race), admission characteristics, laboratory test results, diagnoses,
 medication use, and prior inpatient, outpatient, and emergency visits,
 together with record identifiers and the readmission target. The
 data consists primarily of categorical and integer variables and represents
 detailed clinical, administrative, and treatment-related information collected
-during the patient's hospital stay. Missing values are present, and no
+during the patient's hospital stay. 
+
+This dataset was selected because it provides a large, publicly available,
+real-world medical benchmark with a clinically meaningful readmission outcome,
+while still remaining computationally manageable for repeated generator
+training and evaluation. Its relevance is further supported by prior synthetic
+health-data work using HealthGAN-style privacy and utility evaluation
+protocols~\cite{healthgan}.
+
+Missing values are present, and no
 predefined data splits are provided. This enables flexible
-train--validation--test partitioning. The binary target used throughout this
-work is \emph{readmitted}: hospital readmissions of any kind are encoded as
+train-validation-test partitioning. The binary target used throughout this
+work is \emph{readmitted}. Hospital readmissions of any kind are encoded as
 the positive class and ``no readmission'' as the negative class.
 
 \paragraph{Scope:} The proposal contemplated MIMIC-III as a secondary
 benchmark; the final thesis is restricted to the Diabetes 130-US Hospitals
 dataset to keep training budgets and evaluation runs manageable across five
-generators and eleven single-number metrics. Cross-dataset generalisation is discussed as
+generators and twelve single-number metrics. Cross-dataset generalisation is discussed as
 future work in Section~\ref{sec:conclusion:future}.
 
 \subsection{Exploratory Data Analysis}
@@ -49,7 +58,7 @@ as categorical variables. Missingness is concentrated in a small number of
 clinical and administrative fields, five of which exceed $39\%$ absent:
 \emph{weight} ($96.86\%$), \emph{max\_glu\_serum} ($94.75\%$),
 \emph{A1Cresult} ($83.28\%$), \emph{medical\_specialty} ($49.08\%$), and
-\emph{payer\_code} ($39.56\%$); the remaining columns are near-complete, with
+\emph{payer\_code} ($39.56\%$). The remaining columns are near-complete, with
 the full breakdown shown in Figure~\ref{fig:data:missingness}. The engineering
 response to these patterns (field removal versus imputation) is described in
 Section~\ref{sec:data:fe}.
@@ -67,8 +76,8 @@ severe class imbalance. In each of these fields, the dominant value
 \emph{No} accounts for more than 99\% of encounters. This leaves fewer than 
 1\% non-modal observations. Among the affected fields are rare agents such as
 \emph{examide}, \emph{citoglipton}, \emph{troglitazone}, and several
-combination medications. Rare-category collapse is a documented failure
-mode for tabular generators~\cite{Xu2019CTGAN}; the corresponding encoding
+combination medications. Highly imbalanced categorical columns are a known challenge for tabular GANs
+and can lead to mode collapse or missing minor categories~\cite{Xu2019CTGAN}. The corresponding encoding
 transformation applied to these fields is described in
 Section~\ref{sec:data:fe}.
 
@@ -122,13 +131,13 @@ field.
 \label{sec:data:fe:age}%
 The decade-based age buckets are converted to ordered numeric values where
 \path{[0-10)} maps to 1, \path{[10-20)}
-to 2, and so on through \emph{[90-100)}, which maps to 10. The 1--10
+to 2, and so on through \emph{[90-100)}, which maps to 10. The 1-10
 ordinal encoding preserves the natural ordering of age while avoiding a
 high-cardinality categorical representation. An earlier preprocessing
 variant collapsed the ten decades into a three-level grouping
 (young / middle-aged / elderly) to reduce categorical sparsity. A direct
-ablation against the ten-bin encoding informed the final choice;
-the ten-bin encoding is retained for all experiments in this thesis, and
+ablation against the ten-bin encoding informed the final choice.
+The ten-bin encoding is retained for all experiments in this thesis, and
 the quantitative comparison is deferred to
 Section~\ref{sec:results:rq2:utility:age-binning}.
 
@@ -137,7 +146,10 @@ Three high-missingness fields: \emph{weight} (96.86\%),
 \emph{payer\_code} (39.56\%), and \emph{medical\_specialty} (49.08\%)
 are dropped to reduce dimensionality and to limit the parameter
 capacity that synthetic-data generators must allocate to sparsely
-observed features.
+observed features. Although \emph{A1Cresult} and \emph{max\_glu\_serum} 
+also exceed 80\% missingness, they are retained because their
+absence can be represented as an explicit ``not measured'' category rather than
+as an unknown continuous value.
 
 \paragraph{Diagnosis grouping:}
 The three diagnosis fields \emph{diag\_1}, \emph{diag\_2}, and
@@ -149,8 +161,9 @@ neoplasm, musculoskeletal, and injury categories. External cause and
 supplementary codes beginning with \emph{E} or \emph{V}, missing
 values, and unrecognised codes are mapped to \emph{Other}. The grouping
 is a clinically motivated taxonomy inspired by Strack et
-al.~\cite{strack2014impact} and is not derived from the standard CCS /
-HCUP mapping. The step reduces the 915-code ICD-9 vocabulary into nine
+al.~\cite{strack2014impact} and is not derived from the standard Clinical
+Classifications Software (CCS) / Healthcare Cost and Utilization Project 
+(HCUP) mapping. The step reduces the 915-code ICD-9 vocabulary into nine
 clinically interpretable categories, which are converted to integer
 labels later by the label-encoding step.
 
@@ -195,7 +208,7 @@ synthesis frameworks
 \subsection{Train/Test Split}
 \label{sec:data:split}
 
-The preprocessing script writes three CSV files: the full preprocessed
+Through the preprocessing steps we generate the full preprocessed
 dataset (71{,}518 rows, 45 columns), the training split, and the test
 split. The split is created with a stratified 80/20 partition
 (\emph{test\_size = 0.2}, \emph{random\_state = 42}), with the
@@ -203,7 +216,7 @@ target column passed as the stratification variable to preserve the
 binary readmission ratio across splits. Because
 multi-encounter resolution produces one row per
 \emph{patient\_nbr}, the stratified split is inherently patient-disjoint
-and free of train--test leakage at the patient level.
+and free of train-test leakage at the patient level.
 
 The training set contains 57{,}214 rows and 45 columns, with 37{,}750
 negative records and 19{,}464 positive records. The held-out test set
