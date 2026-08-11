@@ -9,15 +9,15 @@
 % Migrated and lightly edited from proposal §1 (Introduction) + §2 (Motivation).
 The growth of digital health records, in together with rapid advances
 in artificial intelligence (AI), has significant potential to transform
-healthcare delivery. At the same time, regulatory frameworks such as the
+healthcare. At the same time, regulatory frameworks such as the
 GDPR and HIPAA play a crucial role in safeguarding patient's 
 confidential data and ensuring responsible data use. These protections are
 important for maintaining public trust in digital health systems. They also
 drive researchers to explore innovative methods that enable data-driven
 innovation while upholding proper privacy standards. Conventional anonymisation
 methods have repeatedly proven insufficient to guarantee privacy in
-high-dimensional health data, as re-identification and linkage attacks remain
-viable~\cite{Murtaza2023,stadler2022synthetic}.
+high-dimensional health data because of re-identification and linkage 
+attacks~\cite{Murtaza2023,stadler2022synthetic}.
 
 Synthetic data generation (SDG) has emerged as a promising alternative.
 It enables the creation of artificial datasets that retain the statistical
@@ -84,16 +84,16 @@ utility (statistical resemblance and predictive performance) and privacy risk
 of synthetic tabular medical data, and what distinct dimension of data
 characteristics does each capture?
 
-No single metric can summarise the quality of a synthetic dataset. A
+No single metric can quantify the quality of a synthetic dataset. A
 generator may reproduce marginal feature distributions faithfully yet distort
 the dependencies between variables. Similarly, it may support accurate
 downstream prediction while memorising individual patient records. RQ1
-therefore asks which established measures are needed to expose such failures.
+asks which established measures are needed to expose such failures.
 In this thesis, a set of metrics is considered \emph{suitable} if it meets
-two criteria. First, it must cover the failure modes documented in the
+two criteria. Firstly, it must cover the failure modes documented in the
 literature: distributional distortion, loss of variable dependencies,
 degraded predictive performance, memorisation, and vulnerability to
-membership-inference, attribute-inference, and linkage attacks. Second, each
+membership-inference, attribute-inference, and linkage attacks. Secondly, each
 metric must capture a distinct dimension of data quality, such that no metric
 is redundant with the others. The second criterion is also examined
 empirically. The metrics that rank the generators differently cannot be measuring
@@ -124,16 +124,17 @@ how do the resulting privacy-utility profiles differ between GAN-based
 synthesisers (PATE-GAN compared with HealthGAN) and LLM-based synthesisers
 (Pythia-1B-DP compared with Pythia-1B) for tabular medical data?
 
-Whereas RQ2 compares the two generator families in general, RQ3 isolates the
+RQ2 compares the two generator families in general, but RQ3 is isolated to the
 effect of a formal differential-privacy guarantee. The two model families support 
 different mechanisms for enforcing differential
-privacy. In this thesis, PATE is used in the GAN-based setting, whereas DP-SGD is used in the
+privacy. In this thesis, PATE is used in the GAN-based settingand DP-SGD is used in the
 LLM-based setting. The comparison therefore fixes the privacy budget at
 $\varepsilon = 5.0$, so that both families operate under an equivalent formal
 guarantee. Each differentially private model is then compared with its
-non-DP counterpart. For GAN-based synthesisers, this means comparing 
-PATE-GAN against HealthGAN, and for LLM-based synthesisers, 
-we are comparing Pythia-1B-DP against Pythia-1B. This within-family contrast quantifies the utility cost of
+non-DP counterpart. This means comparing 
+PATE-GAN against HealthGAN for GAN-based synthesisers. For LLM-based synthesisers, 
+we are comparing Pythia-1B-DP against Pythia-1B. 
+This within-family contrast quantifies the utility cost of
 differential privacy. The cross-family contrast shows which mechanism incurs
 the smaller utility loss at the same budget.
 
@@ -146,8 +147,8 @@ privacy-preserving synthetic tabular health data.
 First, it develops a reproducible evaluation pipeline for synthetic medical
 tabular data. The pipeline is organised around two complementary dimensions:
 \emph{utility} and \emph{privacy}. The \emph{utility} dimension comprises
- both statistical similarity to the real data and the
-predictive performance of downstream models, while the \emph{privacy} dimension covers
+both statistical similarity to the real data and the
+predictive performance of downstream models. The \emph{privacy} dimension covers
 proximity-based memorisation indicators, membership-inference risk,
 attribute-inference risk, and outlier linkability.
 
@@ -160,9 +161,10 @@ Pythia-1B-DP-LoRA using DP-SGD via
 Opacus.
 
 Third, it quantifies the marginal cost of formal differential privacy within
-both model families. The comparison of non-DP HealthGAN and dp enforced PATE-GAN at $\varepsilon=5.0$ in
-the GAN setting, while non-DP Pythia-1B and dp enforced Pythia-1B-DP at
-$\varepsilon=5.0$ in the LLM setting. The inclusion of the non-DP Pythia-1B
+both model families. Within the GAN family, the comparison is between non-private HealthGAN
+and PATE-GAN at $\varepsilon=5.0$. Within the LLM family, the comparison
+is between non-private Pythia-1B and Pythia-1B-DP at same privacy budget.
+The inclusion of the non-DP Pythia-1B
 scale anchor and the Pythia-1B-DP variant constitutes a scope extension beyond
 the originally submitted proposal, motivated by the finding that DP-SGD applied
 to Pythia-70M does not converge usefully at this privacy budget

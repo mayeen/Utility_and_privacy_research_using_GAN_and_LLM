@@ -11,7 +11,7 @@
 
 Electronic health records are typically stored as high-dimensional tables that
 combine categorical, ordinal, and continuous fields and contain both directly
-and indirectly identifying attributes. Thus it makes their secondary use valuable
+and indirectly identifying attributes. Therefore, it makes their secondary use valuable
 for research yet sensitive from a privacy standpoint~\cite{Murtaza2023}. Because
 the sharing of such records is constrained by data-protection regulations such
 as the GDPR and HIPAA (Chapter~\ref{ch:introduction}), the conventional response
@@ -22,12 +22,13 @@ swapping, and masking, together with privacy models such as $k$-anonymity and
 $\ell$-diversity~\cite{anonymization,park2013perturbed}. On high dimensional
 health data, however, they struggle to preserve analytical utility and have
 repeatedly been shown vulnerable to linkage and inference
-attacks~\cite{anonymization,Murtaza2023}. Such metrics were, moreover, devised for the suppression-and-generalisation
+attacks~\cite{anonymization,Murtaza2023}. Such metrics were 
+devised for the suppression-and-generalisation
 setting and cannot be applied directly to model-based
 synthesisers~\cite{park2013perturbed}.
 Synthetic data generation sidesteps the direct release of real records, but it
-does not automatically resolve the privacy-utility trade-off. Stadler et al.\
-show that synthetic data produced by generative models without explicit privacy
+does not automatically resolve the privacy-utility trade-off. Synthetic 
+data produced by generative models without explicit privacy
 protection does not shield outlier records from linkage attacks since an
 adversary with access to the synthetic dataset can infer the presence of a
 target record with high confidence~\cite{stadler2022synthetic}. This motivates
@@ -39,29 +40,29 @@ by the differentially private generators evaluated in this thesis.
 
 Synthetic tabular data generators fall broadly into three families. Statistical
 models include copulas, Bayesian networks, and sequential
-trees~\cite{shi2025comprehensive, emam2021optimizing}. Deep generative models are GAN- and VAE-based.
+trees~\cite{shi2025comprehensive, emam2021optimizing}. 
+Deep generative models are GAN and VAE-based.
 Language-model-based approaches instead treat rows as
 text~\cite{shi2025comprehensive,Borisov2023GReaT}.
 Alongside these data-driven families, a knowledge-driven approach builds
-generators from hand-curated expert rules, and a hybrid approach blends the
+generators from hand-curated expert rules and a hybrid approach blends the
 two~\cite{Murtaza2023}. Both rely on hand-crafted domain knowledge and therefore fall
 outside the fully data-driven scope of this thesis. Each
 family admits a differentially private variant, yielding the two axes along which
 the five generators evaluated in this thesis are positioned. The generative
 paradigm contrasts generative adversarial networks with large language
-models, and the privacy regime contrasts non-private training with
+models. The privacy regime contrasts non-private training with
 differential privacy. The
 remainder of the chapter develops the two families used here
 (§\ref{sec:bg:gan}, §\ref{sec:bg:llm}) and the DP machinery they rely on
-(§\ref{sec:bg:dp}). Unlike image 
-or text data, which consist of uniform basic units amenable to a single modelling 
-paradigm, tabular data combines categorical and numerical columns with heterogeneous 
-statistical properties which is a challenge that no single generative family solves cleanly, 
-and that drives the growth of distinct approaches surveyed in \cite{shi2025comprehensive}.
- Within each family, known failure modes (training instability and mode collapse in GANs,
- a tendency toward over-averaged outputs in VAEs, and hallucination in LLMs) have
- motivated successive specialisations, such as the diffusion-model and
- fine-tuned-LLM branches reviewed in the same survey~\cite{shi2025comprehensive}.
+(§\ref{sec:bg:dp}). Compared with image and text data, tabular data combines categorical and
+numerical variables with different statistical properties. This
+heterogeneity makes generation difficult and has encouraged the
+development of several distinct approaches~\cite{shi2025comprehensive}.
+Within each family, known failure modes (training instability and mode collapse in GANs,
+a tendency toward over-averaged outputs in VAEs, and hallucination in LLMs) have
+motivated successive specialisations, such as the diffusion-model and
+fine-tuned-LLM branches reviewed in the same survey~\cite{shi2025comprehensive}.
 
 
 \section{GAN-based Approaches for Tabular Data}
@@ -72,7 +73,7 @@ paradigm for tabular synthesis, yet exhibit the training instability and
 mode-collapse pathologies~\cite{shi2025comprehensive}. The remainder of this section reviews
 the architectural progression from the original minimax formulation through
 the Wasserstein and gradient-penalty refinements that stabilise adversarial
-training (§\ref{sec:bg:gan:foundations}), and subsequently examines the two
+training (§\ref{sec:bg:gan:foundations}). It then examines the two
 healthcare-oriented variants situated on the DP and non-DP axes evaluated
 in this thesis: HealthGAN (§\ref{sec:bg:gan:health}) and
 PATE-GAN (§\ref{sec:bg:gan:pategan}).
@@ -96,15 +97,16 @@ The global optimum is attained when the generator distribution
 matches the data distribution and the discriminator is everywhere
 indifferent. In practice, however, optimisation of this objective is
 fragile because the discriminator can saturate and starve the generator of
-gradient signal. GAN training is difficult to monitor because the value function does not provide
+gradient signal. GAN training is difficult to monitor because the value 
+function does not provide
 a steadily improving signal of convergence. The generator may also suffer from
 mode collapse, where it produces samples from only a limited part of the real
 data distribution instead of capturing its full diversity.
 
-These pathologies have been attributed to the implicit
-Jensen-Shannon divergence underlying the original objective, which
-is discontinuous in the generator's parameters whenever the model
-and data distributions have disjoint or near-disjoint
+These problems are linked to the implicit Jensen--Shannon divergence in
+the original GAN objective. This divergence can become discontinuous with
+respect to the generator parameters when the real and generated
+distributions have disjoint or nearly disjoint
 supports~\cite{Arjovsky2017WGAN}. Replacing it with the Wasserstein-1
 distance restores continuity throughout training and yields a
 gradient that remains informative even in this regime. Via the
@@ -124,8 +126,8 @@ the critic's weights to a fixed interval. This modification
 produces markedly stabler training and a loss that correlates with
 sample quality.
 
-Weight clipping, however, was subsequently shown to be the source of
-its own pathologies, chief among them a sharp loss of critic
+Weight clipping was shown to be the source of
+its own problem, chief among them a sharp loss of critic
 capacity and gradient norms that either explode or vanish depending
 on the clipping threshold~\cite{Gulrajani2017WGANGP}. The improved
 formulation replaces clipping with a soft penalty on the critic's
@@ -160,8 +162,7 @@ unsuitable for mixed-type EHR data~\cite{healthgan}.
 To address
 these shortcomings, the model combines medGAN's design with the WGAN-GP
 framework. It uses the Wasserstein distance and a tailored data
-transformation pipeline to support continuous and categorical variables
-commonly found in datasets such as MIMIC-III. Its architecture
+transformation pipeline to support continuous and categorical variables. Its architecture
 employs large batch sizes to ensure that outliers and rare clinical values are
 reliably captured, and incorporates a bottleneck to reduce memorisation and
 maintain a compact model footprint. This facilitates secure model export outside
@@ -179,20 +180,23 @@ established baselines~\cite{healthgan}.
 \subsection{PATE-GAN}
 \label{sec:bg:gan:pategan}
 
-\textsc{PATE-GAN} adapts the Private Aggregation of Teacher Ensembles (PATE)
-framework to generative modelling by training multiple teacher discriminators
-on disjoint data partitions and aggregating their predictions through a
-differentially private noisy mechanism. Thus it provides formal
+\textsc{PATE-GAN} applies the Private Aggregation of Teacher Ensembles
+(PATE) framework to generative modelling. It trains multiple teacher
+discriminators on separate data partitions and combines their predictions
+using a differentially private noisy aggregation mechanism. So it provides formal
 $(\varepsilon,\delta)$-DP guarantees while avoiding direct exposure of private
 gradients~\cite{pategan,Papernot2017PATE}. This provides a tunable privacy
-budget with an explicit accountant. More broadly, reviews of synthetic health data evaluation emphasise that privacy
+budget with an explicit accountant. Reviews of synthetic 
+health data evaluation emphasise that privacy
 should be assessed explicitly rather than assumed, including through
 differential-privacy-based mechanisms and empirical disclosure or inference
 metrics~\cite{hernandez2022synthetic,Murtaza2023}. 
-PATE-GAN offers a principled middle ground with controllable $\varepsilon$ in domains where non-DP
+PATE-GAN offers a principled middle ground with controllable 
+$\varepsilon$ in domains where non-DP
 synthetic data has been shown to leave outliers
 vulnerable~\cite{stadler2022synthetic}. It also offers the same benefit  
-where DP marginal-based approaches (e.g., PrivSyn~\cite{privsyn2021}) trade utility for formal privacy guarantees.
+where DP marginal-based approaches (e.g., PrivSyn~\cite{privsyn2021}) 
+trade utility for formal privacy guarantees.
 
 \section{LLM-based Approaches for Tabular Data}
 \label{sec:bg:llm}
@@ -206,7 +210,8 @@ confers two properties that are attractive for
 heterogeneous clinical tables. First, mixed-type columns are handled without
 the mode-specific normalisation or one-hot expansion required by conditional
 tabular GANs. Because every value is
-rendered as text whether numeric or categorical~\cite{Miletic2024}. Second, the self-attention mechanism
+rendered as text whether numeric or categorical~\cite{Miletic2024}. 
+Second, the self-attention mechanism
 models dependencies across all columns natively, which mitigates the
 difficulty GANs encounter as dimensionality grows~\cite{Miletic2024}.
 The remainder of this section describes the row-as-text serialisation that
@@ -247,12 +252,13 @@ names and categorical values to shorten sequences. It also applies a middle padd
 strategy, and considers initialising the network from random weights rather
 than from a corpus-pretrained checkpoint. In the process it removes the need for the model
 to unlearn natural-language priors that are irrelevant to tabular
-structure~\cite{Zhao2023Tabula}. Building on this framework, the approach serialises rows with token-sequence
+structure~\cite{Zhao2023Tabula}. Building on this framework, the 
+approach serialises rows with token-sequence
 compression and left padding, and conditions generation on the binary target
 variable as the leading token~\cite{Miletic2024}. The Pythia models are then
 benchmarked against CTGAN, a conditional tabular GAN that employs mode-specific
 normalisation~\cite{Xu2019CTGAN}. 
-They use a train-on-synthetic, test-on-real protocol with a random-forest 
+They use a train-on-synthetic, test-on-real (TSTR) protocol with a random-forest 
 estimator. They report that the language models match or surpass the GAN 
 baseline, with utility increasing in model size. The comparison between 
 randomly initialised and pretrained starting points was inconclusive. That study evaluates
@@ -276,8 +282,9 @@ This thesis uses two members of the suite as scale anchors. Pythia-70M serves
 as a compute-tractable baseline whose training and sampling costs are modest.
 Pythia-1B is the largest configuration examined in the benchmark 
 study and the scale at which the utility advantage of
-language-model synthesis over tabular GANs is most pronounced~\cite{Miletic2024}. Although it's important 
-to note that in some dataset it is reported that the gain is negligible. In our case, restricting the
+language-model synthesis over tabular GANs is most pronounced~\cite{Miletic2024}. 
+Although it's important to note that in some dataset it is reported that 
+the gain is negligible. In our case, restricting the
 comparison to these two sizes isolates the effect of model capacity on the
 privacy-utility trade-off while keeping the experimental budget feasible.
 
@@ -306,14 +313,14 @@ changed~\cite{Hu2022LoRA}. Only $A$ and $B$ are updated, which reduces the
 number of trainable parameters per layer from $dk$ to $r(d + k)$, typically by
 several orders of magnitude.
 
-This reduction is consequential for the differentially private fine-tuning
-discussed in \S\ref{sec:bg:dp:dpsgd}. As DP-SGD requires per-example 
+This reduction is important for the differentially private fine-tuning
+discussed in \S\ref{sec:bg:dp:dpsgd}. DP-SGD requires per-example 
 gradients and adds Gaussian noise during
-the update, restricting optimisation to the low-dimensional LoRA parameters
+the update. So restricting optimisation to the low-dimensional LoRA parameters
 reduces the number of trainable coordinates and lowers the memory overhead of
 per-example gradient clipping. Parameter-efficient adapters attain privacy-utility
 trade-offs competitive with, and in some settings superior to, full-model
-private fine-tuning, at a small fraction of its trainable-parameter and memory
+private fine-tuning. That too at a small fraction of its trainable-parameter and memory
 cost~\cite{Yu2022DPFT}. However, the evidence is mixed. With careful tuning,
 full fine-tuning of large pretrained models remains a competitive differentially
 private baseline that parameter-efficient methods do not necessarily
@@ -322,7 +329,7 @@ surpass~\cite{Li2022LargeDP}.
 \subsection{DP-Augmented LLM Synthesis}
 \label{sec:bg:llm:dp}
 
-Language models are known to memorise and, under suitable prompting, to
+Language models are known to memorise and to
 reproduce verbatim training records. This makes uncontrolled LLM synthesis a
 privacy hazard rather than a safeguard~\cite{Carlini2021Extracting}. Two
 routes to constraining this leakage appear in the literature. The first
@@ -345,8 +352,8 @@ single privacy-utility evaluation.
 \section{Differential Privacy}
 \label{sec:bg:dp}
 
-Two of the five generators evaluated in this thesis carry formal differential
-privacy guarantees, and this section sets out the framework on which those
+Two of the five generators carry formal differential
+privacy guarantees. This section sets out the framework on which those
 guarantees rest. Differential privacy limits how much any one individual 
 record can affect the result of a randomized algorithm. This provides a 
 strong worst-case privacy guarantee, even when an adversary has access 
@@ -493,7 +500,8 @@ $(\varepsilon,\delta)$, are reported in Section~\ref{sec:method:generators}.
 The Private Aggregation of Teacher Ensembles (PATE) framework
 offers an alternative route to
 differentially private learning that avoids the explicit gradient perturbation
-of DP-SGD~\cite{Papernot2017PATE}. The private training data is first partitioned into $N$ disjoint
+of DP-SGD~\cite{Papernot2017PATE}. The private training data is first 
+partitioned into $N$ disjoint
 subsets, and an independent \emph{teacher} model is trained on each partition
 without any privacy mechanism. A separate \emph{student} model is then
 trained on a corpus of unlabelled public data, with labels generated by
@@ -511,7 +519,7 @@ controlling the privacy cost per query.
 The partitioning step is central to the privacy argument. Since the private
 records are split across disjoint teacher datasets, changing one individual's
 record can affect only the teacher trained on that partition. For a given query,
-this means that each class vote count can change by at most one, and only the
+this means that each class vote count can change by at most one and only the
 noisy aggregate label is released rather than the individual teacher
 predictions. Calibrating noise to these vote counts therefore gives a formal
 $(\varepsilon,\delta)$-DP guarantee for the labels returned by the aggregation
@@ -519,9 +527,10 @@ mechanism~\cite{Papernot2017PATE}. The student is then trained only on public
 inputs paired with these noisy aggregate labels and never directly observes the
 private training data. The privacy guarantee therefore carries over to the
 trained student by the post-processing property of differential
-privacy~\cite{Dwork2014Foundations}. PATE is especially efficient when teachers
-strongly agree, because high-consensus queries incur less privacy cost than
-queries with divided votes. Later PATE variants replace Laplace voting noise
+privacy~\cite{Dwork2014Foundations}. PATE is more privacy-efficient 
+when the teachers agree, because
+high-consensus queries consume less privacy budget than queries with
+divided votes. Later PATE variants replace Laplace voting noise
 with Gaussian noise and analyse the resulting mechanism using Rényi
 differential privacy~\cite{papernot2018scalable}
 (§\ref{sec:bg:dp:rdp}). The use of PATE in generative adversarial networks is
@@ -530,64 +539,53 @@ described in §\ref{sec:bg:gan:pategan}.
 \subsection{Rényi DP and the Moments Accountant}
 \label{sec:bg:dp:rdp}
 
-The repeated use of randomised mechanisms in private training requires the
-privacy cost to be accumulated across multiple mechanism calls. In DP-SGD,
-clipped gradients are perturbed with Gaussian noise at each optimisation step,
-whereas in PATE the student is trained using labels obtained from repeated
-noisy teacher aggregation. In both settings, generic composition can produce
-loose privacy bounds, motivating the use of more precise accounting
-methods~\cite{Abadi2016DPSGD,Papernot2017PATE}.
+Private training repeatedly accesses sensitive data, so the privacy cost
+must be accumulated across all training steps or aggregation queries.
+Standard composition rules can produce loose bounds in settings such as
+DP-SGD and PATE, motivating more precise accounting methods
+\cite{Abadi2016DPSGD,Papernot2017PATE}.
 
-Rényi Differential Privacy (RDP) is a relaxation of standard differential
-privacy that measures the difference between the output distributions induced
-by neighbouring datasets using Rényi divergence. The parameter $\alpha>1$
-specifies the \emph{order} of the Rényi divergence. An RDP guarantee can be
-viewed as a privacy-budget curve indexed by $\alpha$, and privacy costs can be
-tracked at a common set of orders during composition~\cite{Mironov2017RDP}.
-
-A randomised mechanism $\mathcal{M}$ satisfies $(\alpha,\bar{\varepsilon})$-RDP
-if, for every pair of neighbouring datasets $D$ and $D'$,
+Rényi Differential Privacy (RDP) is a relaxation of pure
+$\varepsilon$-differential privacy based on Rényi divergence. The order
+$\alpha>1$ determines how differences between the output distributions
+of neighbouring datasets are measured. A randomised mechanism
+$\mathcal{M}$ satisfies $(\alpha,\bar{\varepsilon}_{\alpha})$-RDP if
 \begin{equation}
 \label{eq:bg:dp:rdp}
-D_{\alpha}\!\bigl(\mathcal{M}(D)\,\Vert\,\mathcal{M}(D')\bigr)
-\;\le\; \bar{\varepsilon},
+D_{\alpha}\!\left(
+  \mathcal{M}(D)\,\Vert\,\mathcal{M}(D')
+\right)
+\leq \bar{\varepsilon}_{\alpha}
 \end{equation}
-where $D_{\alpha}$ denotes the Rényi divergence of order $\alpha$ between the
-two output distributions $\mathcal{M}(D)$ and
-$\mathcal{M}(D')$~\cite{Mironov2017RDP}.
+for every pair of neighbouring datasets $D$ and $D'$
+\cite{Mironov2017RDP}.
 
-A principal advantage of RDP is its simple composition rule. For a fixed order
-$\alpha$, the sequential application of mechanisms with RDP costs
-$\bar{\varepsilon}_1,\ldots,\bar{\varepsilon}_k$ has a total RDP cost of
-$\sum_{i=1}^{k}\bar{\varepsilon}_i$. In particular, if all $k$ mechanisms
-satisfy $(\alpha,\bar{\varepsilon})$-RDP, their composition satisfies
-$(\alpha,k\bar{\varepsilon})$-RDP. The privacy costs can therefore be
-accumulated separately at each tracked order and converted to standard
-$(\varepsilon,\delta)$-DP only after composition. Specifically, an
-$(\alpha,\bar{\varepsilon})$-RDP mechanism satisfies $(\varepsilon,\delta)$-DP
-with
+RDP is particularly useful because privacy costs add under composition.
+At a fixed order $\alpha$, mechanisms with costs
+$\bar{\varepsilon}_{1,\alpha},\ldots,
+\bar{\varepsilon}_{k,\alpha}$ have a total cost equal to their sum.
+After composition, the RDP guarantee can be converted to
+$(\varepsilon,\delta)$-DP using
 \begin{equation}
 \label{eq:bg:dp:conv}
-\varepsilon \;=\; \bar{\varepsilon} + \frac{\log(1/\delta)}{\alpha-1},
+\varepsilon_{\alpha}
+=
+\bar{\varepsilon}_{\alpha}
++
+\frac{\log(1/\delta)}{\alpha-1}.
 \end{equation}
-for any $\delta\in(0,1)$~\cite{Mironov2017RDP}. When several orders are tracked,
-the conversion is evaluated at each order and the order giving the smallest
-$\varepsilon$ for the chosen $\delta$ is selected.
+When several orders are tracked, this conversion is evaluated at each
+order and the smallest resulting $\varepsilon_{\alpha}$ is reported
+\cite{Mironov2017RDP}.
 
-RDP is closely related to the moments accountant used for DP-SGD, which tracks
-higher moments of the privacy-loss random variable and provides tighter bounds
-for repeated noisy updates than generic composition~\cite{Abadi2016DPSGD,Mironov2017RDP}.
-Closed-form RDP guarantees are available for the standard Gaussian and Laplace
-mechanisms~\cite{Mironov2017RDP}. Tighter analyses of sampled DP-SGD and
-Gaussian PATE aggregation additionally account for the details of the sampling
-and aggregation mechanisms~\cite{Abadi2016DPSGD,Mironov2017RDP,papernot2018scalable}.
-
-The PATE-GAN baseline used in this thesis tracks its privacy budget with a
-moments accountant~\cite{pategan}. The differentially private language-model
-generator is implemented with Opacus, which provides DP-SGD training and
-privacy-accounting tools~\cite{Yousefpour2021Opacus}. Numerical methods based on
-privacy-loss random variables provide another approach for composing privacy
-costs and can be applied to DP-SGD-style mechanisms~\cite{gopi2021numerical}.
+RDP is closely related to the moments accountant, which tracks moments
+of the privacy-loss random variable (PRV) across repeated private operations
+\cite{Abadi2016DPSGD,Mironov2017RDP}. The PATE-GAN baseline in this
+thesis uses a moments accountant to accumulate the cost of noisy teacher
+queries~\cite{pategan}. The private language-model generator uses Opacus
+for DP-SGD and privacy accounting~\cite{Yousefpour2021Opacus}. In the recorded run, the privacy
+cost is calculated using a PRV accountant, which numerically composes
+privacy-loss random variables.
 
 \section{Evaluation Frameworks for Synthetic Data}
 \label{sec:bg:eval}
@@ -600,14 +598,17 @@ costs and can be applied to DP-SGD-style mechanisms~\cite{gopi2021numerical}.
 % reviewed below populates both pillars.
 
 Beyond individual metrics, several integrated tools package utility and privacy
-evaluation for tabular synthetic data. A recent survey of the ecosystem and
-contribute SynthEval, comparing it with SynthCity, SDMetrics, TableEvaluator,
-and DataSynthesizer along dimensions such as configurability, extendability,
-ranking support, and the strategy used to handle mixed categorical and numerical
-attributes~\cite{lautrup2025syntheval}. A recurring concern is that several tools
-bias evaluation toward numerical columns by treating categoricals as ordinal
-integers, which SynthEval instead addresses by treating the two types in unison
-through type-appropriate distance functions~\cite{lautrup2025syntheval}.These 
+evaluation for tabular synthetic data. A recent study surveys the 
+synthetic-data evaluation ecosystem and
+introduces SynthEval. It compares SynthEval with SynthCity, SDMetrics,
+TableEvaluator, and DataSynthesizer in terms of configurability,
+extensibility, ranking support, and the handling of mixed categorical and
+numerical attributes~\cite{lautrup2025syntheval}. A common limitation 
+of several evaluation tools is that they encode
+categorical variables as ordinal integers, which can bias the evaluation
+toward numerical data. SynthEval instead evaluates categorical and
+numerical variables using type-appropriate distance
+functions~\cite{lautrup2025syntheval}. These 
 frameworks provide general-purpose tabular evaluation and ranking but are not 
 tied to any particular generative paradigm or clinical setting. The
 unified pipeline assembled in this thesis instead applies a common two-pillar
@@ -617,30 +618,34 @@ clinical benchmark (\S\ref{sec:method:evaluation}).
 \subsection{Utility - Statistical Similarity to the Real Data}
 \label{sec:bg:eval:similarity}
 
-Murtaza et al.'s taxonomy distinguishes univariate metrics such as
-Kolmogorov-Smirnov (KS), Kullback-Leibler (KL) divergence, and moment-based
-comparisons from multivariate metrics including correlation matrix similarity,
-Maximum Mean Discrepancy, and Wasserstein distance,
-all used to quantify how closely synthetic distributions match real
+Fidelity metrics can be divided into univariate and multivariate
+measures. Univariate measures include the Kolmogorov-Smirnov (KS) test,
+Kullback-Leibler (KL) divergence, and moment based comparisons.
+Multivariate measures include correlation-matrix similarity, Maximum Mean
+Discrepancy, and Wasserstein distance. Together, these metrics assess how
+closely synthetic data reproduce the distribution of real
 data~\cite{Murtaza2023}. These distributional measures can be complemented by
 combining KL divergence with pairwise correlation differences (PCD) to assess
 both marginal fidelity and pairwise linear-dependence preservation in synthetic patient
 data~\cite{goncalves2020generation}. At the per-dimension level, the Bernoulli
 success probability of each dimension can be compared between real and synthetic
-data (dimension-wise probability)~\cite{Choi2017MedGAN}, while univariate
+data (dimension-wise probability)~\cite{Choi2017MedGAN}. Univariate
 fidelity can be summarised through the median Hellinger distance across
-variables, a measure bounded in $[0,1]$~\cite{emam2021optimizing}. A high
+variables which is bounded in $[0,1]$~\cite{emam2021optimizing}. A high
 univariate score does not by itself guarantee fidelity of the joint structure,
 since per-column metrics are computed independently and cannot capture
 inter-feature dependencies such as clinical co-occurrence
 patterns~\cite{Murtaza2023}. Beyond linear correlation, 
 inter-attribute dependence can be quantified through a
-mutual-information matrix difference~\cite{lautrup2025syntheval}. A complementary, classifier-based notion
-of resemblance is \emph{distinguishability}. The real and synthetic records are
-pooled, a binary classifier is trained to separate them, and fidelity is scored
-by the mean squared deviation of the predicted membership probability from
-$0.5$, the value at which the two sets are
-indistinguishable~\cite{emam2021optimizing}. In the framework adopted here these
+mutual-information matrix difference~\cite{lautrup2025syntheval}. 
+A complementary, classifier-based notion
+of resemblance is \emph{distinguishability}. Real and synthetic 
+records are combined, and a binary classifier is
+trained to distinguish between them. For equally sized datasets, fidelity
+is measured by the mean squared deviation of the predicted probability
+from $0.5$ where a value close to zero indicates that the classifier cannot
+reliably distinguish synthetic records from real
+records~\cite{emam2021optimizing}. In the framework adopted here these
 metrics are treated as one branch of utility, since a synthetic dataset that
 fails to preserve the statistical structure of the real data cannot reasonably
 be expected to support downstream tasks.
@@ -648,11 +653,11 @@ be expected to support downstream tasks.
 \subsection{Utility - Predictive Performance of Downstream Models}
 \label{sec:bg:eval:predictive}
 
-Surveys of tabular synthetic data generators emphasise model-based utility
-evaluations, including Train-on-Synthetic Test-on-Real (TSTR) and related
-train-test regimes (TRTR / TRTS / TSTS), as central tools for assessing whether
-synthetic data supports realistic downstream
-inference~\cite{hernandez2022synthetic}. Reported metrics typically include
+Surveys of tabular synthetic-data generators identify model-based utility
+evaluation as an important approach. Common examples include
+Train-on-Synthetic Test-on-Real (TSTR) and the related TRTR, TRTS, and
+TSTS regimes, which assess whether synthetic data support realistic
+downstream prediction~\cite{hernandez2022synthetic}. Reported metrics typically include
 accuracy, F1, and AUC. Such regimes are widely
 employed~\cite{wang2019continuous,yang2019grouped,park2018data,beaulieu2019privacy}.
 A multivariate alternative, dimension-wise prediction (DWP), predicts each
@@ -694,11 +699,12 @@ synthetic records through distance thresholds (e.g., Hamming
 distance~\cite{goncalves2020generation}) and evaluate attribute disclosure by
 testing whether unknown attributes can be inferred from nearest synthetic
 neighbours. Recent evaluation frameworks consolidate these into ready-to-use
-privacy metrics. SynthEval, for instance, bundles privacy loss in nearest-neighbour adversarial
-accuracy, membership-inference and attribute-disclosure risk, distance to the
-closest record, an $\varepsilon$-identifiability risk, and a hitting rate that
-counts the fraction of real records reproduced within a small
-tolerance~\cite{lautrup2025syntheval}.
+privacy metrics. SynthEval includes several privacy measures. These include
+nearest-neighbour adversarial accuracy and its privacy-loss estimate,
+membership-inference and attribute-disclosure risks, distance to the
+closest record, $\varepsilon$-identifiability risk, and hitting rate. The
+hitting rate measures the proportion of real records reproduced within a
+specified tolerance~\cite{lautrup2025syntheval}.
 
 \subsection{Over-reliance on Synthetic Data and the Limits of Similarity-Based Privacy Evaluation}
 \label{sec:bg:eval:overreliance}
@@ -711,8 +717,9 @@ about the individuals from which it was derived~\cite{stadler2022synthetic}.
 In particular, an adversary with access to the generative procedure can infer
 the presence or absence of individual records and reconstruct sensitive
 attributes of known individuals~\cite{houssiau2022tapas}. Overfitting can 
-facilitate membership leakage, while memorisation can expose training 
-examples even when aggregate overfitting is limited~\cite{Shokri2017MIA,Carlini2021Extracting}.
+facilitate membership leakage. However,
+memorisation may expose individual training examples even when overall
+overfitting is limited~\cite{Shokri2017MIA,Carlini2021Extracting}.
 It is further argued that the prevailing reliance on similarity-based 
 metrics for privacy evaluation is inadequate for two reasons. Such metrics 
 do not faithfully reflect privacy guarantees, since inference attacks can 

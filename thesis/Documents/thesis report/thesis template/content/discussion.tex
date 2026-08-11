@@ -9,80 +9,164 @@
 \section{Interpretation of Results per Research Question}
 \label{sec:discussion:interpretation}
 
-The findings for RQ1 confirm that the twelve-metric, two-pillar framework
-is not redundant: each metric isolates a dimension of data quality that the
-others miss, and the clearest empirical demonstration is the behaviour of
-PATE-GAN. It attained apparently ideal scores on every distance-based
-privacy metric (a median NNDR of $105$ and zero outlier linkability) while
-failing every utility metric, a combination that is legible only because
-the framework reports utility and privacy as separate, jointly necessary
-pillars. A single composite score, or privacy metrics read in isolation,
-would have mislabelled a generator that produces unusable data as the most
-private and therefore the best. This is the concrete form of the warning by
-\textcite{hernandez2022synthetic} that no single method or metric is
-universally adequate, and it justifies the deliberate breadth of the suite.
+\subsection{RQ1: Complementary Evaluation Metrics}
 
-For RQ2, the central observation is that neither generator family dominates
-the privacy-utility plane, and the mechanistic reason lies in what each
-paradigm optimises. The WGAN-GP objective of HealthGAN matches the real
-distribution directly in a continuous latent space, which yields the lowest
-marginal discrepancy (mean KS $0.0480$) and the only usable operating point
-that sits at or above the NNDR unity reference on the median scale. The
-token-based Pythia models
-instead learn the conditional structure of the table autoregressively,
-which yields the strongest predictive transferability (Pythia-1B TSTR AUC
-$0.682$, nearest the real ceiling) and the best joint-dependency fidelity.
-The recurring F1 inversion, in which synthetic-trained classifiers exceed
-the real-trained baseline's F1, reflects not better discrimination
-but an operating-point shift toward the minority class, and it illustrates
-why threshold-dependent and threshold-independent predictive metrics are
-both reported. \textcite{Miletic2024} document continued utility gains
-with language-model scale, which suggests that the LLM advantage on the
-predictive axis could widen at scales larger than those evaluated here. That high utility
-need not coincide with strong privacy is consistent with the independent
-benchmark of SynthEval, in which the highest-utility generators ranked among the
-worst on privacy~\cite{lautrup2025syntheval}.
+The clearest methodological finding from RQ1 is that a
+distance-based privacy result cannot be interpreted as evidence of
+protection when the synthetic data have poor fidelity. PATE-GAN is
+a direct example for this case. It produced large nearest-neighbour distances and zero
+outlier linkability. From this evidence alone one can conclude that PATE-GAN
+is the obvious choice, but when you include fidelity analysis it shows substantial distributional
+differences and weak predictive utility. Its distance results therefore
+reflected poor similarity to the real data rather than a
+favourable privacy and utility balance.
 
-For RQ3, the asymmetry in how the two families absorb differential privacy
-follows from where the privacy mechanism acts. On the LLM side, DP-SGD
-perturbs the gradients of a small low-rank adapter, concentrating a fixed
-privacy budget over relatively few trainable parameters. The resulting cost
-is contained (a TSTR AUC drop of $0.099$) and leaves distributional fidelity
-and survival-model agreement essentially intact. That this works at the
-$1$B scale but not at $70$M is exactly the pattern predicted by
-\textcite{Li2022LargeDP}, who show that larger language models tolerate the
-noise injected by DP-SGD more gracefully. The convergence failure at the
-$70$M scale (\S\ref{sec:results:rq3:pythia-70m-failure}) is the negative
-confirmation. The GAN-side collapse under differential privacy, by contrast,
-cannot be read as a pure DP effect, because HealthGAN and PATE-GAN differ in
-architecture as well as in privacy mechanism
-(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}). The results suggest that,
- at $\varepsilon = 5.0$, the evaluated DP-GAN baseline did not retain sufficient 
- utility for this task, whereas the DP-LLM retained usable performance.
+The other privacy diagnostics also had different roles. Membership
+inference and NNAA privacy loss provided little separation between the
+generators under the selected attacks. NNDR and attribute inference
+identified some model-specific differences. These findings show why
+privacy metrics should be interpreted together and alongside utility
+results. This supports previous recommendations for multidimensional
+synthetic-data evaluation
+\cite{hernandez2022synthetic,lautrup2025syntheval}.
+
+The conclusions also depend on how the metrics were implemented. Mean KS
+was applied to nominal variables represented by numerical codes.
+Correlation difference measured only pairwise Pearson relationships
+between encoded columns. The privacy results depend on the selected
+attacks, attributes, distance measure, and outlier definition. Future
+work should use type-specific marginal distances, mixed-data association
+measures, repeated runs, and stronger privacy attacks. These extensions
+would show whether the current findings remain stable under different
+evaluation choices.
+
+\subsection{RQ2: Comparison of the Evaluated GAN and LLM Configurations}
+
+The main finding from RQ2 is that utility separated the evaluated
+configurations more clearly than the selected privacy attacks. The two
+non-private Pythia configurations produced the highest observed
+predictive-performance results. Pythia-1B also produced the lowest
+pairwise linear-correlation difference. HealthGAN produced the lowest
+observed mean KS and the highest Cox confidence-interval overlap.
+Membership inference and outlier linkability provided less separation,
+but NNDR and attribute inference identified some model-specific
+differences.
+
+These results do not identify a universal winner. Instead, they show
+that the evaluated configurations preserved different properties of the
+real data. The Pythia models performed more strongly on predictive
+transfer and pairwise linear relationships. HealthGAN performed more
+strongly on marginal similarity and Cox confidence-interval overlap.
+
+A possible explanation for the Pythia results is that autoregressive,
+class-conditioned generation retained conditional relationships that
+were useful for downstream prediction. Because when generating each feature,
+model uses both the class label and previously generated features.
+
+HealthGAN's strong marginal  similarity may result from its GAN training
+process, which encourages synthetic records to resemble the real data. In GAN training, 
+differences in individual feature
+distributions can help the discriminator identify synthetic records,
+thereby encouraging the generator to reproduce the marginal
+distributions of the real data. These explanations are plausible 
+but were not tested directly. The
+models also differed in architecture, scale, pretraining, representation,
+optimisation, and computational cost. The observed differences therefore
+cannot be attributed to the generator family alone.
+
+The difference between F1 and AUC-ROC may result from the selected
+classification threshold rather than better overall separation of the
+two classes. In addition, each configuration was evaluated using a single recorded
+run. The stability of the observed model ordering across random seeds was
+therefore not tested.
+
+Future studies should repeat the comparison across several clinical
+datasets and random seeds. Training data, tuning effort, and
+computational budgets should be controlled as well.
+Scale-controlled LLM experiments would also help determine whether the
+predictive pattern is associated with model size, as suggested by
+previous work~\cite{Miletic2024}.
+
+\subsection{RQ3: Observed Changes Under the Private Configurations}
+
+The most informative RQ3 finding comes from the more closely matched
+Pythia-1B comparison. The private configuration had lower predictive
+performance than the non-private configuration. However, Cox
+confidence-interval overlap remained unchanged, and the changes in
+statistical similarity were smaller than the changes in predictive
+performance. The unchanged Cox overlap is clinically relevant because it
+shows that the same level of effect-interval agreement was observed in
+both Pythia-1B configurations, even though their predictive results
+differed. The reason for that could be that predictive performance 
+requires multivariable relationships to be preserved. Statisical 
+similarity don't necessarily gurantees that. Also for Cox
+confidence-interval doesn't capture difference in interval width or 
+the extent of overlap. 
+
+For Pythia-1B-DP, the attribute-inference attack performed no better than
+the baseline, and outlier linkability decreased to zero. These results
+suggest lower disclosure risk under the selected metrics. However, other
+privacy risks and the stability of these results across repeated runs were
+not evaluated.
+
+One possible explanation is that private fine-tuning was limited to the
+low-rank adapter parameters of the pretrained Pythia-1B model. This may
+have allowed the model to retain useful pretrained information while the
+adapter updates were clipped and noised. The result is consistent with
+previous evidence that larger pretrained language models can perform
+better under private fine-tuning~\cite{Li2022LargeDP}. However, the
+Pythia-70M and Pythia-1B private runs differed in dataset size, batch
+construction, learning rate, and calibrated noise multiplier. Their
+different training behaviour cannot therefore be attributed to model
+scale alone.
+
+Pythia-1B-DP also retained substantially more measured utility than
+PATE-GAN. This cross-family comparison provides weaker evidence because
+HealthGAN and PATE-GAN differ in architecture, training objective, and
+privacy procedure. PATE-GAN's poor results may reflect its particular
+implementation, the dataset, its optimisation settings, or a combination
+of these factors. The result should not be interpreted as evidence that
+PATE or differentially private GANs generally fail.
+
+A further limitation concerns the scope of the Pythia privacy accounting.
+The reported privacy cost applies to the DP-SGD parameter updates. The
+loss-based checkpoint comparison was not included in that accounting.
+The reported value should therefore not be presented as a complete
+end-to-end privacy guarantee for every operation in the training
+pipeline.
+
+Future work should compare private and non-private versions of the same
+GAN architecture. The analysis should also repeat the Pythia comparison using matched
+batch-size and optimisation settings. It should evaluate multiple model
+scales and privacy budgets and report uncertainty across repeated runs.
+Stronger attacks and privacy-accounted model-selection procedures would
+provide a more complete assessment of the relationship between formal
+accounting and empirical disclosure risk.
 
 \section{Strengths and Weaknesses of the Two Generator Families}
 \label{sec:discussion:gan-vs-llm}
 
-Viewed as paradigms rather than individual models, the two families exhibit
-complementary strengths that the results make concrete. The strength of the
-GAN family is distributional: HealthGAN matches the real marginals more
+The results show that the two model families have different but
+complementary strengths. The strength of the
+GAN family is distributional where HealthGAN matches the real marginals more
 tightly than any other generator and, once trained, samples cheaply. Its
-weaknesses are equally visible here: it enforces no schema-level
+weaknesses are equally visible here. It enforces no schema-level
 constraints, and the only differentially private GAN evaluated does not
-produce usable data at the tested budget. Although that outcome conflates
-the differential-privacy mechanism with an architecture change and cannot
-be attributed to differential privacy alone
-(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}). The strength of the LLM family
+produce usable data at the tested budget. However, this result reflects both 
+the differential-privacy mechanism
+and the change in architecture. It therefore cannot be attributed to
+differential privacy alone(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}). 
+The strength of the LLM family
 is its native handling of mixed-type tabular data through a row-as-text
-representation: the same model ingests categorical, ordinal, and continuous
+representation. The same model ingests categorical, ordinal, and continuous
 fields without per-column encoders, learns their conditional structure, and
 through schema-aware parsing, emits syntactically valid rows. This
 representational flexibility underlies the predictive advantage of the LLM
 family. Its graceful degradation under differential privacy has a distinct
-cause, namely that DP-SGD perturbs a small low-rank adapter at the $1$B
+cause. DP-SGD perturbs a small low-rank adapter at the $1$B
 scale, rather than following from the text representation itself. Its
-costs are a generation-time parsing-and-retry overhead, substantially longer
-training and inference, and a known susceptibility to word-for-word memorisation
+costs are a generation-time parsing-and-retry overhead. It also has substantially longer
+training and inference, and a known problemn of word-for-word memorisation
 of training text~\cite{Carlini2021Extracting}. Notably, however, the
 membership-inference results reported here show no measurable memorisation by
 any generator at this scale (\S\ref{sec:results:rq2:privacy:mia}).
@@ -90,20 +174,18 @@ any generator at this scale (\S\ref{sec:results:rq2:privacy:mia}).
 \paragraph{Sensitivity to Categorical Granularity:}
 The age-binning ablation
 (Section~\ref{sec:results:rq2:utility:age-binning}) shows that upstream
-categorical-cardinality choices can affect generators unequally, although
+categorical-cardinality choices can affect generators differently. Although
 the comparison is limited to the two GAN baselines and Pythia-70M, the only
 models for which matched three-bin and ten-bin runs exist. Restoring the
-native ten-decade \emph{age} encoding raised the Gradient-Boosting TSTR
-AUC of Pythia-70M by $\approx 0.065$ and its F1 by $\approx 0.106$, the
+native ten-decade \emph{age} encoding raised the predictive utility
+of Pythia-70M by $\approx 0.065$ and its F1 by $\approx 0.106$ which is the
 largest AUC gain among the compared generators. HealthGAN responded on a
-similar scale but in a mixed direction, gaining on F1 ($+0.118$) while
-losing slightly on AUC ($-0.029$), whereas PATE-GAN remained weak under
+similar scale but in a mixed direction. It gains on F1 ($+0.118$) while
+losing slightly on AUC ($-0.029$). PATE-GAN remained weak under
 both encodings. No single family is therefore uniformly more sensitive on
 this ablation. The practical implication for healthcare data stewards is
-that preprocessing decisions which flatten ordinal categorical variables
-can shift recoverable downstream utility for some generators, and should be
-validated against the native encoding of the dataset before being committed
-to.
+that preprocessing decisions
+can shift recoverable downstream utility for some generators.
 
 \section{Practical Recommendations for Healthcare Data Stewards}
 \label{sec:discussion:recommendations}
@@ -117,24 +199,26 @@ rather than the differentially private GAN as implemented here. At
 $\varepsilon = 5.0$ the DP-LLM retained usable utility (TSTR AUC $0.583$)
 and reduced attribute disclosure, whereas the PATE-GAN implementation
 evaluated in this thesis collapsed to near chance on every utility metric.
-This inverts the conventional default of reaching for the de-facto DP-GAN
-baseline, subject to two caveats: the DP-LLM must be operated at sufficient
-scale, since DP-SGD failed outright at the $70$M scale, and the GAN-side
-evidence is specific to the PATE-GAN configuration evaluated here
-(\S\ref{sec:discussion:limit:gan-toggle-asymmetry}).
+These findings challenge the common use of DP-GAN as the default
+approach. However, two caveats apply. First, the DP-LLM must have
+sufficient model capacity, as DP-SGD training failed at the $70$M scale.
+Second, the evidence for GANs is limited to the PATE-GAN configuration
+evaluated in this study (\S\ref{sec:discussion:limit:gan-toggle-asymmetry}).
 
 \paragraph{When maximum utility is required without a formal guarantee:}
-Two options are defensible. Pythia-1B gives the highest predictive utility
-and the best joint-dependency fidelity, while HealthGAN gives the best
-marginal fidelity and the only non-private operating point at or above the
-NNDR unity reference, at a fraction of the computational cost of the LLM.
+Both models are reasonable choices, depending on the main objective.
+Pythia-1B provides the highest predictive utility and the strongest
+fidelity in joint feature relationships. In contrast, HealthGAN provides
+the best marginal fidelity and is the only non-private configuration to
+meet or exceed the NNDR reference value of one. It also requires only a
+fraction of the computational cost of the LLM.
 The choice is the genuine trade-off identified in RQ2 rather than a clear
 winner.
 
 \paragraph{When schema handling or operational simplicity dominates:}
 The LLM generators ingest mixed-type data without per-column encoders and
 emit schema-valid rows directly, which simplifies the pipeline at the cost
-of generation time; the GAN requires an explicit encoding and decoding stage
+of generation time. The GAN requires an explicit encoding and decoding stage
 but is far cheaper to run.
 
 \paragraph{Outlier protection:}
@@ -149,25 +233,26 @@ directly, since this property is dataset-dependent.
 
 The evaluation framework assembled for this thesis, comprising two utility
 branches (statistical similarity and predictive performance) and a privacy
-pillar reported through twelve complementary single-number metrics, is
+pillar reported through twelve complementary single-number metrics. It is
 offered as a step toward the reusable evaluation standard called for by
 \textcite{hernandez2022synthetic}. General-purpose frameworks such as SynthEval
-pursue this goal for arbitrary tabular data~\cite{lautrup2025syntheval}; the
-present framework instead specialises the same two-pillar structure to a
-clinical benchmark and to a controlled comparison across the GAN and LLM
-paradigms. Its central design principle, that the
-metrics are jointly necessary rather than individually sufficient,
-generalises directly: the PATE-GAN case shows that any framework reporting
-fewer dimensions risks rewarding degenerate generators. What would not
-transfer unchanged is the domain-specific content of the suite. The Cox
-proportional-hazards agreement metric assumes a survival-analytic outcome
-and would be replaced by the appropriate downstream task elsewhere; the
+pursue this goal for arbitrary tabular data~\cite{lautrup2025syntheval}. 
+This study applies the same two-part framework to a clinical benchmark
+and uses it for a controlled comparison of GAN- and LLM-based approaches. 
+Its central principle also applies here: no single metric is sufficient,
+and the metrics must be considered together. The PATE-GAN results show
+that evaluating fewer dimensions may favour generators that perform well
+on one metric while producing data of poor overall quality. What would not
+transfer unchanged is the domain-specific content of the suite. The
 privacy thresholds (an NNDR of unity, the outlier radius) are calibrated to
-the geometry of the real data and must be recomputed per dataset. The
-predictive protocol presumes a defined target variable. The framework should
-be read as a reusable \emph{structure}, namely two utility
-branches plus privacy interpreted jointly, instantiated here with metrics
-appropriate to a binary-outcome clinical table.
+the geometry of the real data and must be recomputed per dataset. 
+The predictive-utility evaluation requires a predefined outcome
+variable, which is used to train and assess the downstream prediction
+models. In this study, the target variable is binary readmission. 
+The framework should be understood as a reusable \emph{structure} that
+jointly evaluates two utility dimensions and privacy. In this study, it
+is implemented using metrics suitable for clinical tabular data with a
+binary outcome.
 
 \section{Limitations}
 \label{sec:discussion:limitations}
@@ -175,55 +260,60 @@ appropriate to a binary-outcome clinical table.
 \subsection{Single-Dataset Scope}
 \label{sec:discussion:limit:dataset}
 
-The entire study is conducted on a single benchmark, the Diabetes 130-US
+The entire study is conducted on a single dataset, the Diabetes 130-US
 Hospitals dataset. It is a deliberate choice of a large
 ($> 70{,}000$-record), mixed-type clinical table with binarized
-outcome, which makes it a representative medical tabular testbed, but it is
-not universal: the secondary benchmark of the proposal (MIMIC-III) was
-scope-reduced, and the findings, particularly the absolute utility figures
-and the family rankings, may not transfer to datasets with very different
-dimensionality, sparsity, or outcome structure.
+outcome. So it makes it a representative medical tabular testbed, but it is
+not universal. The planned evaluation using MIMIC-III was reduced in scope.
+Consequently, the findings, particularly the absolute utility values and
+model-family rankings, may not generalise to datasets with substantially
+different dimensionality, sparsity, or outcome structures.
 
 \subsection{Upper Bound on Language-Model Scale}
 \label{sec:discussion:limit:pythia-size}
 
-The LLM-side evaluation is capped at the Pythia-1B scale. Although Pythia-1B
-was added precisely to provide a larger non-private and DP anchor than
-Pythia-70M (and the DP-SGD failure at 70M, reported in
-\S\ref{sec:results:rq3:pythia-70m-failure}, shows why this scale shift was
-necessary), larger decoder-only models in the multi-billion-parameter range,
-such as Llama-class or Qwen-class models, are not evaluated. The findings on
+The LLM-side evaluation is capped at the Pythia-1B scale. 
+Pythia-1B was included as a larger non-private and private comparison
+point than Pythia-70M. This increase in scale was motivated by the
+failure of DP-SGD training at the $70$M scale, as reported in
+\S\ref{sec:results:rq3:pythia-70m-failure}. However, larger decoder-only
+models with several billion parameters, such as Llama- or Qwen-based
+models, were not evaluated. The findings on
 the LLM side should therefore be read as characterising the small-to-mid LLM
-regime; \textcite{Miletic2024} report continued gains with model size, so the
+regime. Model size has been correlated with higher gains, so the
 absolute utility figures here are likely a lower bound on what comparable
-LLM-based synthesisers can attain at greater scale.
+LLM-based synthesisers can attain at greater scale\cite{Miletic2024} .
 
 \subsection{Architectural Asymmetry of the Cross-Family DP Comparison}
 \label{sec:discussion:limit:gan-toggle-asymmetry}
 
 The GAN-family DP comparison reported in
-\S\ref{sec:results:rq3:gan-toggle} conflates architectural and mechanism
-differences: HealthGAN and PATE-GAN are not the same architecture with
-differential privacy toggled on or off, but distinct generative designs,
-only one of which incorporates it. The LLM-family comparison
+\S\ref{sec:results:rq3:gan-toggle} combines architectural and mechanism
+differences. HealthGAN and PATE-GAN are not the same architecture with
+differential privacy toggled on or off, but distinct generative designs.
+The LLM-family comparison
 (\S\ref{sec:results:rq3:llm-toggle}) is, on the contrary, an
 architecture-controlled toggle. Pythia-1B and Pythia-1B-DP share the same
 decoder-only backbone, the same Tabula serialisation, and the same LoRA
-fine-tuning configuration. So the only material difference between them is
-the DP-SGD training procedure. This asymmetry is unavoidable, given both the
-absence of a standardised non-private analogue of PATE-GAN and the technical
-obstacles to retrofitting DP-SGD onto WGAN-GP discussed in
-\S\ref{sec:methods:healthgan:nodp}. It should nonetheless be kept in mind
-when interpreting cross-family differences in the cost of DP enforcement,
-because part of the GAN-side utility delta in
-\S\ref{sec:results:rq3:gan-toggle} is attributable to architecture rather
-than to differential privacy alone. A further caveat concerns the PATE-GAN
-implementation itself: the original PATE-GAN evaluation reports usable
-synthetic utility at privacy budgets tighter than the one used
-here~\cite{pategan}, whereas the instance evaluated in this thesis, which
-uses linear logistic-regression teachers refitted at every round and a
-weight-clipped Wasserstein student (\S\ref{sec:methods:pategan:teacher}),
-collapsed on this benchmark. The observed collapse should therefore be read
+fine-tuning configuration. Although their Fine tuning configuration 
+has some differences, but that is due to accommodating DP-SGD in the Pipeline.
+So, the observed difference between them is
+the DP-SGD training procedure. This asymmetry was difficult to avoid because PATE-GAN has no
+standardised non-private counterpart, while applying DP-SGD to WGAN-GP
+presents technical challenges, as discussed in
+\S\ref{sec:methods:healthgan:nodp}. However, this limitation should be considered when comparing the utility
+cost of differential privacy across the two model families. Part of the
+GAN-side utility difference reported in
+\S\ref{sec:results:rq3:gan-toggle} may result from the architecture change
+rather than from differential privacy alone. A further caveat concerns the PATE-GAN
+implementation itself. The original PATE-GAN study reported useful 
+synthetic-data utility under
+stricter privacy budgets than the budget used here~\cite{pategan}.
+However, the configuration evaluated in this thesis collapsed on the
+current benchmark. This configuration used linear logistic-regression
+teachers that were refitted at each training round and a weight-clipped
+Wasserstein student
+(\S\ref{sec:methods:pategan:teacher}). The observed collapse should therefore be read
 as a property of this implementation, dataset, and budget, not as evidence
 that differentially private GANs fail in general.
 
@@ -232,26 +322,13 @@ that differentially private GANs fail in general.
 
 PATE-GAN appears alongside non-private models in the RQ2 landscape view
 (\S\ref{sec:results:rq2:landscape}) even though it incorporates differential
-privacy by construction. This is a reporting choice rather than a flaw:
+privacy by construction. This is a reporting choice rather than a flaw.
 PATE-GAN is the de-facto DP-GAN baseline in the literature~\cite{pategan},
-and excluding it from the landscape figure would obscure where the GAN
+and excluding it from the landscape figure would make it difficult to determine where the GAN
 family lands once formal DP is required. Its position on the privacy-utility
-plane should be read accordingly: it is the DP-enforced operating point of
+plane should be read accordingly. It is the DP-enforced operating point of
 the GAN family, whereas the non-private generators (HealthGAN, Pythia-70M,
 and Pythia-1B) sit on the plane without any formal guarantee.
-
-\subsection{Shared Experimental Outputs Across RQ2 and RQ3}
-\label{sec:discussion:limit:shared-data}
-
-RQ2 and RQ3 do not correspond to separate experiments. RQ3 is a
-within-family re-analysis of the same five generator outputs reported in
-RQ2 (the four-generator subset HealthGAN, PATE-GAN, Pythia-1B, and
-Pythia-1B-DP), viewed through a DP-toggle lens rather than a landscape lens.
-The shared experimental base means the two research questions are not
-statistically independent estimates of generator behaviour. This is by
-design, but it constrains the conclusions in
-\S\ref{sec:results:rq3:answer} to within-run statements rather than
-cross-run reproducibility claims.
 
 \subsection{Single Privacy Budget ($\varepsilon = 5.0$)}
 \label{sec:discussion:limit:epsilon}
@@ -268,81 +345,47 @@ is left to future work.
 \label{sec:discussion:limit:compute}
 
 The computational costs of the two paradigms differ by orders of magnitude
-and were not equalised. The LLM generators, and especially the
-differentially private variant, dominate: DP training through Opacus
-materialises per-example gradients, which inflates memory consumption
-relative to standard mini-batch SGD and necessitated the
-effective-batch-size construction described in
-\S\ref{sec:results:rq3:llm-toggle}. The GAN baseline, by contrast, trains
+and were not equalised. The dp variant of LLM dominates here. In this implementation, Opacus computes gradients for individual
+training examples. This requires more memory than standard mini-batch
+SGD and therefore required the effective-batch-size strategy described
+in \S\ref{sec:results:rq3:llm-toggle}. The GAN baseline, by contrast, trains
 and samples cheaply. Comparisons in this thesis are made at a fixed privacy
-budget rather than at fixed compute, and the utility rankings should be read
+budget rather than at fixed compute. The utility rankings should be read
 with that asymmetry in mind.
-
-\subsection{Scope Reductions Versus the Proposal}
-\label{sec:discussion:limit:scope}
-
-Several measurements were narrowed from the proposal, in each case for a
-stated methodological reason. Within the statistical-similarity branch,
-Kullback-Leibler divergence was replaced by the Kolmogorov-Smirnov
-statistic, which is non-parametric and avoids the probability-mass binning
-that the former requires on continuous columns. The pairwise correlation
-difference, originally specified as a single Frobenius norm, is reported both
-as the per-column difference heatmaps and as the scalar mean used for
-ranking. The correlation difference captures only linear inter-attribute
-dependence; non-linear dependencies between attributes are not assessed in this
-thesis, and are noted as future work
-(Section~\ref{sec:conclusion:future:nonlinear}). Within the predictive branch,
-the four-way train and test regime
-was narrowed to the two cells that bound utility (Train-on-Real and
-Train-on-Synthetic, both tested on real data), and the augmentation-based
-and dimension-wise prediction evaluations were not run. Within the privacy
-pillar, outlier linkability is defined through a centroid-distance criterion
-rather than the DBSCAN clustering of \textcite{wang2019generating}. None of
-these substitutions changes the dimension being measured. Each trades an
-implementation detail for robustness or tractability.
 
 \section{Threats to Validity}
 \label{sec:discussion:validity}
-
-Following the standard classification, four categories of threat are
-relevant. \emph{Internal validity} is limited by the use of a single train
-and test split rather than cross-validation: the TSTR and privacy figures
-are point estimates without variance bands, and a single random seed governs
-both generation and the downstream classifiers. \emph{External validity} is
-constrained by the conditions enumerated in
-Section~\ref{sec:discussion:limitations}, namely the single dataset, the
-single privacy budget, and the use of an English-language decoder-only model
-family. The family rankings may not generalise beyond these conditions.
-\emph{Construct validity} concerns whether the metrics measure what they
-claim: the PATE-GAN result is a direct demonstration that nearest-neighbour
-distance does not by itself measure privacy, because a generator far from the
-real manifold scores as private while being useless. This is why the
-framework interprets distance metrics only alongside utility, and why TSTR is
-taken as a utility proxy that assumes the downstream task is representative.
-\emph{Conclusion validity} is weakest for the attribute-inference cells,
-where advantages are computed per attribute and the magnitudes involved (a
-maximum of $+0.041$) are close to the resolution of the estimate. The
-within-family DP effect on attribute inference should therefore be read as
-suggestive rather than definitive.
+Four types of validity threat are considered. \emph{Internal validity}
+is limited by configuration differences. It applies particularly in the GAN
+comparison where architecture and privacy change together.
+\emph{External validity} is limited by the use of one dataset, one
+privacy budget, and one decoder-only model family. The rankings may not
+generalise to other settings. \emph{Construct validity} is limited
+because no single metric fully captures privacy or utility. For example,
+PATE-GAN achieved favourable distance-based privacy scores despite poor
+utility. \emph{Conclusion validity} is limited by the use of one data
+split and one random seed, resulting in point estimates without
+uncertainty intervals. The attribute-inference results should therefore
+be interpreted as suggestive rather than definitive.
 
 \section{Ethical Considerations}
 \label{sec:discussion:ethics}
 
 The motivation for synthetic medical data is itself ethical, namely to
-enable analysis without exposing patient records, but the practice carries
+enable analysis without exposing patient records. But the practice carries
 its own obligations. Even differentially private synthetic data is generated
 from real patient records collected under specific consent and data-use
 agreements. The synthetic output also does not inherit blanket permission to
 be shared without regard to those terms. A particular hazard is false
-confidence: a formal $\varepsilon$ guarantee bounds one specific privacy
-notion and does not certify that every disclosure channel is closed, and, as
+confidence. A formal $\varepsilon$ guarantee bounds one specific privacy
+notion and does not certify that every disclosure channel is closed. Also, as
 the PATE-GAN case shows, strong-looking privacy numbers can instead reflect
 unusable output. Releasing a trained generator rather than the data shifts
 but does not remove this risk, since the model encodes information about its
 training set and remains susceptible to extraction attacks in
 principle~\cite{Carlini2021Extracting}. Finally, synthetic data that
 faithfully preserves the statistical structure of a clinical population also
-reproduces the biases embedded in that population, so downstream models
+reproduces the biases embedded in that population. So downstream models
 trained on it warrant the same fairness scrutiny as models trained on the
 real data.
 

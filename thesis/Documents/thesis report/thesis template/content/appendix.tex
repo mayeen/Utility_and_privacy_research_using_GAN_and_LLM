@@ -18,7 +18,7 @@ variables.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/results/1a-per_column_distribution_reordered_3}
+\includegraphics[width=0.8\textwidth]{images/results/1a-per_column_distribution_reordered_3}
 \caption[Per-column marginals for all generators, block 3 of 5.]
 {Per-column marginal distributions, real versus all five
 generators (block 3 of 5).}
@@ -27,7 +27,7 @@ generators (block 3 of 5).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/results/1a-per_column_distribution_reordered_4}
+\includegraphics[width=0.8\textwidth]{images/results/1a-per_column_distribution_reordered_4}
 \caption[Per-column marginals for all generators, block 4 of 5.]
 {Per-column marginal distributions, real versus all five
 generators (block 4 of 5).}
@@ -36,7 +36,7 @@ generators (block 4 of 5).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.95\textwidth]{images/results/1a-per_column_distribution_reordered_5}
+\includegraphics[width=0.8\textwidth]{images/results/1a-per_column_distribution_reordered_5}
 \caption[Per-column marginals for all generators, block 5 of 5.]
 {Per-column marginal distributions, real versus all five
 generators (block 5 of 5).}
@@ -108,9 +108,9 @@ which variables account for the shared importance profile. The figure is
 descriptive and should be interpreted as a model-based utility diagnostic,
 not as clinical validation of the predictors.
 
-\begin{figure}[H]
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.9\textwidth]{images/results/2c_extra-top10_features}
+\includegraphics[width=0.8\textwidth]{images/results/2c_extra-top10_features}
 \caption[Top ten random-forest feature importances by training source.]
 {Top ten random-forest feature importances ranked by the
 real-trained reference and compared across synthetic training sources.}
@@ -125,7 +125,7 @@ lower importance under PATE-GAN.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.82\textwidth]{images/results/2c_extra-pategan_divergence}
+\includegraphics[width=0.8\textwidth]{images/results/2c_extra-pategan_divergence}
 \caption[PATE-GAN feature-importance differences relative to real data.]
 {Largest feature-importance differences for PATE-GAN relative to
 the real-trained random-forest reference.}
@@ -145,7 +145,7 @@ closer reproduction of the corresponding pairwise correlations.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/results/1c_corr_diff_healthgan}
+\includegraphics[width=0.75\textwidth]{images/results/1c_corr_diff_healthgan}
 \caption[Correlation differences for HealthGAN.]
 {Correlation-difference heatmap (real minus synthetic) for
 HealthGAN.}
@@ -154,7 +154,7 @@ HealthGAN.}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/results/1c_corr_diff_pythia_70m}
+\includegraphics[width=0.75\textwidth]{images/results/1c_corr_diff_pythia_70m}
 \caption[Correlation differences for Pythia-70M.]
 {Correlation-difference heatmap (real minus synthetic) for
 Pythia-70M.}
@@ -163,7 +163,7 @@ Pythia-70M.}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.9\textwidth]{images/results/1c_corr_diff_pythia_1b_dp}
+\includegraphics[width=0.75\textwidth]{images/results/1c_corr_diff_pythia_1b_dp}
 \caption[Correlation differences for Pythia-1B-DP.]
 {Correlation-difference heatmap (real minus synthetic) for
 Pythia-1B-DP.}
@@ -197,23 +197,24 @@ in Table~\ref{tab:rq2:cox}.
 
 \begin{figure}[H]
 \centering
-\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_1}\caption{PATE-GAN (0/13)}\end{subfigure}
+\begin{subfigure}{0.8\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_1}\caption{PATE-GAN (0/13)}\end{subfigure}
 
 \vspace{1ex}
-\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_2}\caption{HealthGAN (7/12)}\end{subfigure}
+\begin{subfigure}{0.8\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_2}\caption{HealthGAN (7/12)}\end{subfigure}
 \end{figure}
+\clearpage
 
 \begin{figure}[H]\ContinuedFloat
 \centering
-\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_3}\caption{Pythia-70M (4/13)}\end{subfigure}
+\begin{subfigure}{0.8\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_3}\caption{Pythia-70M (4/13)}\end{subfigure}
 
 \vspace{1ex}
-\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_4}\caption{Pythia-1B (7/13)}\end{subfigure}
+\begin{subfigure}{0.8\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_4}\caption{Pythia-1B (7/13)}\end{subfigure}
 \end{figure}
-
+\clearpage
 \begin{figure}[H]\ContinuedFloat
 \centering
-\begin{subfigure}{0.78\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_5}\caption{Pythia-1B-DP (7/13)}\end{subfigure}
+\begin{subfigure}{0.8\textwidth}\centering\includegraphics[width=\textwidth]{images/results/2e-cox_ci_5}\caption{Pythia-1B-DP (7/13)}\end{subfigure}
 \caption[Cox hazard-ratio estimates for all five generators.]
 {Cox hazard-ratio estimates with $95\%$ confidence intervals for
 all five generators. The subcaptions report the number of synthetic
@@ -238,7 +239,7 @@ rather than exact agreement with the real data for every variable, supports
 the use of draw $0$ as a representative sample.
 
 The diagnostics in this appendix were generated in the HealthGAN-only
-fidelity analysis of \texttt{data\_analysis.ipynb}, using the real training
+fidelity analysis. The analysis uses the real training
 partition and the three retained decoded HealthGAN draws labelled
 HealthGAN-0, HealthGAN-3, and HealthGAN-6 in that analysis.
 
@@ -247,7 +248,7 @@ HealthGAN-0, HealthGAN-3, and HealthGAN-6 in that analysis.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{images/results/5_1-hg_per_column_distribution_1}
+\includegraphics[width=0.75\textwidth]{images/results/5_1-hg_per_column_distribution_1}
 \caption[Per-column marginals for HealthGAN draws, block 1 of 5.]
 {Per-column marginal distributions, real versus the three HealthGAN
 draws (block 1 of 5).}
@@ -256,7 +257,7 @@ draws (block 1 of 5).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{images/results/5_1-hg_per_column_distribution_2}
+\includegraphics[width=0.75\textwidth]{images/results/5_1-hg_per_column_distribution_2}
 \caption[Per-column marginals for HealthGAN draws, block 2 of 5.]
 {Per-column marginal distributions, real versus the three HealthGAN
 draws (block 2 of 5).}
@@ -265,7 +266,7 @@ draws (block 2 of 5).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{images/results/5_1-hg_per_column_distribution_3}
+\includegraphics[width=0.75\textwidth]{images/results/5_1-hg_per_column_distribution_3}
 \caption[Per-column marginals for HealthGAN draws, block 3 of 5.]
 {Per-column marginal distributions, real versus the three HealthGAN
 draws (block 3 of 5).}
@@ -274,7 +275,7 @@ draws (block 3 of 5).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{images/results/5_1-hg_per_column_distribution_4}
+\includegraphics[width=0.75\textwidth]{images/results/5_1-hg_per_column_distribution_4}
 \caption[Per-column marginals for HealthGAN draws, block 4 of 5.]
 {Per-column marginal distributions, real versus the three HealthGAN
 draws (block 4 of 5).}
@@ -283,7 +284,7 @@ draws (block 4 of 5).}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.92\textwidth]{images/results/5_1-hg_per_column_distribution_5}
+\includegraphics[width=0.75\textwidth]{images/results/5_1-hg_per_column_distribution_5}
 \caption[Per-column marginals for HealthGAN draws, block 5 of 5.]
 {Per-column marginal distributions, real versus the three HealthGAN
 draws (block 5 of 5).}
@@ -366,7 +367,7 @@ readmitted & 0.474 & 0.467 & 0.468 & 0.467 \\
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{images/results/5_3-hg_corr_diff_heatmap_1}
+\includegraphics[width=0.70\textwidth]{images/results/5_3-hg_corr_diff_heatmap_1}
 \caption[Correlation differences for HealthGAN-0.]
 {Correlation-difference heatmap (real minus synthetic) for the
 HealthGAN-0 draw.}
@@ -375,7 +376,7 @@ HealthGAN-0 draw.}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{images/results/5_3-hg_corr_diff_heatmap_2}
+\includegraphics[width=0.70\textwidth]{images/results/5_3-hg_corr_diff_heatmap_2}
 \caption[Correlation differences for HealthGAN-3.]
 {Correlation-difference heatmap (real minus synthetic) for the
 HealthGAN-3 draw.}
@@ -384,7 +385,7 @@ HealthGAN-3 draw.}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{images/results/5_3-hg_corr_diff_heatmap_3}
+\includegraphics[width=0.70\textwidth]{images/results/5_3-hg_corr_diff_heatmap_3}
 \caption[Correlation differences for HealthGAN-6.]
 {Correlation-difference heatmap (real minus synthetic) for the
 HealthGAN-6 draw.}
